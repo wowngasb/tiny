@@ -1,0 +1,42 @@
+{
+  "name": "wowngasb/tiny",
+  "type": "framework",
+  "description": "A Simple PHP Framework based on Composer.",
+  "keywords": [
+    "tiny",
+    "web",
+    "framework"
+  ],
+  "homepage": "http://github.com/wowngasb/tiny",
+  "license": "MIT",
+  "support": {
+    "issues": "https://github.com/wowngasb/tiny/issues"
+  },
+  "authors": [
+    {
+      "name": "kong lin",
+      "email": "konglin4216@gmail.com",
+      "homepage": "http://github.com/wowngasb"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.9",
+    "webonyx/graphql-php": "^0.10",
+    "phpFastCache/phpFastCache": "^5.0",
+    "illuminate/database": "5.2.*"
+  },
+  "require-dev": {
+    "php-console/php-console": "^3.1",
+    "phpunit/phpunit": "^4.8",
+    "php-mock/php-mock-phpunit": "^1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Tiny\\": "src/",
+      "TinyTest\\": "tests/"
+    }
+  },
+  "config": {
+    "preferred-install": "dist"
+  }
+}

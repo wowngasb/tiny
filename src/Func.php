@@ -22,7 +22,8 @@ abstract class Func
         return __NAMESPACE__;
     }
 
-    public static function mime_content_type($filename) {
+    public static function mime_content_type($filename)
+    {
 
         $mime_types = array(
 
@@ -79,18 +80,16 @@ abstract class Func
             'odt' => 'application/vnd.oasis.opendocument.text',
             'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
         );
-        $tmp = explode('.',$filename);
+        $tmp = explode('.', $filename);
         $ext = strtolower(array_pop($tmp));
         if (array_key_exists($ext, $mime_types)) {
             return $mime_types[$ext];
-        }
-        elseif (function_exists('finfo_open')) {
+        } elseif (function_exists('finfo_open')) {
             $finfo = finfo_open(FILEINFO_MIME);
             $mimetype = finfo_file($finfo, $filename);
             finfo_close($finfo);
             return $mimetype;
-        }
-        else {
+        } else {
             return 'application/octet-stream';
         }
     }
@@ -660,7 +659,7 @@ abstract class Func
             $tmp_idx = ($box[$a] + $box[$j]) % 256;
             $result_list[] = chr(ord($string[$i]) ^ $box[$tmp_idx]);
         }
-        
+
         $result = join('', $result_list);
         return $result;
     }
@@ -865,7 +864,9 @@ EOT;
             return static::$_http_info_cache[__METHOD__];
         }
         $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
-        $url = SYSTEM_HOST . substr($uri, 1);
+        $sys_host = defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
+        $sys_host = static::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
+        $url = $sys_host . substr($uri, 1);
 
         static::$_http_info_cache[__METHOD__] = $url;
         return $url;

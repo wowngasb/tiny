@@ -511,7 +511,7 @@ class FuncTest extends BaseNothingTest
         }
     }
 
-    public function test_unicode_decode()
+    /* public function test_unicode_decode()
     {
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
@@ -547,7 +547,7 @@ class FuncTest extends BaseNothingTest
             PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
         }
 
-    }
+    } */
 
     ##########################
     ######## 编码相关 ########

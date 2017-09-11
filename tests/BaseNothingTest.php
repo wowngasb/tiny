@@ -9,7 +9,7 @@ use PHPUnit_Framework_TestCase;
 class BaseNothingTest extends PHPUnit_Framework_TestCase
 {
 
-    static $_class = __CLASS__;
+    public static $_class = __CLASS__;
 
     public function testNothing()
     {

@@ -1,5 +1,6 @@
 <?php
-namespace TinyTest;
+
+namespace Tiny\Tests;
 
 use phpmock\phpunit\PHPMock;
 use PHPUnit_Framework_Assert;

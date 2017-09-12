@@ -1,6 +1,6 @@
 <?php
 
-namespace TinyTest;
+namespace Tiny\Tests;
 
 use phpmock\phpunit\PHPMock;
 

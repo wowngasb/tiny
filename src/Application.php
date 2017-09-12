@@ -177,7 +177,6 @@ final class Application implements DispatchInterface, RouteInterface
             static::fire('preDispatch', [$app, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward 或 callfunc, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
             static::fire('postDispatch', [$app, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
-
         } catch (Exception $ex) {
             $dispatcher::traceException($request, $response, $ex);
         }
@@ -281,7 +280,7 @@ final class Application implements DispatchInterface, RouteInterface
      */
     public function url(array $routerArr, array $params = [])
     {
-        return SYSTEM_HOST;
+        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
     }
 
     /**
@@ -335,7 +334,7 @@ final class Application implements DispatchInterface, RouteInterface
     /**
      * @param Request $request
      * @param Response $response
-     * @param array $namespace
+     * @param string $namespace
      * @param string $action
      * @return AbstractController
      * @throws AppStartUpError
@@ -366,11 +365,11 @@ final class Application implements DispatchInterface, RouteInterface
     {
         ob_start();
         call_user_func_array([$context, $action], $params);
-        $buffer = ob_get_contents();
+        $string_buffer = ob_get_contents();
         ob_end_clean();
 
-        if (!empty($buffer)) {
-            $context->getResponse()->appendBody($buffer);
+        if (!empty($string_buffer)) {
+            $context->getResponse()->appendBody($string_buffer);
         }
     }
 
@@ -383,7 +382,7 @@ final class Application implements DispatchInterface, RouteInterface
     public static function traceException(Request $request, Response $response, Exception $ex)
     {
         $code = $ex->getCode();
-        $response->setResponseCode(($code >= 500 && $code < 600) ? $code : 500)->appendBody($ex->getMessage());
+        $response->clearBody()->setResponseCode(($code >= 500 && $code < 600) ? $code : 500)->appendBody($ex->getMessage());
     }
 
     ###############################################################

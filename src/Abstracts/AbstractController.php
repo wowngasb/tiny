@@ -9,10 +9,6 @@
 namespace Tiny\Abstracts;
 
 use Tiny\Application;
-use Tiny\Traits\CacheTrait;
-use Tiny\Traits\EventTrait;
-use Tiny\Traits\LogTrait;
-use Tiny\Traits\RpcTrait;
 use Tiny\Request;
 use Tiny\Response;
 use Tiny\ViewInterface;

@@ -117,7 +117,7 @@ final class Response
 
     /**
      * @param string|null $name
-     * @return array
+     * @return $this
      */
     public function clearBody($name = null)
     {
@@ -125,6 +125,7 @@ final class Response
             $this->_body = [];
         }
         unset($this->_body[$name]);
+        return $this;
     }
 
 }

@@ -1,5 +1,6 @@
 <?php
-namespace TinyTest;
+
+namespace Tiny\Tests;
 
 use PHPUnit_Framework_TestCase;
 

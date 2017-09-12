@@ -32,8 +32,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Tiny\\": "src/",
-      "TinyTest\\": "tests/"
+      "Tiny\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tiny\\Tests\\": "tests/"
     }
   },
   "config": {

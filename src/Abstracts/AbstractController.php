@@ -19,32 +19,30 @@ use Tiny\ViewInterface;
  */
 abstract class AbstractController extends AbstractContext
 {
-    protected $_view = null;
-
-    protected $routeInfo = [];  // 在路由完成后, 请求被分配到的路由信息 [$module, $controller, $action]
-    protected $appname = '';
-
-    protected $_layout_tpl = '';
+    private $_view = null;
+    private $_layout = '';
 
     public function __construct(Request $request, Response $response)
     {
         parent::__construct($request, $response);
-        $this->routeInfo = $request->getRouteInfo();
-
-        $this->appname = Application::app()->getName();
     }
 
-    public function setLayout($layout_tpl)
+    final protected function setLayout($layout_tpl)
     {
-        $this->_layout_tpl = $layout_tpl;
+        $this->_layout = $layout_tpl;
     }
 
-    /**
-     * Controller 构造完成之后 具体action 之前调佣 通常用于初始化 需显示调用父类 beforeAction
-     */
-    public function beforeAction()
+    final protected function getLayout()
     {
-        // do nothing
+        return $this->_layout;
+    }
+
+    protected static function extendAssign(Request $request, array $params)
+    {
+        $params['routeInfo'] = $request->getRouteInfo();
+        $params['appname'] = Application::app()->getAppName();
+        $params['request'] = $request;
+        return $params;
     }
 
     /**

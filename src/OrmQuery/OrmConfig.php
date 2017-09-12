@@ -16,7 +16,7 @@ class OrmConfig
     use EventTrait;
 
     public $method = '';
-    
+
     public $table_name = '';     //数据表名
     public $primary_key = '';   //数据表主键
     public $max_select = 0;  //最多获取 5000 条记录 防止数据库拉取条目过多
@@ -26,11 +26,11 @@ class OrmConfig
 
     /**
      * OrmConfig constructor.
-     * @param string $db_name  数据库名称
-     * @param string $table_name  数据表名称
-     * @param string $primary_key  数据表主键  不可为空
+     * @param string $db_name 数据库名称
+     * @param string $table_name 数据表名称
+     * @param string $primary_key 数据表主键  不可为空
      * @param int $cache_time 数据 缓存时间  设置为0 表示 不使用缓存
-     * @param int $max_select  最大选取条目数量 影响 select 语句 最大行数
+     * @param int $max_select 最大选取条目数量 影响 select 语句 最大行数
      */
     public function __construct($db_name, $table_name, $primary_key = 'id', $cache_time = 0, $max_select = 5000)
     {
@@ -67,7 +67,8 @@ class OrmConfig
      * @param string $event
      * @return bool
      */
-    public static function isAllowedEvent($event){
+    public static function isAllowedEvent($event)
+    {
         static $allow_event = ['runSql',];
         return in_array($event, $allow_event);
     }

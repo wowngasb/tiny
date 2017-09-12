@@ -10,7 +10,6 @@ namespace Tiny\Plugin\develop\dispatch;
 
 
 use Exception;
-use Tiny\Abstracts\AbstractBootstrap;
 use Tiny\Abstracts\AbstractContext;
 use Tiny\Application;
 use Tiny\DispatchInterface;

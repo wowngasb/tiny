@@ -1,4 +1,5 @@
 <?php
+
 namespace Tiny;
 
 use Exception;
@@ -35,6 +36,14 @@ final class Application implements DispatchInterface, RouteInterface
     {
         $this->_config = $config;
         self::$_instance = $this;
+    }
+
+    public static function pathJoin(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    {
+        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
+        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
+        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
+        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
     }
 
     /**
@@ -103,7 +112,7 @@ final class Application implements DispatchInterface, RouteInterface
     /**
      * @return string
      */
-    public function getName()
+    public function getAppName()
     {
         return $this->_app_name;
     }
@@ -280,6 +289,11 @@ final class Application implements DispatchInterface, RouteInterface
      */
     public function url(array $routerArr, array $params = [])
     {
+        return static::host();
+    }
+
+    public static function host()
+    {
         return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
     }
 
@@ -298,15 +312,16 @@ final class Application implements DispatchInterface, RouteInterface
 
     /**
      * 根据对象和方法名 获取 修复后的参数
-     * @param AbstractContext $object
+     * @param AbstractContext $context
      * @param $action
      * @param array $params
      * @return array
      */
-    public static function initMethodParams(AbstractContext $object, $action, array $params)
+    public static function initMethodParams(AbstractContext $context, $action, array $params)
     {
-        $params = ApiHelper::fixActionParams($object, $action, $params);
-        $object->getRequest()->setParams($params);
+        $params = ApiHelper::fixActionParams($context, $action, $params);
+        $params = $context->beforeAction($params);
+        $context->getRequest()->setParams($params);
         return $params;
     }
 
@@ -327,8 +342,8 @@ final class Application implements DispatchInterface, RouteInterface
     {
         $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : 'index';
         $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : 'index';
-
-        return "\\" . Func::joinNotEmpty("\\", [Application::app()->getName(), $module, $controller]);
+        $appname = Application::app()->getAppName();
+        return "\\" . Func::joinNotEmpty("\\", [$appname, $module, $controller]);
     }
 
     /**
@@ -336,7 +351,7 @@ final class Application implements DispatchInterface, RouteInterface
      * @param Response $response
      * @param string $namespace
      * @param string $action
-     * @return AbstractController
+     * @return AbstractContext
      * @throws AppStartUpError
      */
     public static function initMethodContext(Request $request, Response $response, $namespace, $action)
@@ -344,16 +359,15 @@ final class Application implements DispatchInterface, RouteInterface
         if (!class_exists($namespace)) {
             throw new AppStartUpError("class:{$namespace} not exists with {$namespace}");
         }
-        $object = new $namespace($request, $response);
-        if (!($object instanceof AbstractController)) {
+        $context = new $namespace($request, $response);
+        if (!($context instanceof AbstractController)) {
             throw new AppStartUpError("class:{$namespace} isn't instanceof AbstractController with {$namespace}");
         }
-        if (!is_callable([$object, $action])) {
+        if (!is_callable([$context, $action])) {
             throw new AppStartUpError("action:{$namespace}::{$action} not callable with {$namespace}");
         }
-        $object->setActionName($action);
-        $object->beforeAction();  //控制器 beforeAction 不允许显式输出
-        return $object;
+        $context->setActionName($action);
+        return $context;
     }
 
     /**

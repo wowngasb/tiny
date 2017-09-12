@@ -12,7 +12,6 @@ namespace Tiny\Dispatch;
 use Tiny\Abstracts\AbstractApi;
 use Exception;
 use Tiny\Application;
-use Tiny\Abstracts\AbstractBootstrap;
 use Tiny\Abstracts\AbstractContext;
 use Tiny\DispatchInterface;
 use Tiny\Exception\AppStartUpError;
@@ -31,24 +30,20 @@ class ApiDispatch implements DispatchInterface
 
     /**
      * 根据对象和方法名 获取 修复后的参数
-     * @param AbstractContext $object
+     * @param AbstractContext $context
      * @param string $action
      * @param array $params
      * @return array
      */
-    public static function initMethodParams(AbstractContext $object, $action, array $params)
+    public static function initMethodParams(AbstractContext $context, $action, array $params)
     {
-        $__server = $object->_server();
+        $__server = $context->_server();
         if (isset($__server['CONTENT_TYPE']) && stripos($__server['CONTENT_TYPE'], 'application/json') !== false && $__server['REQUEST_METHOD'] == "POST") {
             $json_str = file_get_contents('php://input') ?: '';
             $json = !empty($json_str) ? json_decode($json_str, true) : [];
             $params = array_merge($params, $json);  //补充上$_REQUEST 中的信息
         }
-        $params = ApiHelper::fixActionParams($object, $action, $params);
-        /** @var AbstractApi $object */
-        $params = $object->beforeApi($params);
-        $object->getRequest()->setParams($params);
-        return $params;
+        return Application::initMethodParams($context, $action, $params);
     }
 
     /**
@@ -70,8 +65,8 @@ class ApiDispatch implements DispatchInterface
     {
         $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : 'ApiHub';
         $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : 'api';
-
-        $namespace = "\\" . Func::joinNotEmpty("\\", [Application::app()->getName(), $module, $controller]);
+        $appname = Application::app()->getAppName();
+        $namespace = "\\" . Func::joinNotEmpty("\\", [$appname, $module, $controller]);
         return $namespace;
     }
 
@@ -81,7 +76,7 @@ class ApiDispatch implements DispatchInterface
      * @param Response $response
      * @param string $namespace
      * @param string $action
-     * @return AbstractApi 可返回实现此接口的 其他对象 方便做类型限制
+     * @return AbstractContext
      * @throws AppStartUpError
      */
     public static function initMethodContext(Request $request, Response $response, $namespace, $action)
@@ -131,7 +126,7 @@ class ApiDispatch implements DispatchInterface
     {
         $response->clearBody();
         $code = $ex->getCode();  // errno为0 或 无error字段 表示没有错误  errno设置为0 会忽略error字段
-        $error = (DEV_MODEL == 'DEBUG') ? [
+        $error = (defined('DEV_MODEL') && DEV_MODEL == 'DEBUG') ? [
             'Exception' => get_class($ex),
             'code' => $ex->getCode(),
             'message' => $ex->getMessage(),
@@ -146,7 +141,7 @@ class ApiDispatch implements DispatchInterface
         while ($get_previous && !empty($ex) && $ex->getPrevious()) {
             $result['error']['errors'] = isset($result['error']['errors']) ? $result['error']['errors'] : [];
             $ex = $ex->getPrevious();
-            $result['error']['errors'][] = (DEV_MODEL == 'DEBUG') ? ['Exception' => get_class($ex), 'code' => $ex->getCode(), 'message' => $ex->getMessage(), 'file' => $ex->getFile() . ' [' . $ex->getLine() . ']'] : ['code' => $ex->getCode(), 'message' => $ex->getMessage()];
+            $result['error']['errors'][] = (defined('DEV_MODEL') && DEV_MODEL == 'DEBUG') ? ['Exception' => get_class($ex), 'code' => $ex->getCode(), 'message' => $ex->getMessage(), 'file' => $ex->getFile() . ' [' . $ex->getLine() . ']'] : ['code' => $ex->getCode(), 'message' => $ex->getMessage()];
         }
 
         $callback = $request->_get('callback', '');

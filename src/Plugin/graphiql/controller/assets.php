@@ -17,10 +17,11 @@ class assets extends BaseGraphiQLController
 
     public function index()
     {
-        $uri = $this->request->getRequestUri();
+        $uri = $this->getRequest()->getRequestUri();
         $tmp_list = explode('/', $uri);
         $file_name = $tmp_list[count($tmp_list) - 1];
-        $file_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, [static::$template_dir, $this->routeInfo[0], $this->routeInfo[1], $file_name]);
+        $routeInfo = $this->getRequest()->getRouteInfo();
+        $file_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, [static::$template_dir, $routeInfo[0], $routeInfo[1], $file_name]);
         $this->sendFile($file_path);
     }
 

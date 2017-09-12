@@ -9,7 +9,7 @@ use Tiny\Func;
 class DbHelper extends Manager
 {
     /**
-     * @return Manager
+     * @return Manager|mixed
      */
     public static function initDb()
     {

@@ -22,14 +22,15 @@ class DevAuthControllerSimple extends ControllerSimple
 
     protected function sendFile($file_path)
     {
+        $response = $this->getResponse();
         $content_type = Func::mime_content_type($file_path);
         if (!is_file($file_path)) {
-            $this->response->addHeader("Content-Type:{$content_type}", true, 404);
+            $response->addHeader("Content-Type:{$content_type}", true, 404);
         } elseif (!is_readable($file_path)) {
-            $this->response->addHeader("Content-Type:{$content_type}", true, 403);
+            $response->addHeader("Content-Type:{$content_type}", true, 403);
         } else {
-            $this->response->addHeader("Content-Type:{$content_type}", true, 200);
-            $this->response->appendBody(file_get_contents($file_path));
+            $response->addHeader("Content-Type:{$content_type}", true, 200);
+            $response->appendBody(file_get_contents($file_path));
         }
     }
 

@@ -36,7 +36,7 @@ abstract class AbstractBootstrap
 
     public static function debugConsole($data, $tags = null, $ignoreTraceCalls = 0)
     {
-        if (DEV_MODEL == 'DEBUG') {
+        if (defined('DEV_MODEL') && DEV_MODEL == 'DEBUG') {
             if (!empty($tags)) {
                 $tags = strval($tags) . ':' . Application::usedMilliSecond() . 'ms';
             }
@@ -57,7 +57,7 @@ abstract class AbstractBootstrap
 
     public static function debugStrap()
     {
-        if (DEV_MODEL != 'DEBUG') {  // 非调试模式下  直接返回
+        if (defined('DEV_MODEL') && DEV_MODEL != 'DEBUG') {  // 非调试模式下  直接返回
             return;
         }
 

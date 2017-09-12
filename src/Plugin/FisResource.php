@@ -350,10 +350,10 @@ EOT;
                         }
                     }
                     self::$arrStaticCollection['js'][] = $arrPkg['uri'];
-                } else {
+                } /* else {
                     //@TODO
                     //unset(self::$arrRequireAsyncCollection['res'][$strName]);
-                }
+                } */
             } else {
                 //已经分析过的并且在其他文件里同步加载的组件，重新收集在同步输出组
                 self::$arrStaticCollection['js'][] = $arrRes['uri'];

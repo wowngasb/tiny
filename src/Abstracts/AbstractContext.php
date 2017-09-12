@@ -25,11 +25,9 @@ abstract class AbstractContext
 {
     use EventTrait, LogTrait, RpcTrait, CacheTrait;
 
-    protected $request = null;
-
-    protected $response = null;
-
-    protected $_action_name = '';
+    private $_request = null;
+    private $_response = null;
+    private $_action_name = '';
 
     /**
      * BaseContext constructor.
@@ -38,8 +36,18 @@ abstract class AbstractContext
      */
     public function __construct(Request $request, Response $response)
     {
-        $this->request = $request;
-        $this->response = $response;
+        $this->_request = $request;
+        $this->_response = $response;
+    }
+
+    /**
+     * 过滤 action 参数  子类按照顺序依次调用父类此方法
+     * @param array $params
+     * @return array 处理后的 API 执行参数 将用于调用方法
+     */
+    public function beforeAction(array $params)
+    {
+        return $params;
     }
 
     public function getActionName()
@@ -57,7 +65,7 @@ abstract class AbstractContext
      */
     public function getRequest()
     {
-        return $this->request;
+        return $this->_request;
     }
 
     /**
@@ -65,47 +73,47 @@ abstract class AbstractContext
      */
     public function getResponse()
     {
-        return $this->response;
+        return $this->_response;
     }
 
     public function _get($name = null, $default = '')
     {
-        return $this->request->_get($name, $default);
+        return $this->_request->_get($name, $default);
     }
 
     public function _post($name = null, $default = '')
     {
-        return $this->request->_post($name, $default);
+        return $this->_request->_post($name, $default);
     }
 
     public function _env($name = null, $default = '')
     {
-        return $this->request->_env($name, $default);
+        return $this->_request->_env($name, $default);
     }
 
     public function _server($name = null, $default = '')
     {
-        return $this->request->_server($name, $default);
+        return $this->_request->_server($name, $default);
     }
 
     public function _cookie($name = null, $default = '')
     {
-        return $this->request->_cookie($name, $default);
+        return $this->_request->_cookie($name, $default);
     }
 
     public function _files($name = null, $default = '')
     {
-        return $this->request->_files($name, $default);
+        return $this->_request->_files($name, $default);
     }
 
     public function _request($name = null, $default = '')
     {
-        return $this->request->_request($name, $default);
+        return $this->_request->_request($name, $default);
     }
 
     public function _session($name = null, $default = '')
     {
-        return $this->request->_session($name, $default);
+        return $this->_request->_session($name, $default);
     }
 
 }

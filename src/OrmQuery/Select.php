@@ -34,7 +34,7 @@ class Select
         };
         $this->timeCache = !is_null($timeCache) ? $timeCache : $cache_time;
         $this->tags = $tags;
-        
+
         if (empty($this->key)) {
             throw new OrmStartUpError("new Select with empty key");
         }

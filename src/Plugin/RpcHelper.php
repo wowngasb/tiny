@@ -77,7 +77,7 @@ class RpcHelper
             $data = json_decode(trim($response), true);
             return $data;
         } else {
-            return ['error' => ['msg' => '调用远程接口失败', 'res' => trim($response), 'code' => $response_code], ];
+            return ['error' => ['msg' => '调用远程接口失败', 'res' => trim($response), 'code' => $response_code],];
         }
     }
 

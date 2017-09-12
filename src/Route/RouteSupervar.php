@@ -8,6 +8,7 @@
 
 namespace Tiny\Route;
 
+use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Func;
 use Tiny\Request;
@@ -92,7 +93,7 @@ class RouteSupervar implements RouteInterface
         $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
         $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : $default_module;
 
-        $url = SYSTEM_HOST . 'index.php';
+        $url =  Application::host() . 'index.php';
         $route_value = "{$module}/{$controller}/{$action}";
 
         $args_list = [];

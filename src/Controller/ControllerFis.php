@@ -21,17 +21,13 @@ class ControllerFis extends AbstractController
         parent::__construct($request, $response);
         $this->setView(new ViewFis());
         ViewFis::preTreatmentDisplay(function ($file_path, $params) {
-            $params['routeInfo'] = $this->routeInfo;
-            $params['appname'] = $this->appname;
-            $params['request'] = $this->request;
+            $params = self::extendAssign($this->getRequest(), $params);
             static::fire('preDisplay', [$this, $file_path, $params]);
             return $params;
         });
 
         ViewFis::preTreatmentWidget(function ($file_path, $params) {
-            $params['routeInfo'] = $this->routeInfo;
-            $params['appname'] = $this->appname;
-            $params['request'] = $this->request;
+            $params = self::extendAssign($this->getRequest(), $params);
             static::fire('preWidget', [$this, $file_path, $params]);
             return $params;
         });
@@ -48,18 +44,20 @@ class ControllerFis extends AbstractController
     public function display($tpl_path = '')
     {
         $tpl_path = Func::trimlower($tpl_path);
+        $routeInfo = $this->getRequest()->getRouteInfo();
         if (empty($tpl_path)) {
-            $tpl_path = $this->routeInfo[2] . '.php';
+            $tpl_path = $routeInfo[2] . '.php';
         } else {
             $tpl_path = Func::stri_endwith($tpl_path, '.php') ? $tpl_path : "{$tpl_path}.php";
         }
-        $file_path = "view/{$this->routeInfo[0]}/{$this->routeInfo[1]}/{$tpl_path}";
+        $file_path = "view/{$routeInfo[0]}/{$routeInfo[1]}/{$tpl_path}";
         $view = $this->getView();
         $params = $view->getAssign();
 
-        if (!empty($this->_layout_tpl)) {
-            $layout_tpl = Func::stri_endwith($this->_layout_tpl, '.php') ? $this->_layout_tpl : "{$this->_layout_tpl}.php";
-            $layout_path = $file_path = "view/{$this->routeInfo[0]}/{$this->routeInfo[1]}/{$layout_tpl}";
+        $layout = $this->getLayout();
+        if (!empty($layout)) {
+            $layout_tpl = Func::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
+            $layout_path = $file_path = "view/{$routeInfo[0]}/{$routeInfo[1]}/{$layout_tpl}";
             if (is_file($layout_path)) {
                 ob_start();
                 ob_implicit_flush(false);

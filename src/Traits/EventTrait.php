@@ -21,7 +21,8 @@ trait EventTrait
      * @param string $event
      * @return bool
      */
-    protected static function isAllowedEvent($event){
+    protected static function isAllowedEvent($event)
+    {
         false && func_get_args();
         return false;
     }
@@ -33,7 +34,7 @@ trait EventTrait
      */
     public static function on($event, callable $callback)
     {
-        if ( !static::isAllowedEvent($event) ) {
+        if (!static::isAllowedEvent($event)) {
             throw new AppStartUpError("event:{$event} not support");
         }
         if (!isset(self::$_event_map[$event])) {
@@ -50,7 +51,7 @@ trait EventTrait
      */
     protected static function fire($event, array $args)
     {
-        if ( !static::isAllowedEvent($event) ) {
+        if (!static::isAllowedEvent($event)) {
             throw new AppStartUpError("event:{$event} not support");
         }
         $callback_list = isset(self::$_event_map[$event]) ? self::$_event_map[$event] : [];

@@ -13,12 +13,14 @@ use Tiny\Request;
 class sysLog extends BaseDevelopController
 {
 
-    public function beforeAction()
+    public function beforeAction(array $params)
     {
-        parent::beforeAction();
+        $params = parent::beforeAction($params);
+
         if (!$this->authDevelopKey()) {  //认证 不通过
             Application::redirect(Request::urlTo($this->getRequest(), ['', 'index', 'index']));
         }
+        return $params;
     }
 
     public function index()
@@ -127,7 +129,8 @@ class sysLog extends BaseDevelopController
      */
     public function selectApi()
     {
-        $api_path = ROOT_PATH . $this->appname . DIRECTORY_SEPARATOR . 'api' . DIRECTORY_SEPARATOR;
+        $appname = Application::app()->getAppName();
+        $api_path = Application::pathJoin([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         $tmp = [];
         foreach ($api_list as $key => $val) {
@@ -149,12 +152,13 @@ class sysLog extends BaseDevelopController
 
     public function getParamList()
     {
+        $appname = Application::app()->getAppName();
         $args_list = [];
         $note = '';
         $class = $this->_get('cls', '');
         $method = $this->_get('method', '');
         if (!empty($class) && !empty($method)) {
-            $class_name = "\\{$this->appname}\\api\\{$class}";
+            $class_name = "\\{$appname}\\api\\{$class}";
             $args_list = ApiHelper::getApiParamList($class_name, $method);
             $note = ApiHelper::getApiNoteStr($class_name, $method);
         }
@@ -165,11 +169,12 @@ class sysLog extends BaseDevelopController
 
     public function getMethodList()
     {
+        $appname = Application::app()->getAppName();
         $tmp = [];
         $class = $this->_get('id', '');
         $method_list = [];
         if (!empty($class)) {
-            $class_name = "\\{$this->appname}\\api\\{$class}";
+            $class_name = "\\{$appname}\\api\\{$class}";
             $method_list = ApiHelper::getApiMethodList($class_name);
         }
         foreach ($method_list as $key => $val) {

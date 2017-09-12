@@ -33,7 +33,7 @@
            href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
         <a class="button button-success array_btn" target="new"
            href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'phpInfo']) ?>">phpInfo</a>
-        <a class="button button-success array_btn" target="new" href="<?= SYSTEM_HOST . 'index.php' ?>">首页</a>
+        <a class="button button-success array_btn" target="new" href="<?=  \Tiny\Application::host()  ?>">首页</a>
     </div>
 </div>
 <div class="demo-content">

@@ -10,12 +10,14 @@ use Tiny\Request;
 class index extends BaseDevelopController
 {
 
-    public function beforeAction()
+    public function beforeAction(array $params)
     {
-        parent::beforeAction();
+        $params = parent::beforeAction($params);
+
         if ($this->authDevelopKey()) {  //认证 通过
             Application::redirect(Request::urlTo($this->getRequest(), ['', 'syslog', 'index']));
         }
+        return $params;
     }
 
     public function index()

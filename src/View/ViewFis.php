@@ -53,7 +53,6 @@ class ViewFis extends ViewSimple implements ViewInterface
     /**
      * 用于添加 display 前的预处理函数  主要用于 添加通用变量 触发事件
      * @param callable $pre_display 参数为 pre_display($view_path, array $tpl_vars = [])
-     * @return mixed
      */
     public static function preTreatmentDisplay(callable $pre_display)
     {
@@ -63,7 +62,6 @@ class ViewFis extends ViewSimple implements ViewInterface
     /**
      * 用于添加 widget 前的预处理函数  主要用于 添加通用变量 触发事件
      * @param callable $pre_widget 参数为  pre_widget($widget_path, array $tpl_vars = [])
-     * @return mixed
      */
     public static function preTreatmentWidget(callable $pre_widget)
     {

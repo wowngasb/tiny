@@ -2,24 +2,11 @@
 
 namespace Tiny\Abstracts;
 
-use Tiny\Traits\CacheTrait;
-use Tiny\Traits\LogTrait;
-use Tiny\Traits\RpcTrait;
 
 abstract class AbstractApi extends AbstractContext
 {
 
     protected static $_API_LIMIT_KET = 'BaseApiRateLimit';
-
-    /**
-     * 过滤常见的 API参数  子类按照顺序依次调用父类此方法
-     * @param array $params
-     * @return array 处理后的 API 执行参数 将用于调用方法
-     */
-    public function beforeApi(array $params)
-    {
-        return (array)$params;
-    }
 
     /*
      * 不同的API会有不同的调用次数限制, 请检查返回 header 中的如下字段
@@ -29,7 +16,7 @@ abstract class AbstractApi extends AbstractContext
     {
         $testRst = self::_apiLimitByTimeRangeTest($api_key, $range_sec, $max_num, $tag);
         foreach ($testRst as $key => $val) {
-            header("X-Rate-{$key}: {$val}");
+            header("X-Rate-{$key}: {$val}");   // 使用原生实现 提高效率
         }
 
         if (!empty($testRst['Remaining']) && $testRst['Remaining'] < 0) {
@@ -60,9 +47,9 @@ abstract class AbstractApi extends AbstractContext
         $range_sec = $range_sec > 0 ? $range_sec : 1;
         $time_count = intval(time() / $range_sec);
         $max_num = $max_num > 0 ? $max_num : 1;
-        $rKey = self::$_API_LIMIT_KET . ":{$api_key}:num_{$tag}_{$time_count}_{$range_sec}";
+        $rKey = static::$_API_LIMIT_KET . ":{$api_key}:num_{$tag}_{$time_count}_{$range_sec}";
 
-        $mCache = self::getCacheInstance();
+        $mCache = self::getCacheInstance();  // 可以直接换成redis实现
         $tmp = $mCache->getItem($rKey)->get();
         $count = intval($tmp) > 0 ? intval($tmp) + 1 : 1;
         $itemObj = $mCache->getItem($rKey)->set($count)->expiresAfter(2 * $range_sec);  // 多保留一段时间
@@ -90,11 +77,13 @@ abstract class AbstractApi extends AbstractContext
         return in_array($event, $allow_event);
     }
 
-    public function doneApi($action, $params, $result, $callback){
+    public function doneApi($action, $params, $result, $callback)
+    {
         static::fire('apiResult', [$this, $action, $params, $result, $callback]);
     }
 
-    public function exceptApi($action, $params, $ex, $callback){
+    public function exceptApi($action, $params, $ex, $callback)
+    {
         static::fire('apiException', [$this, $action, $params, $ex, $callback]);
     }
 

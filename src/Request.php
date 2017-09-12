@@ -54,7 +54,7 @@ final class Request
         $this->_method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : '';
         $this->_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
         $this->_http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
-        $this->_this_url = SYSTEM_HOST . substr($this->_request_uri, 1);
+        $this->_this_url = Application::host() . substr($this->_request_uri, 1);
         $this->_csrf_token = self::_request('CSRF', '');
     }
 
@@ -284,7 +284,7 @@ final class Request
     /**
      * @param string $name
      * @param string $default
-     * @return string
+     * @return string|array
      */
     public function _get($name = null, $default = '')
     {
@@ -299,7 +299,7 @@ final class Request
     /**
      * @param $name
      * @param string $default
-     * @return string
+     * @return string|array
      */
     public function _post($name = null, $default = '')
     {
@@ -314,7 +314,7 @@ final class Request
     /**
      * @param $name
      * @param string $default
-     * @return string
+     * @return string|array
      */
     public function _env($name = null, $default = '')
     {
@@ -329,7 +329,7 @@ final class Request
     /**
      * @param $name
      * @param string $default
-     * @return string
+     * @return string|array
      */
     public function _server($name = null, $default = '')
     {
@@ -344,7 +344,7 @@ final class Request
     /**
      * @param $name
      * @param string $default
-     * @return string
+     * @return string|array
      */
     public function _cookie($name = null, $default = '')
     {

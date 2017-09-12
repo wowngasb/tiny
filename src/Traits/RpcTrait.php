@@ -46,7 +46,7 @@ trait RpcTrait
     }
 
     #####################################
-    ########### RPC 的具体实现 ##############
+    ########### RPC 的具体实现 ##############  TODO
     #####################################
 
     protected static function _syncApi($class_name, $method_name, $params_arr, $init_params = [])

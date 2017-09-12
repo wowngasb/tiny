@@ -22,12 +22,15 @@ use Tiny\Request;
  */
 class deploy extends BaseDevelopController
 {
-    public function beforeAction()
+    public function beforeAction(array $params)
     {
-        parent::beforeAction();
+        $params = parent::beforeAction($params);
+
         if (!$this->authDevelopKey()) {  //认证 不通过
             Application::redirect(Request::urlTo($this->getRequest(), ['', 'index', 'index']));
         }
+
+        return $params;
     }
 
     public function phpInfo()
@@ -39,7 +42,7 @@ class deploy extends BaseDevelopController
     {
         $script = $this->_get('script');
         $script = Func::stri_endwith($script, '.php') ? $script : "{$script}.php";
-        $file = ROOT_PATH . "crontab" . DIRECTORY_SEPARATOR . $script;
+        $file = Application::pathJoin(['crontab', $script]);
         if (empty($script) || strpos($script, '..') !== false || !is_file($file)) {
             exit('error script file.');
         }
@@ -86,17 +89,18 @@ EOT;
      */
     public function buildApiModJs()
     {
+        $appname = Application::app()->getAppName();
         $html_str = '';
         $dev_debug = $this->_get('dev_debug', 0) == 1;
-        $api_path = ROOT_PATH . Func::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->appname, 'api']) . DIRECTORY_SEPARATOR;
+        $api_path = Application::pathJoin([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         foreach ($api_list as $key => $val) {
             $class = str_replace('.php', '', $val['name']);
             $out_file = $class . '.js';
-            $class_name = "\\{$this->appname}\\api\\{$class}";
+            $class_name = "\\{$appname}\\api\\{$class}";
             $method_list = ApiHelper::getApiMethodList($class_name);
             $js_str = ApiHelper::model2js($class, $method_list, $dev_debug);
-            $out_path = ROOT_PATH . Func::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->appname, 'static', 'api']) . DIRECTORY_SEPARATOR;
+            $out_path = Application::pathJoin([$appname, 'static', 'api']);
             if (!is_dir($out_path)) {
                 mkdir($out_path, 0777, true);
             }

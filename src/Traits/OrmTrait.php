@@ -9,6 +9,7 @@
 namespace Tiny\Traits;
 
 use Tiny\Exception\OrmStartUpError;
+use Tiny\Func;
 use Tiny\Plugin\DbHelper;
 use Tiny\OrmQuery\AbstractQuery;
 use Tiny\OrmQuery\OrmConfig;
@@ -365,7 +366,7 @@ trait OrmTrait
      * 分页查询数据  不允许超过最大数量限制
      * @param int $start 起始位置 skip
      * @param int $limit 数量限制 take 上限为 $this->_max_select_item_counts
-     * @param array $sort_option 排序依据 格式为 ['field' => 'column', 'direction' => 'asc|desc']
+     * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @return array 数据 list 格式为 [`item`, ]
@@ -385,8 +386,11 @@ trait OrmTrait
         } else {
             $table->take($max_select);
         }
-        if (!empty($sort_option['field']) && !empty($sort_option['direction'])) {
-            $table->orderBy($sort_option['field'], $sort_option['direction']);
+        if (!empty($sort_option[0])) {
+            $field = trim($sort_option[0]);
+            $direction = !empty($sort_option[1]) ? Func::trimlower($sort_option[1]) : 'asc';
+            $direction = $direction == 'desc' ? 'desc' : 'asc';
+            $table->orderBy($field, $direction);
         }
         $data = $table->get($columns);
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);

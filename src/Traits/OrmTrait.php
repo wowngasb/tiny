@@ -59,7 +59,7 @@ trait OrmTrait
      * @param array $where 检索条件数组 具体格式参见文档
      * @return \Illuminate\Database\Query\Builder
      */
-    protected static function tableItem(array $where = [])
+    public static function tableItem(array $where = [])
     {
         $table_name = static::getOrmConfig()->table_name;
         $table = static::_getDb()->table($table_name);

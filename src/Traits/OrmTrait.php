@@ -126,6 +126,10 @@ trait OrmTrait
      */
     public static function getOneById($id, $timeCache = null)
     {
+        if (empty($id)) {
+            return [];
+        }
+
         $cfg = static::getOrmConfig();
         $cache_time = $cfg->cache_time;
         $db_name = $cfg->db_name;
@@ -133,9 +137,6 @@ trait OrmTrait
         $primary_key = $cfg->primary_key;
         $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
 
-        if (empty($id)) {
-            return [];
-        }
         $tag = "{$primary_key}={$id}";
         $table = "{$db_name}.{$table_name}";
         self::$_cache_dict[$table] = !empty(self::$_cache_dict[$table]) ? self::$_cache_dict[$table] : [];
@@ -218,7 +219,7 @@ trait OrmTrait
      */
     public static function setDataById($id, array $data)
     {
-        if ($id <= 0) {
+        if (empty($id)) {
             return [];
         }
         if (!empty($data)) {

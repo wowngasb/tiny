@@ -345,6 +345,302 @@ trait OrmTrait
     }
 
     ####################################
+    ########### 原 build 函数 ############
+    ####################################
+
+    /**
+     * Get a single column's value from the first result of a query.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function value(array $where, $column)
+    {
+        return self::tableItem($where)->value($column);
+    }
+
+    /**
+     * Execute the query and get the first result.
+     *
+     * @param array $where
+     * @param  array $columns
+     * @return mixed|static
+     */
+    public static function first(array $where, $columns = ['*'])
+    {
+        return self::tableItem($where)->first($columns);
+    }
+
+    /**
+     * Execute the query as a "select" statement.
+     *
+     * @param array $where
+     * @param  array $columns
+     * @return array|static[]
+     */
+    public static function get(array $where, $columns = ['*'])
+    {
+        return self::tableItem($where)->get($columns);
+    }
+
+
+    /**
+     * Chunk the results of the query.
+     *
+     * @param array $where
+     * @param  int $count
+     * @param  callable $callback
+     * @return bool
+     */
+    public static function chunk(array $where, $count, callable $callback)
+    {
+        return self::tableItem($where)->chunk($count, $callback);
+    }
+
+    /**
+     * Chunk the results of a query by comparing numeric IDs.
+     *
+     * @param array $where
+     * @param  int $count
+     * @param  callable $callback
+     * @param  string $column
+     * @param  string $alias
+     * @return bool
+     */
+    public static function chunkById(array $where, $count, callable $callback, $column = 'id', $alias = null)
+    {
+        return self::tableItem($where)->chunkById($count, $callback, $column, $alias);
+    }
+
+    /**
+     * Execute a callback over each item while chunking.
+     *
+     * @param array $where
+     * @param  callable $callback
+     * @param  int $count
+     * @return bool
+     */
+    public static function each(array $where, callable $callback, $count = 1000)
+    {
+        return self::tableItem($where)->each($callback, $count);
+    }
+
+    /**
+     * Get an array with the values of a given column.
+     *
+     * @param array $where
+     * @param  string $column
+     * @param  string|null $key
+     * @return array
+     */
+    public static function pluck(array $where, $column, $key = null)
+    {
+        return self::tableItem($where)->pluck($column, $key);
+    }
+
+    /**
+     * Alias for the "pluck" method.
+     *
+     * @param array $where
+     * @param  string $column
+     * @param  string|null $key
+     * @return array
+     * @deprecated since version 5.2. Use the "pluck" method directly.
+     */
+    public static function lists(array $where, $column, $key = null)
+    {
+        return self::tableItem($where)->lists($column, $key);
+    }
+
+    /**
+     * Concatenate values of a given column as a string.
+     *
+     * @param array $where
+     * @param  string $column
+     * @param  string $glue
+     * @return string
+     */
+    public static function implode(array $where, $column, $glue = '')
+    {
+        return self::tableItem($where)->implode($column, $glue);
+    }
+
+    /**
+     * Determine if any rows exist for the current query.
+     *
+     * @param array $where
+     * @return bool
+     */
+    public static function exists(array $where)
+    {
+        return self::tableItem($where)->exists();
+    }
+
+    /**
+     * Retrieve the "count" result of the query.
+     *
+     * @param array $where
+     * @param  string $columns
+     * @return int
+     */
+    public static function count(array $where, $columns = '*')
+    {
+        return self::tableItem($where)->count($columns);
+    }
+
+    /**
+     * Retrieve the minimum value of a given column.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function min(array $where, $column)
+    {
+        return self::tableItem($where)->min($column);
+    }
+
+    /**
+     * Retrieve the maximum value of a given column.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function max(array $where, $column)
+    {
+        return self::tableItem($where)->max($column);
+    }
+
+    /**
+     * Retrieve the sum of the values of a given column.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function sum(array $where, $column)
+    {
+        return self::tableItem($where)->sum($column);
+    }
+
+    /**
+     * Retrieve the average of the values of a given column.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function avg(array $where, $column)
+    {
+        return self::tableItem($where)->avg($column);
+    }
+
+    /**
+     * Alias for the "avg" method.
+     *
+     * @param array $where
+     * @param  string $column
+     * @return mixed
+     */
+    public static function average(array $where, $column)
+    {
+        return self::tableItem($where)->average($column);
+    }
+
+    /**
+     * Execute an aggregate function on the database.
+     *
+     * @param array $where
+     * @param  string $function
+     * @param  array $columns
+     * @return mixed
+     */
+    public static function aggregate(array $where, $function, $columns = ['*'])
+    {
+        return self::tableItem($where)->aggregate($function, $columns);
+    }
+
+    /**
+     * Execute a numeric aggregate function on the database.
+     *
+     * @param array $where
+     * @param  string $function
+     * @param  array $columns
+     * @return float|int
+     */
+    public static function numericAggregate(array $where, $function, $columns = ['*'])
+    {
+        return self::tableItem($where)->numericAggregate($function, $columns);
+    }
+
+    /**
+     * Update a record in the database.
+     *
+     * @param array $where
+     * @param  array $values
+     * @return int
+     */
+    public static function update(array $where, array $values)
+    {
+        return self::tableItem($where)->update($values);
+    }
+
+    /**
+     * Insert or update a record matching the attributes, and fill it with values.
+     *
+     * @param array $where
+     * @param  array $attributes
+     * @param  array $values
+     * @return bool
+     */
+    public static function updateOrInsert(array $where, array $attributes, array $values = [])
+    {
+        return self::tableItem($where)->updateOrInsert($attributes, $values);
+    }
+
+    /**
+     * Increment a column's value by a given amount.
+     *
+     * @param array $where
+     * @param  string $column
+     * @param  int $amount
+     * @param  array $extra
+     * @return int
+     */
+    public static function increment(array $where, $column, $amount = 1, array $extra = [])
+    {
+        return self::tableItem($where)->increment($column, $amount, $extra);
+    }
+
+    /**
+     * Decrement a column's value by a given amount.
+     *
+     * @param array $where
+     * @param  string $column
+     * @param  int $amount
+     * @param  array $extra
+     * @return int
+     */
+    public static function decrement(array $where, $column, $amount = 1, array $extra = [])
+    {
+        return self::tableItem($where)->decrement($column, $amount, $extra);
+    }
+
+    /**
+     * Delete a record from the database.
+     *
+     * @param array $where
+     * @return int
+     * @internal param mixed $id
+     */
+    public static function delete(array $where)
+    {
+        return self::tableItem($where)->delete();
+    }
+
+    ####################################
     ########### 条目操作函数 ############
     ####################################
 
@@ -430,20 +726,6 @@ trait OrmTrait
     }
 
     /**
-     * 根据某个字段的值 获取第一条记录
-     * @param mixed $value 需匹配的字段的值
-     * @param string $filed 字段名 默认为 null 表示使用主键
-     * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
-     * @return array
-     */
-    public static function getItem($value, $filed = null, array $columns = ['*'])
-    {
-        $primary_key = static::getOrmConfig()->primary_key;
-        $filed = $filed ?: $primary_key;
-        return static::firstItem([strtolower($filed) => $value], $columns);
-    }
-
-    /**
      * 根据查询条件 获取第一条记录
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
@@ -456,6 +738,43 @@ trait OrmTrait
         $item = $table->first($columns);
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return static::_fixItem((array)$item);
+    }
+
+    /**
+     * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据
+     * @param array $where 检索条件数组 具体格式参见文档
+     * @param array $data 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @return int 返回数据 主键 自增id
+     */
+    public static function upsertItem(array $where, array $data)
+    {
+        $primary_key = static::getOrmConfig()->primary_key;
+        $tmp = static::firstItem($where);
+        if (empty($tmp)) {
+            return static::newItem($data);
+        } else {
+            $id = $tmp[$primary_key];
+            static::setItem($id, $data);
+            return $id;
+        }
+    }
+
+    ####################################
+    ########### 单条记录操作 ############
+    ####################################
+
+    /**
+     * 根据某个字段的值 获取第一条记录
+     * @param mixed $value 需匹配的字段的值
+     * @param string $filed 字段名 默认为 null 表示使用主键
+     * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
+     * @return array
+     */
+    public static function getItem($value, $filed = null, array $columns = ['*'])
+    {
+        $primary_key = static::getOrmConfig()->primary_key;
+        $filed = $filed ?: $primary_key;
+        return static::firstItem([strtolower($filed) => $value], $columns);
     }
 
     /**
@@ -548,22 +867,4 @@ trait OrmTrait
         return $decrement;
     }
 
-    /**
-     * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据
-     * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $data 需要插入的数据  格式为 [`filed` => `value`, ]
-     * @return int 返回数据 主键 自增id
-     */
-    public static function upsertItem(array $where, array $data)
-    {
-        $primary_key = static::getOrmConfig()->primary_key;
-        $tmp = static::firstItem($where);
-        if (empty($tmp)) {
-            return static::newItem($data);
-        } else {
-            $id = $tmp[$primary_key];
-            static::setItem($id, $data);
-            return $id;
-        }
-    }
 }

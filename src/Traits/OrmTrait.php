@@ -57,7 +57,8 @@ trait OrmTrait
     protected static function _fixFiledKey($filed)
     {
         $idx = strpos($filed, '#');
-        return substr($filed, 0, $idx);
+        $filed = $idx > 0 ? substr($filed, 0, $idx) : $filed;
+        return trim($filed);
     }
 
     /**
@@ -74,21 +75,34 @@ trait OrmTrait
             return $table;
         }
         $query_list = [];
-        foreach ($where as $filed => $item) {
+        foreach ($where as $_filed => $item) {
             // $filed 支持 `filed#123` 注释方式来为同一个filed 添加多个and条件
             // TODO 处理 orWhere 逻辑暂时未处理
-            if (is_integer($filed) && is_array($item)) {
-                /*
-                 * ③ [ [``, ``], ]
-                 *    key为数值的元素 表示 使用某种检索
-                 * 例如 [   ['whereBetween', 'votes', [1, 100]],  ]   对应  ->whereBetween('votes', [1, 100])
-                 * 例如 [   ['whereIn', 'id', [1, 2, 3]],  ]   对应  ->whereIn('id', [1, 2, 3])
-                 * 例如 [   ['whereNull', 'updated_at'],  ]   对应  ->whereNull('updated_at')
-                 * */
-                $tag = $item[0];
-                $query = array_slice($item, 1);
-                $query_list[] = [true, $tag, $query];
-            } else if ($item instanceof AbstractQuery) {
+
+            if (is_integer($_filed)) {
+                if (is_array($item)) {
+                    /*
+                     * ③ [ [``, ``], ]
+                     *    key为数值的元素 表示 使用某种检索
+                     * 例如 [   ['whereBetween', 'votes', [1, 100]],  ]   对应  ->whereBetween('votes', [1, 100])
+                     * 例如 [   ['whereIn', 'id', [1, 2, 3]],  ]   对应  ->whereIn('id', [1, 2, 3])
+                     * 例如 [   ['whereNull', 'updated_at'],  ]   对应  ->whereNull('updated_at')
+                     * */
+                    $func = $item[0];
+                    $query = array_slice($item, 1);
+                    $query_list[] = [true, $func, $query];
+                    continue;
+                }
+
+                throw new OrmStartUpError("ORM build where error list item:" . strval($item));
+            }
+
+            $filed = self::_fixFiledKey($_filed);
+            if (empty($filed)) {
+                throw new OrmStartUpError("ORM build where error filed {$filed}({$_filed})");
+            }
+
+            if ($item instanceof AbstractQuery) {
                 /*
                  * ④ [  `filed` => AbstractQuery, ]
                  *    key不为数值的元素 value是 AbstractQuery 表示 某个字段为 AbstractQuery 定义的检索
@@ -96,42 +110,46 @@ trait OrmTrait
                  * 例如 [   'id' => whereIn([1, 2, 3])  ]   对应  ->whereIn('id', [1, 2, 3])
                  * 例如 [   'updated_at' => whereNull() ],  ]   对应  ->whereNull('updated_at')
                  * */
-                $filed = self::_fixFiledKey($filed);
                 $query_list[] = $item->buildQuery($filed);  //list($enable, $action, $query)
-            } else {
-                if (is_array($item)) {
-                    /*
-                     * ② [  `filed` => [``, ``], ]
-                     *    key不为数值的元素 表示 某个字段为某值的 whereIn 检索
-                     *    例如 ['id' => [1, 2, 3], ] 对应  ->whereIn('id', [1, 2, 3])
-                     * */
-                    $tag = 'whereIn';
-                    $filed = self::_fixFiledKey($filed);
-                    $query = [$filed, $item];
-                } else if (is_string($item) || is_float($item) || is_integer($item) || is_bool($item)) {
-                    /*
-                     * ① [  `filed` => `value`, ]
-                     *    key不为数值，value不是数组   表示 某个字段为某值的 where = 检索
-                     *    例如 ['votes' => 100, ]  对应 ->where('votes', '=', 100)
-                     * */
-                    $tag = 'where';
-                    $filed = self::_fixFiledKey($filed);
-                    $query = [$filed, '=', $item];
-                } else {
-                    throw new OrmStartUpError("error build where key:{$filed} value:" . strval($item));
-                }
-                $query_list[] = [true, $tag, $query];
+                continue;
             }
+
+            if (is_array($item)) {
+                /*
+                 * ② [  `filed` => [``, ``], ]
+                 *    key不为数值的元素 表示 某个字段为某值的 whereIn 检索
+                 *    例如 ['id' => [1, 2, 3], ] 对应  ->whereIn('id', [1, 2, 3])
+                 * */
+                $query = [$filed, $item];
+                $query_list[] = [true, 'whereIn', $query];
+                continue;
+            }
+
+            if (is_string($item) || is_float($item) || is_integer($item) || is_bool($item)) {
+                /*
+                 * ① [  `filed` => `value`, ]
+                 *    key不为数值，value不是数组   表示 某个字段为某值的 where = 检索
+                 *    例如 ['votes' => 100, ]  对应 ->where('votes', '=', 100)
+                 * */
+                $query = [$filed, '=', $item];
+                $query_list[] = [true, 'where', $query];
+                continue;
+            }
+
+            throw new OrmStartUpError("ORM build where error dict {$_filed}=>" . strval($item));
         }
+
         foreach ($query_list as $query_item) {
             if (empty($query_item)) {
                 continue;
             }
-            list($enable, $tag, $query) = $query_item; //只有 $enable 为 true 的情况下 条件才会生效
+            list($enable, $func, $query) = $query_item;
+            //只有 $enable 为 true 的情况下 条件才会生效
             if (!$enable) {
                 continue;
             }
-            call_user_func_array([$table, $tag], $query);
+            //依次调用设置的查询条件
+            call_user_func_array([$table, $func], $query);
         }
         return $table;
     }

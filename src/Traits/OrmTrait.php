@@ -29,7 +29,7 @@ use Tiny\OrmQuery\Select;
  * 例如 [   ['whereBetween', 'votes', [1, 100]],  ]   对应  ->whereBetween('votes', [1, 100])
  * 例如 [   ['whereIn', 'id', [1, 2, 3]],  ]   对应  ->whereIn('id', [1, 2, 3])
  * 例如 [   ['whereNull', 'updated_at'],  ]   对应  ->whereNull('updated_at')
- * ② [  `filed` => AbstractQuery, ]
+ * ④ [  `filed` => AbstractQuery, ]
  *    key不为数值的元素 value是 AbstractQuery 表示 某个字段为 AbstractQuery 定义的检索
  * 例如 [   'votes' => whereBetween([1, 100])  ]   对应  ->whereBetween('votes', [1, 100])
  * 例如 [   'id' => whereIn([1, 2, 3])  ]   对应  ->whereIn('id', [1, 2, 3])
@@ -50,15 +50,21 @@ trait OrmTrait
 
     protected static $_orm_config_map = null;
 
-
     ####################################
     ############ 获取配置 ##############
     ####################################
 
+    protected static function _fixFiledKey($filed)
+    {
+        $idx = strpos($filed, '#');
+        return substr($filed, 0, $idx);
+    }
 
     /**
+     * 直接获取 ORM table 不推荐直接使用该接口  推荐使用模块预设方法
      * @param array $where 检索条件数组 具体格式参见文档
      * @return \Illuminate\Database\Query\Builder
+     * @throws OrmStartUpError
      */
     public static function tableItem(array $where = [])
     {
@@ -68,20 +74,51 @@ trait OrmTrait
             return $table;
         }
         $query_list = [];
-        foreach ($where as $key => $item) {
-            if (is_integer($key) && is_array($item)) {
+        foreach ($where as $filed => $item) {
+            // $filed 支持 `filed#123` 注释方式来为同一个filed 添加多个and条件
+            // TODO 处理 orWhere 逻辑暂时未处理
+            if (is_integer($filed) && is_array($item)) {
+                /*
+                 * ③ [ [``, ``], ]
+                 *    key为数值的元素 表示 使用某种检索
+                 * 例如 [   ['whereBetween', 'votes', [1, 100]],  ]   对应  ->whereBetween('votes', [1, 100])
+                 * 例如 [   ['whereIn', 'id', [1, 2, 3]],  ]   对应  ->whereIn('id', [1, 2, 3])
+                 * 例如 [   ['whereNull', 'updated_at'],  ]   对应  ->whereNull('updated_at')
+                 * */
                 $tag = $item[0];
                 $query = array_slice($item, 1);
                 $query_list[] = [true, $tag, $query];
             } else if ($item instanceof AbstractQuery) {
-                $query_list[] = $item->buildQuery($key);  //list($enable, $action, $query)
+                /*
+                 * ④ [  `filed` => AbstractQuery, ]
+                 *    key不为数值的元素 value是 AbstractQuery 表示 某个字段为 AbstractQuery 定义的检索
+                 * 例如 [   'votes' => whereBetween([1, 100])  ]   对应  ->whereBetween('votes', [1, 100])
+                 * 例如 [   'id' => whereIn([1, 2, 3])  ]   对应  ->whereIn('id', [1, 2, 3])
+                 * 例如 [   'updated_at' => whereNull() ],  ]   对应  ->whereNull('updated_at')
+                 * */
+                $filed = self::_fixFiledKey($filed);
+                $query_list[] = $item->buildQuery($filed);  //list($enable, $action, $query)
             } else {
                 if (is_array($item)) {
+                    /*
+                     * ② [  `filed` => [``, ``], ]
+                     *    key不为数值的元素 表示 某个字段为某值的 whereIn 检索
+                     *    例如 ['id' => [1, 2, 3], ] 对应  ->whereIn('id', [1, 2, 3])
+                     * */
                     $tag = 'whereIn';
-                    $query = [$key, $item];
-                } else {
+                    $filed = self::_fixFiledKey($filed);
+                    $query = [$filed, $item];
+                } else if (is_string($item) || is_float($item) || is_integer($item) || is_bool($item)) {
+                    /*
+                     * ① [  `filed` => `value`, ]
+                     *    key不为数值，value不是数组   表示 某个字段为某值的 where = 检索
+                     *    例如 ['votes' => 100, ]  对应 ->where('votes', '=', 100)
+                     * */
                     $tag = 'where';
-                    $query = [$key, '=', $item];
+                    $filed = self::_fixFiledKey($filed);
+                    $query = [$filed, '=', $item];
+                } else {
+                    throw new OrmStartUpError("error build where key:{$filed} value:" . strval($item));
                 }
                 $query_list[] = [true, $tag, $query];
             }
@@ -99,7 +136,6 @@ trait OrmTrait
         return $table;
     }
 
-
     /**
      * 使用这个特性的子类必须 实现这个方法 返回特定格式的数组 表示数据表的配置
      * @return OrmConfig
@@ -112,7 +148,6 @@ trait OrmTrait
         }
         return static::$_orm_config_map[$class_name];
     }
-
 
     ####################################
     ############ 可重写方法 #############
@@ -437,20 +472,6 @@ trait OrmTrait
     public static function pluck(array $where, $column, $key = null)
     {
         return self::tableItem($where)->pluck($column, $key);
-    }
-
-    /**
-     * Alias for the "pluck" method.
-     *
-     * @param array $where
-     * @param  string $column
-     * @param  string|null $key
-     * @return array
-     * @deprecated since version 5.2. Use the "pluck" method directly.
-     */
-    public static function lists(array $where, $column, $key = null)
-    {
-        return self::tableItem($where)->lists($column, $key);
     }
 
     /**

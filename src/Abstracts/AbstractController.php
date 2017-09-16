@@ -11,7 +11,7 @@ namespace Tiny\Abstracts;
 use Tiny\Application;
 use Tiny\Request;
 use Tiny\Response;
-use Tiny\ViewInterface;
+use Tiny\Interfaces\ViewInterface;
 
 /**
  * Class Controller

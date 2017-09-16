@@ -6,7 +6,7 @@
  * Time: 13:42
  */
 
-namespace Tiny;
+namespace Tiny\Interfaces;
 
 
 interface ViewInterface

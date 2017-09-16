@@ -10,7 +10,7 @@ namespace Tiny\View;
 
 
 use Tiny\Plugin\Fis;
-use Tiny\ViewInterface;
+use Tiny\Interfaces\ViewInterface;
 
 class ViewFis extends ViewSimple implements ViewInterface
 {

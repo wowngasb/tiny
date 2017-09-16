@@ -8,13 +8,17 @@ use Tiny\Exception\AppStartUpError;
  * Class Response
  * @package Tiny
  */
-final class Response
+class Response
 {
 
     protected $_header_list = [];  // 响应给请求的Header
-    protected $_is_header_send = false;  // 响应Header 是否已经发送
+    protected $_header_sent = false;  // 响应Header 是否已经发送
     protected $_code = 200;  // 响应给请求端的HTTP状态码
     protected $_body = [];  // 响应给请求的body
+
+    public function __construct()
+    {
+    }
 
     /**
      * 添加响应header
@@ -26,7 +30,7 @@ final class Response
      */
     public function addHeader($string, $replace = true, $http_response_code = null)
     {
-        if ($this->_is_header_send) {
+        if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
         }
         $this->_header_list[] = [$string, $replace, $http_response_code];
@@ -35,7 +39,7 @@ final class Response
 
     public function resetResponse()
     {
-        if ($this->_is_header_send) {
+        if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
         }
         $this->_body = [];
@@ -46,7 +50,7 @@ final class Response
 
     public function setResponseCode($code)
     {
-        if ($this->_is_header_send) {
+        if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
         }
         $this->_code = intval($code);
@@ -60,14 +64,14 @@ final class Response
      */
     public function sendHeader()
     {
-        if ($this->_is_header_send) {
+        if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
         }
         foreach ($this->_header_list as $idx => $val) {
             header($val[0], $val[1], $val[2]);
         }
         http_response_code($this->_code);
-        $this->_is_header_send = true;
+        $this->_header_sent = true;
         return $this;
     }
 
@@ -91,7 +95,7 @@ final class Response
      */
     public function sendBody()
     {
-        if (!$this->_is_header_send) {
+        if (!$this->_header_sent) {
             $this->sendHeader();
         }
         foreach ($this->_body as $name => $body) {
@@ -101,7 +105,6 @@ final class Response
         }
         return $this;
     }
-
 
     /**
      * @param string|null $name

@@ -13,7 +13,6 @@ use Tiny\Response;
 use Tiny\Traits\CacheTrait;
 use Tiny\Traits\EventTrait;
 use Tiny\Traits\LogTrait;
-use Tiny\Traits\RpcTrait;
 
 
 /**
@@ -23,7 +22,7 @@ use Tiny\Traits\RpcTrait;
  */
 abstract class AbstractContext
 {
-    use EventTrait, LogTrait, RpcTrait, CacheTrait;
+    use EventTrait, LogTrait, CacheTrait;
 
     private $_request = null;
     private $_response = null;

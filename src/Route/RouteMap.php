@@ -12,7 +12,7 @@ namespace Tiny\Route;
 use Tiny\Application;
 use Tiny\Func;
 use Tiny\Request;
-use Tiny\RouteInterface;
+use Tiny\Interfaces\RouteInterface;
 
 
 /**
@@ -50,7 +50,7 @@ class RouteMap implements RouteInterface
      */
     public function route(Request $request)
     {
-        $uri_origin = $request->getRequestPath();
+        $uri_origin = $request->fixRequestPath();
         if (!Func::stri_startwith($uri_origin, $this->_base_uri)) {
             return [null, null];
         }

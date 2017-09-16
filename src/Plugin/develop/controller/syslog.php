@@ -130,7 +130,7 @@ class sysLog extends BaseDevelopController
     public function selectApi()
     {
         $appname = Application::app()->getAppName();
-        $api_path = Application::pathJoin([$appname, 'api']);
+        $api_path = Application::path_join([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         $tmp = [];
         foreach ($api_list as $key => $val) {

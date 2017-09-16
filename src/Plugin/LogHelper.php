@@ -60,7 +60,7 @@ class LogHelper
     public function __construct($_module = 'sys_log', $_log_path = null, $_log_level = null)
     {
         $this->_module = $_module;
-        $log_config = Application::app()->getEnv('ENV_LOG');
+        $log_config = Application::app()->get_config('ENV_LOG');
         $this->_log_path = !empty($log_config['path']) ? $log_config['path'] : '';
         $this->_log_level = !empty($log_config['level']) ? $log_config['level'] : '';
 
@@ -136,7 +136,7 @@ class LogHelper
     public static function getLogPathArray($path = '', $base_path = '')
     {
         if (empty($path)) {
-            $log_config = Application::app()->getEnv('ENV_LOG');
+            $log_config = Application::get_config('ENV_LOG');
             $log_path = !empty($log_config['path']) ? $log_config['path'] : '';
             if (empty($log_path)) {
                 return [];
@@ -191,7 +191,7 @@ class LogHelper
      */
     public static function readLogByPath($path)
     {
-        $log_config = Application::app()->getEnv('ENV_LOG');
+        $log_config = Application::get_config('ENV_LOG');
         $log_path = !empty($log_config['path']) ? $log_config['path'] : '';
         if (empty($log_path)) {
             return '';
@@ -216,7 +216,7 @@ class LogHelper
      */
     public static function clearLogByPath($path)
     {
-        $log_config = Application::app()->getEnv('ENV_LOG');
+        $log_config = Application::get_config('ENV_LOG');
         $log_path = !empty($log_config['path']) ? $log_config['path'] : '';
         if (empty($log_path)) {
             return '';

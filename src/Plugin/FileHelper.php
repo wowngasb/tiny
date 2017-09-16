@@ -45,9 +45,9 @@ class FileHelper
         $data = '';
         flock($fp, LOCK_SH);
         clearstatcache();
-        $filesize = filesize($filename);
-        if ($filesize > 0) {
-            $data = fread($fp, $filesize);
+        $size = filesize($filename);
+        if ($size > 0) {
+            $data = fread($fp, $size);
         }
         flock($fp, LOCK_UN);
         fclose($fp);

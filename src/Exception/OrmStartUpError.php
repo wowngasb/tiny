@@ -11,6 +11,6 @@ namespace Tiny\Exception;
 
 class OrmStartUpError extends Error
 {
-    public static $errno = 541;
+    protected static $errno = 541;
 
 }

@@ -6,7 +6,9 @@
  * Time: 15:08
  */
 
-namespace Tiny;
+namespace Tiny\Interfaces;
+
+use Tiny\Request;
 
 
 /**

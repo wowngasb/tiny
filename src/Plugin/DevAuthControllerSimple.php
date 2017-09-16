@@ -51,7 +51,7 @@ EOT;
 
     public function authDevelopKey()
     {
-        $env_develop_key = Application::app()->getEnv('ENV_DEVELOP_KEY', '');
+        $env_develop_key = Application::get_config('ENV_DEVELOP_KEY');
         if (empty($env_develop_key)) {
             throw new AppStartUpError('must set ENV_DEVELOP_KEY in config');
         }
@@ -64,7 +64,7 @@ EOT;
     protected function _getCookieDevelopKey()
     {
         $name = self::$_SVR_DEVELOP_KEY;
-        $crypt_key = Application::app()->getEnv('ENV_CRYPT_KEY');
+        $crypt_key = Application::get_config('ENV_CRYPT_KEY');
         $auth_str = $this->_cookie($name, '');
         $develop_key = Func::decode($auth_str, $crypt_key);
         return $develop_key;
@@ -74,7 +74,7 @@ EOT;
     {
         $dev_token = $this->_request('dev_token', '');
         if (!empty($dev_token)) {
-            $crypt_key = Application::app()->getEnv('ENV_CRYPT_KEY');
+            $crypt_key = Application::get_config('ENV_CRYPT_KEY');
             $develop_key = Func::decode($dev_token, $crypt_key);
             $develop_key && $this->_setCookieDevelopKey($develop_key);
         }
@@ -83,7 +83,7 @@ EOT;
     protected function _setCookieDevelopKey($develop_key)
     {
         $name = self::$_SVR_DEVELOP_KEY;
-        $crypt_key = Application::app()->getEnv('ENV_CRYPT_KEY');
+        $crypt_key = Application::get_config('ENV_CRYPT_KEY');
         $value = Func::encode($develop_key, $crypt_key, self::$_SVR_DEVELOP_EXPIRY);
         $this->getRequest()->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
         $this->getRequest()->set_cookie($name, $value);

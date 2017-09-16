@@ -11,6 +11,6 @@ namespace Tiny\Exception;
 
 class AppStartUpError extends Error
 {
-    public static $errno = 511;
+    protected static $errno = 511;
 
 }

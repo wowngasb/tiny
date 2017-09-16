@@ -77,8 +77,6 @@ class ApiHelper
         $date_str = date('Y-m');
         $log_msg = "build API.js@{$cls}, method:" . json_encode($method_list);
         self::debug($log_msg, __METHOD__, __CLASS__, __LINE__);
-
-        $debug = (defined('DEV_MODEL') && DEV_MODEL == 'DEBUG') ? 'true' : 'false';
         $js_str = <<<EOT
 /*!
  * {$cls}.js
@@ -95,7 +93,7 @@ class ApiHelper
 
 function {$cls}Helper(){
     var _this = this;
-    this.DEBUG = {$debug};
+    this.DEBUG = {$dev_debug};
     var _log_func = (typeof console != "undefined" && typeof console.info == "function" && typeof console.warn == "function") ? {INFO: console.info.bind(console), ERROR: console.warn.bind(console)} : {};
     
     var _formatDate = function(){

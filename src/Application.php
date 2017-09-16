@@ -3,9 +3,14 @@
 namespace Tiny;
 
 use Exception;
+
 use Tiny\Abstracts\AbstractContext;
 use Tiny\Abstracts\AbstractController;
+
 use Tiny\Exception\AppStartUpError;
+use Tiny\Interfaces\DispatchInterface;
+use Tiny\Interfaces\RouteInterface;
+
 use Tiny\Plugin\ApiHelper;
 use Tiny\Traits\EventTrait;
 
@@ -17,99 +22,50 @@ final class Application implements DispatchInterface, RouteInterface
 {
     use EventTrait;
 
+    // 配置相关
     private $_config = [];  // 全局配置
     private $_app_name = 'app';  // app 目录，用于 拼接命名空间 和 定位模板文件
+    private $_bootstrap_completed = false;  // 布尔值, 指明当前的Application是否已经运行
+
+    // 已添加的 路由器 和 分发器 列表
+    private $_routers = [];  // 路由列表
+    private $_dispatchers = [];  // 分发列表
+
+    // 实现 RouteInterface 接口 Application 本身就是一个 default 路由 总是会返回 ['index', 'index', 'index']
     private $_route_name = 'default';  // 默认路由名字，总是会路由到 index
     private $_default_route_info = ['index', 'index', 'index'];
 
-    private $_bootstrap_completed = false;  // 布尔值, 指明当前的Application是否已经运行
-    private $_routes = [];  // 路由列表
-    private $_dispatches = [];  // 分发列表
-
+    // 单实例 实现
     private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
 
     /**
      * Application constructor.
      * @param array $config 关联数组的配置
      */
-    public function __construct(array $config = [])
+    private function __construct(array $config = null)
     {
-        $this->_config = $config;
-        self::$_instance = $this;
+        $this->_config = !is_null($config) ? $config : $this->_config;
     }
 
-    public static function pathJoin(array $paths = [], $seq = DIRECTORY_SEPARATOR)
-    {
-        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
-        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
-        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
-        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
-    }
+    ###############################################################
+    ############  私有属性 getter setter ################
+    ###############################################################
 
     /**
-     * 获取当前的Application实例
-     * @return Application
-     */
-    public static function app()
-    {
-        if (is_null(self::$_instance)) {
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
-
-    public static function usedMilliSecond()
-    {
-        return round(microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'], 3) * 1000;
-    }
-
-    public function setBootstrapCompleted()
-    {
-        $this->_bootstrap_completed = true;
-    }
-
-    public function isBootstrapCompleted()
-    {
-        return $this->_bootstrap_completed;
-    }
-
-    /**
-     * 获取 全局配置 数组
-     * @param void
-     * @return array
-     */
-    public function getConfig()
-    {
-        return $this->_config;
-    }
-
-    /**
-     * 获取 全局配置 指定key的值 不存在则返回 default
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getEnv($key, $default = '')
-    {
-        return isset($this->_config[$key]) ? $this->_config[$key] : $default;
-    }
-
-    /**
-     * @param $appname
-     * @return $this
+     * @param string $appname
      * @throws AppStartUpError
      */
     public function setAppName($appname)
     {
         if ($this->_bootstrap_completed) {
-            throw new AppStartUpError('cannot setAppName after bootstrap completed');
+            throw new AppStartUpError('call setAppName but bootstrap completed');
         }
-
         $this->_app_name = $appname;
-        return $this;
     }
 
+
     /**
+     * @param void
      * @return string
      */
     public function getAppName()
@@ -118,25 +74,54 @@ final class Application implements DispatchInterface, RouteInterface
     }
 
     /**
+     * @param bool $bootstrap_completed
+     */
+    public function setBootstrapCompleted($bootstrap_completed)
+    {
+        $this->_bootstrap_completed = $bootstrap_completed;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getBootstrapCompleted()
+    {
+        return $this->_bootstrap_completed;
+    }
+
+    /**
+     * @param void
+     * @return array
+     */
+    public function getConfig()
+    {
+        return $this->_config;
+    }
+
+    ###############################################################
+    ############ 启动及运行相关函数 ################
+    ###############################################################
+
+    /**
      * 运行一个Application, 开始接受并处理请求. 这个方法只能成功调用一次.
+     * @param Request $request
+     * @param Response $response
      * @throws AppStartUpError
      */
-    public function run()
+    public function run(Request $request, Response $response)
     {
         if (!$this->_bootstrap_completed) {
-            throw new AppStartUpError('cannot run Application before bootstrap completed');
+            throw new AppStartUpError('call run without bootstrap completed');
         }
-        $request = new Request();
-        $response = new Response();
         static::fire('routerStartup', [$this, $request, $response]);  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
 
         list($route, list($routeInfo, $params)) = $this->route($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
 
-        $request->setUnRouted()
+        $request->reset_route()
             ->setCurrentRoute($route)
             ->setRouteInfo($routeInfo)
             ->setParams($params)
-            ->setRouted();
+            ->setIsRouted();
 
         static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
         static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
@@ -168,10 +153,10 @@ final class Application implements DispatchInterface, RouteInterface
             $params = $request->getParams();
         }
 
-        $request->setUnRouted()
+        $request->reset_route()
             ->setCurrentRoute($route)
             ->setRouteInfo($routeInfo)
-            ->setRouted();  // 根据新的参数 再次设置 $request 的路由信息
+            ->setIsRouted();  // 根据新的参数 再次设置 $request 的路由信息
         // 设置完成 锁定 $request
 
         $response->resetResponse();  // 清空已设置的 信息
@@ -195,12 +180,12 @@ final class Application implements DispatchInterface, RouteInterface
     /**
      * 添加路由到 路由列表 接受请求后 根据添加的先后顺序依次进行匹配 直到成功
      * @param string $route
-     * @param RouteInterface $routeObj
-     * @param DispatchInterface $dispatch 处理分发接口
+     * @param RouteInterface $router
+     * @param DispatchInterface $dispatcher 处理分发接口
      * @return $this
      * @throws AppStartUpError
      */
-    public function addRoute($route, RouteInterface $routeObj, DispatchInterface $dispatch = null)
+    public function addRoute($route, RouteInterface $router, DispatchInterface $dispatcher = null)
     {
         $route = strtolower($route);
         if ($this->_bootstrap_completed) {
@@ -209,12 +194,12 @@ final class Application implements DispatchInterface, RouteInterface
         if ($route == $this->_route_name) {
             throw new AppStartUpError("route:{$route} is default route");
         }
-        if (isset($this->_routes[$route])) {
+        if (isset($this->_routers[$route])) {
             throw new AppStartUpError("route:{$route} has been added");
         }
-        $this->_routes[$route] = $routeObj;  //把路由加入路由表
-        if (!empty($dispatch)) {   //指定分发器时把分发器加入分发表  未指定时默认使用Application作为分发器
-            $this->_dispatches[$route] = $dispatch;
+        $this->_routers[$route] = $router;  //把路由加入路由表
+        if (!empty($dispatcher)) {   //指定分发器时把分发器加入分发表  未指定时默认使用Application作为分发器
+            $this->_dispatchers[$route] = $dispatcher;
         }
         return $this;
     }
@@ -231,12 +216,12 @@ final class Application implements DispatchInterface, RouteInterface
         if ($route == $this->_route_name) {
             return $this;
         }
-        if (!isset($this->_routes[$route])) {
+        if (!isset($this->_routers[$route])) {
             {
-                throw new AppStartUpError("route:{$route}, routes:" . json_encode(array_keys($this->_routes)) . ' not found');
+                throw new AppStartUpError("route:{$route}, routes:" . json_encode(array_keys($this->_routers)) . ' not found');
             }
         }
-        return $this->_routes[$route];
+        return $this->_routers[$route];
     }
 
     /**
@@ -248,10 +233,10 @@ final class Application implements DispatchInterface, RouteInterface
     public function getDispatch($route)
     {
         $route = strtolower($route);
-        if (!isset($this->_dispatches[$route])) {
+        if (!isset($this->_dispatchers[$route])) {
             return $this;
         }
-        return $this->_dispatches[$route];
+        return $this->_dispatchers[$route];
     }
 
     ###############################################################
@@ -272,7 +257,7 @@ final class Application implements DispatchInterface, RouteInterface
         if (!is_null($route)) {
             return $this->getRoute($route)->route($request);
         }
-        foreach ($this->_routes as $route => $val) {
+        foreach ($this->_routers as $route => $val) {
             $tmp = $this->getRoute($route)->route($request);
             if (!empty($tmp[0])) {
                 return [$route, $tmp,];
@@ -289,12 +274,7 @@ final class Application implements DispatchInterface, RouteInterface
      */
     public function url(array $routerArr, array $params = [])
     {
-        return static::host();
-    }
-
-    public static function host()
-    {
-        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
+        return self::host();
     }
 
     /**
@@ -396,7 +376,8 @@ final class Application implements DispatchInterface, RouteInterface
     public static function traceException(Request $request, Response $response, Exception $ex)
     {
         $code = $ex->getCode();
-        $response->clearBody()->setResponseCode(($code >= 500 && $code < 600) ? $code : 500)->appendBody($ex->getMessage());
+        $http_code = $code >= 500 && $code < 600 ? $code : 500;
+        $response->clearBody()->setResponseCode($http_code)->appendBody($ex->getMessage());
     }
 
     ###############################################################
@@ -420,10 +401,71 @@ final class Application implements DispatchInterface, RouteInterface
         return in_array($event, $allow_event);
     }
 
-
     ###############################################################
     ############## 常用 辅助函数 放在这里方便使用 #################
     ###############################################################
+
+    /**
+     * 获取当前的Application实例
+     * @param array|null $config
+     * @return Application
+     */
+    public static function app(array $config = null)
+    {
+        if (is_null(self::$_instance)) {
+            self::$_instance = new self($config);
+        }
+        return self::$_instance;
+    }
+
+    public static function path_join(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    {
+        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
+        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
+        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
+        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
+    }
+
+    public static function environ()
+    {
+        return trim(self::get_config('ENVIRON', 'product'));
+    }
+
+    public static function is_dev()
+    {
+        return Func::stri_cmp('debug', self::environ());
+    }
+
+    public static function host()
+    {
+        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
+    }
+
+    /**
+     * 获取 全局配置 指定key的值 不存在则返回 default
+     * @param string $key
+     * @param mixed $default
+     * @param array|null $config 配置数组 如果为 null 则使用 app()->getConfig()
+     * @return mixed
+     * @throws AppStartUpError
+     */
+    public static function get_config($key, $default = '', array $config = null)
+    {
+        $config = is_null($config) ? static::app()->getConfig() : $config;
+        $tmp_list = explode('.', $key, 2);
+        $pre_key = trim($tmp_list[0]);
+        $last_key = trim($tmp_list[1]);
+        if (!empty($pre_key)) {
+            if (empty($last_key)) {
+                return isset($config[$pre_key]) ? $config[$pre_key] : $default;
+            }
+            $config = isset($config[$pre_key]) ? $config[$pre_key] : [];
+            if (!is_array($config)) {
+                throw  new AppStartUpError("get config key:{$key} but value at {$pre_key} not array");
+            }
+        }
+        return self::get_config($last_key, $default, $config);
+    }
 
     /**
      * 重定向请求到新的路径  HTTP 302 自带 exit 效果
@@ -445,7 +487,7 @@ final class Application implements DispatchInterface, RouteInterface
      */
     public static function encrypt($string, $expiry = 0)
     {
-        return Func::encode($string, self::app()->getEnv('CRYPT_KEY', ''), $expiry);
+        return Func::encode($string, self::get_config('CRYPT_KEY'), $expiry);
     }
 
     /**
@@ -455,24 +497,7 @@ final class Application implements DispatchInterface, RouteInterface
      */
     public static function decrypt($string)
     {
-        return Func::decode($string, self::app()->getEnv('CRYPT_KEY', ''));
+        return Func::decode($string, self::get_config('CRYPT_KEY'));
     }
 
-    public static function slotHash($str)
-    {
-        $crypt_key = static::app()->getEnv('ENV_CRYPT_KEY', '');
-        return Func::preMd5($str, $crypt_key);
-    }
-
-    public static function encode($string, $expiry = 0)
-    {
-        $crypt_key = static::app()->getEnv('ENV_CRYPT_KEY', '');
-        return Func::encode($string, $crypt_key, $expiry);
-    }
-
-    public static function decode($string)
-    {
-        $crypt_key = static::app()->getEnv('ENV_CRYPT_KEY', '');
-        return Func::decode($string, $crypt_key);
-    }
 }

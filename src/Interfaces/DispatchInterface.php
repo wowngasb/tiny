@@ -6,11 +6,13 @@
  * Time: 17:15
  */
 
-namespace Tiny;
+namespace Tiny\Interfaces;
 
 
 use Exception;
 use Tiny\Abstracts\AbstractContext;
+use Tiny\Request;
+use Tiny\Response;
 
 interface DispatchInterface
 {

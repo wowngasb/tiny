@@ -8,7 +8,7 @@
 
 namespace Tiny\View;
 
-use Tiny\ViewInterface;
+use Tiny\Interfaces\ViewInterface;
 
 
 /**

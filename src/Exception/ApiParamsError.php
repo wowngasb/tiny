@@ -11,6 +11,6 @@ namespace Tiny\Exception;
 
 class ApiParamsError extends Error
 {
-    public static $errno = 531;
+    protected static $errno = 531;
 
 }

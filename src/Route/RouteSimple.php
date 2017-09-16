@@ -12,7 +12,7 @@ use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Func;
 use Tiny\Request;
-use Tiny\RouteInterface;
+use Tiny\Interfaces\RouteInterface;
 
 /**
  * Class RouteSimple

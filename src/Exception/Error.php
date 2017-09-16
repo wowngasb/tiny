@@ -13,11 +13,20 @@ use Exception;
 
 class Error extends Exception
 {
-    public static $errno = 500;
+    protected static $errno = 500;
 
     public function __construct($message, Exception $previous = null)
     {
         parent::__construct($message, static::$errno, $previous);
     }
+
+    /**
+     * @return int
+     */
+    public static function getErrno()
+    {
+        return static::$errno;
+    }
+
 
 }

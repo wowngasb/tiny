@@ -25,7 +25,7 @@ class DbHelper extends Manager
 
     private static function getBaseConfig()
     {
-        $db_config = Application::app()->getEnv('ENV_DB');
+        $db_config = Application::get_config('ENV_DB');
         $db_config = [
             'driver' => Func::v($db_config, 'driver', 'mysql'),
             'host' => Func::v($db_config, 'host', '127.0.0.1'),

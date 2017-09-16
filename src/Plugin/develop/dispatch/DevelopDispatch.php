@@ -12,7 +12,7 @@ namespace Tiny\Plugin\develop\dispatch;
 use Exception;
 use Tiny\Abstracts\AbstractContext;
 use Tiny\Application;
-use Tiny\DispatchInterface;
+use Tiny\Interfaces\DispatchInterface;
 use Tiny\Func;
 use Tiny\Request;
 use Tiny\Response;

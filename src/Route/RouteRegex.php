@@ -11,7 +11,7 @@ namespace Tiny\Route;
 
 use Tiny\Func;
 use Tiny\Request;
-use Tiny\RouteInterface;
+use Tiny\Interfaces\RouteInterface;
 
 
 /**
@@ -50,7 +50,7 @@ class RouteRegex implements RouteInterface
      */
     public function route(Request $request)
     {
-        $uri = $request->getRequestPath();
+        $uri = $request->fixRequestPath();
         $reg_str = Func::str_startwith($this->_regex, "^\/") ? $this->_regex : "^\/{$this->_regex}";
         $matches = [];
         preg_match("/{$reg_str}/i", $uri, $matches);

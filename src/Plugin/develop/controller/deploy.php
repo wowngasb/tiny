@@ -42,7 +42,7 @@ class deploy extends BaseDevelopController
     {
         $script = $this->_get('script');
         $script = Func::stri_endwith($script, '.php') ? $script : "{$script}.php";
-        $file = Application::pathJoin(['crontab', $script]);
+        $file = Application::path_join(['crontab', $script]);
         if (empty($script) || strpos($script, '..') !== false || !is_file($file)) {
             exit('error script file.');
         }
@@ -92,7 +92,7 @@ EOT;
         $appname = Application::app()->getAppName();
         $html_str = '';
         $dev_debug = $this->_get('dev_debug', 0) == 1;
-        $api_path = Application::pathJoin([$appname, 'api']);
+        $api_path = Application::path_join([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         foreach ($api_list as $key => $val) {
             $class = str_replace('.php', '', $val['name']);
@@ -100,7 +100,7 @@ EOT;
             $class_name = "\\{$appname}\\api\\{$class}";
             $method_list = ApiHelper::getApiMethodList($class_name);
             $js_str = ApiHelper::model2js($class, $method_list, $dev_debug);
-            $out_path = Application::pathJoin([$appname, 'static', 'api']);
+            $out_path = Application::path_join([$appname, 'static', 'api']);
             if (!is_dir($out_path)) {
                 mkdir($out_path, 0777, true);
             }

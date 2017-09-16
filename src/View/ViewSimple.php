@@ -15,7 +15,7 @@ use Tiny\Interfaces\ViewInterface;
  * Class View
  * @package Tiny
  */
-class ViewSimple  implements ViewInterface
+class ViewSimple implements ViewInterface
 {
 
     protected $_tpl_vars = [];
@@ -28,7 +28,7 @@ class ViewSimple  implements ViewInterface
      * @param array $tpl_vars 关联数组, 模板变量
      * @return string
      */
-    public static function  widget($widget_path, array $tpl_vars = [])
+    public static function widget($widget_path, array $tpl_vars = [])
     {
         $tpl_vars = self::$pre_widget ? call_user_func_array(self::$pre_widget, [$widget_path, $tpl_vars]) : $tpl_vars;
         ob_start();
@@ -42,7 +42,7 @@ class ViewSimple  implements ViewInterface
      * @param string $view_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
      */
-    public static function  display($view_path, array $tpl_vars = [])
+    public static function display($view_path, array $tpl_vars = [])
     {
         $tpl_vars = self::$pre_display ? call_user_func_array(self::$pre_display, [$view_path, $tpl_vars]) : $tpl_vars;
         extract($tpl_vars, EXTR_OVERWRITE);
@@ -57,7 +57,7 @@ class ViewSimple  implements ViewInterface
      */
     public function assign($name, $value = null)
     {
-        if( is_array($name) ){
+        if (is_array($name)) {
             $this->_tpl_vars = array_merge($this->_tpl_vars, $name);
             return $this;
         }

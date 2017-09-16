@@ -22,9 +22,9 @@ class Select
 
     public function __construct(OrmConfig $orm_config, $key, callable $func = null, callable $filter = null, array $tags = [], $timeCache = null)
     {
-        $db_name = $orm_config->db_name;
-        $table_name = $orm_config->table_name;
-        $cache_time = $orm_config->cache_time;
+        $db_name = $orm_config->getDbName();
+        $table_name = $orm_config->getTableName();
+        $cache_time = $orm_config->getCacheTime();
         $this->method = "{$db_name}.{$table_name}";
 
         $this->key = $key;

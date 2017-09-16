@@ -83,7 +83,7 @@ class RouteSimple implements RouteInterface
         $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : $default_controller;
         $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
 
-        $url =  Application::host() . 'index.php';
+        $url = Application::host() . 'index.php';
         $args_list = [];
         $args_list[] = "{$this->module_key}={$module}";
         $args_list[] = "{$this->controller_key}={$controller}";
@@ -100,6 +100,6 @@ class RouteSimple implements RouteInterface
      */
     public function getDefaultRouteInfo()
     {
-        return $this->_default_route_info ;  // 默认 $routeInfo
+        return $this->_default_route_info;  // 默认 $routeInfo
     }
 }

@@ -91,7 +91,7 @@ class RouteMap implements RouteInterface
         $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : $default_controller;
         $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
 
-        $url =  Application::host() . "{$module}/{$controller}/{$action}";
+        $url = Application::host() . "{$module}/{$controller}/{$action}";
         $args_list = [];
         foreach ($params as $key => $val) {
             $args_list[] = trim($key) . '=' . urlencode($val);

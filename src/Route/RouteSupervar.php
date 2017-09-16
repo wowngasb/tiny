@@ -93,7 +93,7 @@ class RouteSupervar implements RouteInterface
         $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
         $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : $default_module;
 
-        $url =  Application::host() . 'index.php';
+        $url = Application::host() . 'index.php';
         $route_value = "{$module}/{$controller}/{$action}";
 
         $args_list = [];

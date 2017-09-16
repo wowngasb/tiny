@@ -11,7 +11,6 @@ namespace Tiny\Abstracts;
 
 use PhpConsole\Connector;
 use Tiny\Application;
-use Tiny\OrmQuery\OrmConfig;
 use Tiny\Request;
 use Tiny\Response;
 
@@ -116,13 +115,14 @@ abstract class AbstractBootstrap
             self::debugConsole($data, $tag, 1);
         });  // 注册 组件渲染 打印组件变量  用于调试
 
+
+        /*
         OrmConfig::on('runSql', function (OrmConfig $obj, $sql_str, $time, $_tag) {
             false && func_get_args();
-            if ($obj->debug) {
-                $use_str = round($time * 1000, 2) . 'ms';
-                AbstractBootstrap::debugConsole($sql_str, ' >>> ' . $_tag . " ({$use_str})");
-            }
+            $time_str = round($time, 3) * 1000;
+            static::debugConsole("{$sql_str} <{$time_str}ms>", $_tag, 1);
         });  // 注册 SQl执行 打印相关信息  用于调试
+        */
 
         AbstractApi::on('apiResult', function (AbstractApi $obj, $action, $params, $result, $callback) {
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #api');

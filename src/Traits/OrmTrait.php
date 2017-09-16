@@ -69,7 +69,7 @@ trait OrmTrait
      */
     public static function tableItem(array $where = [])
     {
-        $table_name = static::getOrmConfig()->table_name;
+        $table_name = static::getOrmConfig()->getTableName();
         $table = static::_getDb()->table($table_name);
         if (empty($where)) {
             return $table;
@@ -184,10 +184,10 @@ trait OrmTrait
         }
 
         $cfg = static::getOrmConfig();
-        $cache_time = $cfg->cache_time;
-        $db_name = $cfg->db_name;
-        $table_name = $cfg->table_name;
-        $primary_key = $cfg->primary_key;
+        $cache_time = $cfg->getCacheTime();
+        $db_name = $cfg->getDbName();
+        $table_name = $cfg->getTableName();
+        $primary_key = $cfg->getPrimaryKey();
         $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
 
         $tag = "{$primary_key}={$id}";
@@ -224,10 +224,10 @@ trait OrmTrait
             return [static::getOneById($id_list[0], $timeCache)];
         }
         $cfg = static::getOrmConfig();
-        $cache_time = $cfg->cache_time;
-        $db_name = $cfg->db_name;
-        $table_name = $cfg->table_name;
-        $primary_key = $cfg->primary_key;
+        $cache_time = $cfg->getCacheTime();
+        $db_name = $cfg->getDbName();
+        $table_name = $cfg->getTableName();
+        $primary_key = $cfg->getPrimaryKey();
         $table = "{$db_name}.{$table_name}";
         $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
 
@@ -358,17 +358,21 @@ trait OrmTrait
             return self::$_db;
         }
         $cfg = static::getOrmConfig();
-        if (empty($cfg->table_name) || empty($cfg->primary_key) || empty($cfg->max_select) || empty($cfg->db_name)) {
+        $db_name = $cfg->getDbName();
+        $table_name = $cfg->getTableName();
+        $primary_key = $cfg->getPrimaryKey();
+        $max_select = $cfg->getMaxSelect();
+        if (empty($table_name) || empty($primary_key) || empty($max_select) || empty($db_name)) {
             throw new OrmStartUpError('Orm:' . __CLASS__ . 'with error config');
         }
-        self::$_db = DbHelper::initDb()->getConnection($cfg->db_name);
+        self::$_db = DbHelper::initDb()->getConnection($cfg->getDbName());
         return self::$_db;
     }
 
     protected static function recordRunSql($time, $sql, $param, $tag = 'sql')
     {
-        $db_name = static::getOrmConfig()->db_name;
-        $table_name = static::getOrmConfig()->table_name;
+        $db_name = static::getOrmConfig()->getDbName();
+        $table_name = static::getOrmConfig()->getTableName();
 
         $sql_str = static::showQuery($sql, $param);
         $_tag = str_replace(__TRAIT__, "{$db_name}.{$table_name}", $tag);
@@ -710,7 +714,7 @@ trait OrmTrait
     public static function selectItem($start = 0, $limit = 0, array $sort_option = [], array $where = [], array $columns = ['*'])
     {
         $start_time = microtime(true);
-        $max_select = static::getOrmConfig()->max_select;
+        $max_select = static::getOrmConfig()->getMaxSelect();
         $table = static::tableItem($where);
         $start = $start <= 0 ? 0 : $start;
         $limit = $limit > $max_select ? $max_select : $limit;
@@ -748,8 +752,8 @@ trait OrmTrait
     public static function dictItem(array $where = [], array $columns = ['*'])
     {
         $start_time = microtime(true);
-        $max_select = static::getOrmConfig()->max_select;
-        $primary_key = static::getOrmConfig()->primary_key;
+        $max_select = static::getOrmConfig()->getMaxSelect();
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem($where);
         $table->take($max_select);
         $data = $table->get($columns);
@@ -787,7 +791,7 @@ trait OrmTrait
      */
     public static function upsertItem(array $where, array $data)
     {
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $tmp = static::firstItem($where);
         if (empty($tmp)) {
             return static::newItem($data);
@@ -811,7 +815,7 @@ trait OrmTrait
      */
     public static function getItem($value, $filed = null, array $columns = ['*'])
     {
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $filed = $filed ?: $primary_key;
         return static::firstItem([strtolower($filed) => $value], $columns);
     }
@@ -824,7 +828,7 @@ trait OrmTrait
     public static function newItem(array $data)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         unset($data[$primary_key]);
         $default = [
         ];
@@ -849,7 +853,7 @@ trait OrmTrait
     public static function setItem($id, array $data)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         unset($data[$primary_key]);
         $table = static::tableItem()->where($primary_key, $id);
         $update = $table->update($data);
@@ -865,7 +869,7 @@ trait OrmTrait
     public static function delItem($id)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $delete = $table->delete();
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -882,7 +886,7 @@ trait OrmTrait
     public static function incItem($id, $filed, $value = 1)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $increment = $table->increment($filed, $value);
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -899,7 +903,7 @@ trait OrmTrait
     public static function decItem($id, $filed, $value = 1)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->primary_key;
+        $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value);
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);

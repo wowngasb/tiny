@@ -84,6 +84,6 @@ class RouteRegex implements RouteInterface
      */
     public function getDefaultRouteInfo()
     {
-        return $this->_default_route_info ;  // 默认 $routeInfo
+        return $this->_default_route_info;  // 默认 $routeInfo
     }
 }

@@ -15,14 +15,14 @@ class OrmConfig
 {
     use EventTrait;
 
-    public $method = '';
+    private $_method = '';
 
-    public $table_name = '';     //数据表名
-    public $primary_key = '';   //数据表主键
-    public $max_select = 0;  //最多获取 5000 条记录 防止数据库拉取条目过多
-    public $db_name = '';       //数据库名
-    public $cache_time = 0;     //数据缓存时间
-    public $debug = false;
+    public $_db_name = '';       //数据库名
+    public $_table_name = '';     //数据表名
+    public $_primary_key = '';   //数据表主键
+
+    public $_max_select = 5000;  //最多获取 5000 条记录 防止数据库拉取条目过多
+    public $_cache_time = 0;     //数据缓存时间
 
     /**
      * OrmConfig constructor.
@@ -34,26 +34,26 @@ class OrmConfig
      */
     public function __construct($db_name, $table_name, $primary_key = 'id', $cache_time = 0, $max_select = 5000)
     {
-        $this->db_name = $db_name;
-        $this->table_name = $table_name;
-        $this->primary_key = $primary_key;
-        $this->max_select = $max_select;
-        $this->cache_time = $cache_time;
+        $this->_db_name = $db_name;
+        $this->_table_name = $table_name;
+        $this->_primary_key = $primary_key;
+        $this->_max_select = $max_select;
+        $this->_cache_time = $cache_time;
 
-        $this->method = "{$db_name}.{$table_name}";
+        $this->_method = "{$db_name}.{$table_name}";
     }
 
     public function buildSelectTag($args)
     {
         if (empty($args)) {
-            return $this->method;
+            return $this->_method;
         }
         $args_list = [];
         foreach ($args as $key => $val) {
             $key = trim($key);
             $args_list[] = "{$key}=" . urlencode($val);
         }
-        return "{$this->method}?" . join($args_list, '&');
+        return "{$this->_method}?" . join($args_list, '&');
     }
 
     public function doneSql($sql_str, $time, $_tag)
@@ -71,6 +71,62 @@ class OrmConfig
     {
         static $allow_event = ['runSql',];
         return in_array($event, $allow_event);
+    }
+
+    /**
+     * @return string
+     */
+    public function getTableName()
+    {
+        return $this->_table_name;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPrimaryKey()
+    {
+        return $this->_primary_key;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDbName()
+    {
+        return $this->_db_name;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMaxSelect()
+    {
+        return $this->_max_select;
+    }
+
+    /**
+     * @param int $max_select
+     */
+    public function setMaxSelect($max_select)
+    {
+        $this->_max_select = $max_select;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCacheTime()
+    {
+        return $this->_cache_time;
+    }
+
+    /**
+     * @param int $cache_time
+     */
+    public function setCacheTime($cache_time)
+    {
+        $this->_cache_time = $cache_time;
     }
 
 }

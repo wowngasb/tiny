@@ -108,8 +108,8 @@ abstract class Func
                 case 'resource':
                 case 'string':
                     return '"' . str_replace(array("\r", "\n", "<", ">", "&"),
-                        array('\r', '\n', '\x3c', '\x3e', '\x26'),
-                        addslashes($var)) . '"';
+                            array('\r', '\n', '\x3c', '\x3e', '\x26'),
+                            addslashes($var)) . '"';
                 case 'array':
                     if (empty ($var) || array_keys($var) === range(0, sizeof($var) - 1)) {
                         $output = array();

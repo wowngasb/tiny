@@ -824,7 +824,7 @@ trait OrmTrait
     {
         $primary_key = static::getOrmConfig()->getPrimaryKey();
         $filed = $filed ?: $primary_key;
-        return static::firstItem([strtolower($filed) => $value], $columns);
+        return static::firstItem([strtolower($filed) => $value], [], $columns);
     }
 
     /**

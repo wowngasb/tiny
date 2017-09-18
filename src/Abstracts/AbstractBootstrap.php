@@ -17,18 +17,17 @@ use Tiny\Response;
 abstract class AbstractBootstrap
 {
 
-    /** 在app run 之前, 设置app 命名空间 并 注册路由
+    /** 在app run 之前, 设置app 并注册路由
      *  #param Application $app
      *  #return Application
-     * @param string $appname
      * @param Application $app
      * @return Application
      */
-    public static function bootstrap($appname, Application $app)
+    public static function bootstrap(Application $app)
     {
-        $app->setAppName($appname);  // 添加默认简单路由
-
-        self::debugStrap();
+        if (Application::is_dev()) {
+            self::debugStrap();
+        }
         $app->setBootstrapCompleted(true);
         return $app;
     }
@@ -51,7 +50,7 @@ abstract class AbstractBootstrap
         self::debugConsole($data, $tags, $ignoreTraceCalls);
     }
 
-    public static function debugStrap()
+    private static function debugStrap()
     {
         if (!Application::is_dev()) {  // 非调试模式下  直接返回
             return;

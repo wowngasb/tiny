@@ -36,33 +36,23 @@ final class Application implements DispatchInterface, RouteInterface
     private $_default_route_info = ['index', 'index', 'index'];
 
     // 单实例 实现
-    private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
+    private static $_instance_map = [];  // Application实现单利模式, 此属性保存当前实例
 
     /**
      * Application constructor.
-     * @param array $config 关联数组的配置
+     * @param string $app_name
+     * @param array $config
+     * @internal param $app_name
      */
-    private function __construct(array $config = null)
+    private function __construct($app_name, array $config)
     {
-        $this->_config = !is_null($config) ? $config : $this->_config;
+        $this->_app_name = $app_name;
+        $this->_config = $config;
     }
 
     ###############################################################
     ############  私有属性 getter setter ################
     ###############################################################
-
-    /**
-     * @param string $appname
-     * @throws AppStartUpError
-     */
-    public function setAppName($appname)
-    {
-        if ($this->_bootstrap_completed) {
-            throw new AppStartUpError('call setAppName but bootstrap completed');
-        }
-        $this->_app_name = $appname;
-    }
-
 
     /**
      * @param void
@@ -76,7 +66,7 @@ final class Application implements DispatchInterface, RouteInterface
     /**
      * @param bool $bootstrap_completed
      */
-    public function setBootstrapCompleted($bootstrap_completed)
+    public function setBootstrapCompleted($bootstrap_completed = true)
     {
         $this->_bootstrap_completed = $bootstrap_completed;
     }
@@ -407,15 +397,16 @@ final class Application implements DispatchInterface, RouteInterface
 
     /**
      * 获取当前的Application实例
+     * @param string|null $appname
      * @param array|null $config
      * @return Application
      */
-    public static function app(array $config = null)
+    public static function app($appname = 'app', array $config = null)
     {
-        if (is_null(self::$_instance)) {
-            self::$_instance = new self($config);
+        if (!isset(self::$_instance_map[$appname])) {
+            self::$_instance_map[$appname] = new self($appname, is_null($config) ? [] : $config);
         }
-        return self::$_instance;
+        return self::$_instance_map[$appname];
     }
 
     public static function path_join(array $paths = [], $seq = DIRECTORY_SEPARATOR)
@@ -453,8 +444,8 @@ final class Application implements DispatchInterface, RouteInterface
     {
         $config = is_null($config) ? static::app()->getConfig() : $config;
         $tmp_list = explode('.', $key, 2);
-        $pre_key = trim($tmp_list[0]);
-        $last_key = trim($tmp_list[1]);
+        $pre_key = !empty($tmp_list[0]) ? trim($tmp_list[0]) : '';
+        $last_key = !empty($tmp_list[1]) ? trim($tmp_list[1]) : '';
         if (!empty($pre_key)) {
             if (empty($last_key)) {
                 return isset($config[$pre_key]) ? $config[$pre_key] : $default;
@@ -464,7 +455,7 @@ final class Application implements DispatchInterface, RouteInterface
                 throw  new AppStartUpError("get config key:{$key} but value at {$pre_key} not array");
             }
         }
-        return self::get_config($last_key, $default, $config);
+        return static::get_config($last_key, $default, $config);
     }
 
     /**

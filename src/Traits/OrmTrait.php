@@ -771,13 +771,20 @@ trait OrmTrait
     /**
      * 根据查询条件 获取第一条记录
      * @param array $where 检索条件数组 具体格式参见文档
+     * @param array $sort_option  排序依据 格式为 ['column', 'asc|desc']
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @return array
      */
-    public static function firstItem(array $where, array $columns = ['*'])
+    public static function firstItem(array $where, array $sort_option = [], array $columns = ['*'])
     {
         $start_time = microtime(true);
         $table = static::tableItem($where);
+        if (!empty($sort_option[0])) {
+            $field = trim($sort_option[0]);
+            $direction = !empty($sort_option[1]) ? Func::trimlower($sort_option[1]) : 'asc';
+            $direction = $direction == 'desc' ? 'desc' : 'asc';
+            $table->orderBy($field, $direction);
+        }
         $item = $table->first($columns);
         static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return static::_fixItem((array)$item);

@@ -4,6 +4,7 @@ namespace Tiny\Plugin;
 
 use Illuminate\Database\Capsule\Manager;
 use Tiny\Application;
+use Tiny\Exception\OrmStartUpError;
 use Tiny\Func;
 
 class DbHelper extends Manager
@@ -43,22 +44,28 @@ class DbHelper extends Manager
     /**
      * @param string|array $config
      * @return \Illuminate\Database\Connection
+     * @throws OrmStartUpError
      */
     public function getConnection($config = null)
     {
-        if (is_string($config)) {
-            $db_config = self::getBaseConfig();
-            $db_config['database'] = strtolower($config);
-            $key = $db_config['database'];
+        $default_config = self::getBaseConfig();
+        if (is_null($config)) {
+            $db_config = $default_config;
+            $name = $db_config['database'];
+        } else if (is_string($config)) {
+            $name = trim($config);
+            if (empty($name)) {
+                throw new OrmStartUpError('getConnection with empty database name');
+            }
+            $db_config = array_merge($default_config, ['database' => $name]);
         } else if (is_array($config)) {
-            $db_config = $config;
-            $key = "{$db_config['host']}:{$db_config['port']}@{$db_config['username']}#{$db_config['database']}";
+            $db_config = array_merge($default_config, $config);
+            $name = "mysql:://{$db_config['username']}:@{$db_config['host']}:{$db_config['port']}/{$db_config['database']}";
         } else {
-            $db_config = $config;
-            $key = md5(print_r($config, true));
+            throw new OrmStartUpError('getConnection with error config type');
         }
-        parent::addConnection($db_config, $key);
-        return $this->manager->connection($key);
+        parent::addConnection($db_config, $name);
+        return $this->manager->connection($name);
     }
 
 }

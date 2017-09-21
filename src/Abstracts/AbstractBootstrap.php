@@ -74,7 +74,7 @@ abstract class AbstractBootstrap
         Application::on('dispatchLoopStartup', function (Application $obj, Request $request, Response $response) {
             false && func_get_args();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->_request()];
-            if ($request->getSessionStarted()) {
+            if ($request->isSessionStarted()) {
                 $data['session'] = $request->_session();
             }
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopStartup');

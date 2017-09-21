@@ -7,20 +7,19 @@ use Exception;
 use Tiny\Abstracts\AbstractContext;
 use Tiny\Abstracts\AbstractController;
 
+use Tiny\Abstracts\AbstractModel;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\DispatchInterface;
 use Tiny\Interfaces\RouteInterface;
 
 use Tiny\Plugin\ApiHelper;
-use Tiny\Traits\EventTrait;
 
 /**
  * Class Application
  * @package Tiny
  */
-final class Application implements DispatchInterface, RouteInterface
+final class Application extends AbstractModel implements DispatchInterface, RouteInterface
 {
-    use EventTrait;
 
     // 配置相关
     private $_config = [];  // 全局配置
@@ -44,10 +43,10 @@ final class Application implements DispatchInterface, RouteInterface
      * @param array $config
      * @internal param $app_name
      */
-    private function __construct($app_name, array $config)
+    private function __construct(array $config = [], $app_name = 'app')
     {
-        $this->_app_name = $app_name;
         $this->_config = $config;
+        $this->_app_name = $app_name;
     }
 
     ###############################################################
@@ -74,7 +73,7 @@ final class Application implements DispatchInterface, RouteInterface
     /**
      * @return bool
      */
-    public function getBootstrapCompleted()
+    public function isBootstrapCompleted()
     {
         return $this->_bootstrap_completed;
     }
@@ -111,11 +110,11 @@ final class Application implements DispatchInterface, RouteInterface
             ->setCurrentRoute($route)
             ->setRouteInfo($routeInfo)
             ->setParams($params)
-            ->setIsRouted();
+            ->setRouted();
 
         static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
         static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
-        static::forward($request, $response, $routeInfo, $params, $route);
+        $this->forward($request, $response, $routeInfo, $params, $route);
         static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
 
         $response->sendBody();
@@ -130,15 +129,14 @@ final class Application implements DispatchInterface, RouteInterface
      * @param string|null $route
      * @throws AppStartUpError
      */
-    public static function forward(Request $request, Response $response, array $routeInfo = [], array $params = null, $route = null)
+    public function forward(Request $request, Response $response, array $routeInfo = [], array $params = null, $route = null)
     {
         $routeInfo = Func::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
-        $app = self::app();
         // 对使用默认值 null 的参数 用当前值补全
         if (is_null($route)) {
             $route = $request->getCurrentRoute();
         }
-        $app->getRoute($route);  // 检查对应 route 是否注册过
+        $this->getRoute($route);  // 检查对应 route 是否注册过
         if (is_null($params)) {
             $params = $request->getParams();
         }
@@ -146,11 +144,11 @@ final class Application implements DispatchInterface, RouteInterface
         $request->reset_route()
             ->setCurrentRoute($route)
             ->setRouteInfo($routeInfo)
-            ->setIsRouted();  // 根据新的参数 再次设置 $request 的路由信息
+            ->setRouted();  // 根据新的参数 再次设置 $request 的路由信息
         // 设置完成 锁定 $request
 
         $response->resetResponse();  // 清空已设置的 信息
-        $dispatcher = $app->getDispatch($route);
+        $dispatcher = $this->getDispatch($route);
 
         try {
             $action = $dispatcher::initMethodName($routeInfo);
@@ -158,9 +156,9 @@ final class Application implements DispatchInterface, RouteInterface
             $context = $dispatcher::initMethodContext($request, $response, $namespace, $action);
             $params = $dispatcher::initMethodParams($context, $action, $params);
 
-            static::fire('preDispatch', [$app, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward 或 callfunc, 则这个事件会被触发多次
+            static::fire('preDispatch', [$this, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
-            static::fire('postDispatch', [$app, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
+            static::fire('postDispatch', [$this, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
         } catch (Exception $ex) {
             $dispatcher::traceException($request, $response, $ex);
         }
@@ -404,45 +402,63 @@ final class Application implements DispatchInterface, RouteInterface
     public static function app($appname = 'app', array $config = null)
     {
         if (!isset(self::$_instance_map[$appname])) {
-            self::$_instance_map[$appname] = new self($appname, is_null($config) ? [] : $config);
+            self::$_instance_map[$appname] = new self(is_null($config) ? [] : $config, $appname);
         }
         return self::$_instance_map[$appname];
     }
 
-    public static function path_join(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    /**
+     * @param string $appname
+     * @return string
+     */
+    public static function environ($appname = 'app')
     {
-        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
-        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
-        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
-        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
+        return trim(self::get_config('ENVIRON', 'product', $appname));
     }
 
-    public static function environ()
+    public static function is_dev($appname = 'app')
     {
-        return trim(self::get_config('ENVIRON', 'product'));
+        return Func::stri_cmp('debug', self::environ($appname));
     }
 
-    public static function is_dev()
+    /**
+     * 加密函数 使用 配置 CRYPT_KEY 作为 key
+     * @param string $string 需要加密的字符串
+     * @param int $expiry 加密生成的数据 的 有效期 为0表示永久有效， 单位 秒
+     * @param string $appname
+     * @return string 加密结果 使用了 safe_base64_encode
+     */
+    public static function encrypt($string, $expiry = 0, $appname = 'app')
     {
-        return Func::stri_cmp('debug', self::environ());
+        return Func::encode($string, self::get_config('CRYPT_KEY', '', $appname), $expiry);
     }
 
-    public static function host()
+    /**
+     * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
+     * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
+     * @param string $appname
+     * @return string 解密结果
+     */
+    public static function decrypt($string, $appname = 'app')
     {
-        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
+        return Func::decode($string, self::get_config('CRYPT_KEY', '', $appname));
     }
 
     /**
      * 获取 全局配置 指定key的值 不存在则返回 default
      * @param string $key
      * @param mixed $default
-     * @param array|null $config 配置数组 如果为 null 则使用 app()->getConfig()
+     * @param string $appname
      * @return mixed
-     * @throws AppStartUpError
      */
-    public static function get_config($key, $default = '', array $config = null)
+    public static function get_config($key, $default = '', $appname = 'app')
     {
-        $config = is_null($config) ? static::app()->getConfig() : $config;
+        $config = static::app($appname)->getConfig();
+        return self::_find_config($key, $default, $config);
+    }
+
+    private static function _find_config($key, $default = '', array $config = [])
+    {
         $tmp_list = explode('.', $key, 2);
         $pre_key = !empty($tmp_list[0]) ? trim($tmp_list[0]) : '';
         $last_key = !empty($tmp_list[1]) ? trim($tmp_list[1]) : '';
@@ -455,7 +471,25 @@ final class Application implements DispatchInterface, RouteInterface
                 throw  new AppStartUpError("get config key:{$key} but value at {$pre_key} not array");
             }
         }
-        return static::get_config($last_key, $default, $config);
+        return self::_find_config($last_key, $default, $config);
+    }
+
+
+    ###############################################################
+    ############## 常用 静态函数 放在这里方便使用 #################
+    ###############################################################
+
+    public static function path_join(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    {
+        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
+        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
+        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
+        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
+    }
+
+    public static function host()
+    {
+        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
     }
 
     /**
@@ -467,28 +501,6 @@ final class Application implements DispatchInterface, RouteInterface
     {
         header("Location: {$url}");  // Redirect browser
         exit;  // Make sure that code below does not get executed when we redirect.
-    }
-
-
-    /**
-     * 加密函数 使用 配置 CRYPT_KEY 作为 key
-     * @param string $string 需要加密的字符串
-     * @param int $expiry 加密生成的数据 的 有效期 为0表示永久有效， 单位 秒
-     * @return string 加密结果 使用了 safe_base64_encode
-     */
-    public static function encrypt($string, $expiry = 0)
-    {
-        return Func::encode($string, self::get_config('CRYPT_KEY'), $expiry);
-    }
-
-    /**
-     * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
-     * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
-     * @return string 解密结果
-     */
-    public static function decrypt($string)
-    {
-        return Func::decode($string, self::get_config('CRYPT_KEY'));
     }
 
 }

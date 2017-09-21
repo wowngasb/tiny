@@ -93,7 +93,6 @@ trait OrmTrait
                     $query_list[] = [true, $func, $query];
                     continue;
                 }
-
                 throw new OrmStartUpError("ORM build where error list item:" . strval($item));
             }
 
@@ -135,8 +134,7 @@ trait OrmTrait
                 $query_list[] = [true, 'where', $query];
                 continue;
             }
-
-            throw new OrmStartUpError("ORM build where error dict {$_filed}=>" . strval($item));
+            throw new OrmStartUpError("ORM build where error dict {$_filed}=>" . print_r($item, true));
         }
 
         foreach ($query_list as $query_item) {
@@ -698,7 +696,7 @@ trait OrmTrait
         $start_time = microtime(true);
         $table = static::tableItem($where);
         $count = $table->count($columns);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $count;
     }
 
@@ -733,7 +731,7 @@ trait OrmTrait
             $table->orderBy($field, $direction);
         }
         $data = $table->get($columns);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
         $rst = [];
         foreach ($data as $key => $val) {
@@ -757,7 +755,7 @@ trait OrmTrait
         $table = static::tableItem($where);
         $table->take($max_select);
         $data = $table->get($columns);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
         $rst = [];
         foreach ($data as $key => $val) {
@@ -771,7 +769,7 @@ trait OrmTrait
     /**
      * 根据查询条件 获取第一条记录
      * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $sort_option  排序依据 格式为 ['column', 'asc|desc']
+     * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @return array
      */
@@ -786,7 +784,7 @@ trait OrmTrait
             $table->orderBy($field, $direction);
         }
         $item = $table->first($columns);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return static::_fixItem((array)$item);
     }
 
@@ -847,7 +845,7 @@ trait OrmTrait
         }
         $table = static::tableItem();
         $id = $table->insertGetId($data, $primary_key);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $id;
     }
 
@@ -864,7 +862,7 @@ trait OrmTrait
         unset($data[$primary_key]);
         $table = static::tableItem()->where($primary_key, $id);
         $update = $table->update($data);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $update;
     }
 
@@ -879,7 +877,7 @@ trait OrmTrait
         $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $delete = $table->delete();
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $delete;
     }
 
@@ -896,7 +894,7 @@ trait OrmTrait
         $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $increment = $table->increment($filed, $value);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $increment;
     }
 
@@ -913,7 +911,7 @@ trait OrmTrait
         $primary_key = static::getOrmConfig()->getPrimaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value);
-        static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $decrement;
     }
 

@@ -10,9 +10,6 @@ namespace Tiny\Abstracts;
 
 use Tiny\Request;
 use Tiny\Response;
-use Tiny\Traits\CacheTrait;
-use Tiny\Traits\EventTrait;
-use Tiny\Traits\LogTrait;
 
 
 /**
@@ -20,9 +17,8 @@ use Tiny\Traits\LogTrait;
  * 一个空的接口  实现此接口的类 才可以被分发器执行
  * @package Tiny
  */
-abstract class AbstractContext
+abstract class AbstractContext extends AbstractModel
 {
-    use EventTrait, LogTrait, CacheTrait;
 
     private $_request = null;
     private $_response = null;

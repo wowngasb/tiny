@@ -8,7 +8,6 @@
 
 namespace Tiny\OrmQuery;
 
-use Tiny\Func;
 
 class where extends AbstractQuery
 {
@@ -211,112 +210,112 @@ class Q
 {
     public static function where($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new where($value, $operator, $filter);
     }
 
     public static function orWhere($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhere($value, $operator, $filter);
     }
 
     public static function whereNull(callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereNull($filter);
     }
 
     public static function orWhereNull(callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereNull($filter);
     }
 
     public static function whereNotNull(callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereNotNull($filter);
     }
 
     public static function orWhereNotNull(callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereNotNull($filter);
     }
 
     public static function whereBetween($lower, $upper, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereBetween($lower, $upper, $filter);
     }
 
     public static function orWhereBetween($lower, $upper, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereBetween($lower, $upper, $filter);
     }
 
     public static function whereNotBetween($lower, $upper, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereNotBetween($lower, $upper, $filter);
     }
 
     public static function orWhereNotBetween($lower, $upper, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereNotBetween($lower, $upper, $filter);
     }
 
     public static function whereIn(array $values, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereIn($values, $filter);
     }
 
     public static function orWhereIn(array $values, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereIn($values, $filter);
     }
 
     public static function whereNotIn(array $values, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereNotIn($values, $filter);
     }
 
     public static function orWhereNotIn(array $values, callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereNotIn($values, $filter);
     }
 
     public static function whereColumn($first, $second, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereColumn($first, $second, $operator, $filter);
     }
 
     public static function whereTime($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereTime($value, $operator, $filter);
     }
 
     public static function orWhereTime($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereTime($value, $operator, $filter);
     }
 
     public static function whereDate($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereDate($value, $operator, $filter);
     }
 
     public static function orWhereDate($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new orWhereDate($value, $operator, $filter);
     }
 
     public static function whereDay($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereDay($value, $operator, $filter);
     }
 
     public static function whereMonth($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereMonth($value, $operator, $filter);
     }
 
     public static function whereYear($value, $operator = '=', callable $filter = null)
     {
-        return call_user_func_array(Func::method2name(__METHOD__), func_get_args());
+        return new whereYear($value, $operator, $filter);
     }
 
 }

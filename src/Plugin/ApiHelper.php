@@ -44,12 +44,17 @@ class ApiHelper
             $arg_name = $arg['name'];
             if (isset($args_input[$arg_name])) {
                 $tmp = $args_input[$arg_name];
-                if ($arg['isArray'] && !is_array($tmp)) {
-                    $tmp = [$tmp];   //参数要求为数组，把单个参数包装为数组
+                if ($arg['isArray']) {
+                    if (!is_array($tmp) && $tmp !== '') {
+                        $tmp = [$tmp];   //参数要求为数组，把单个参数包装为数组
+                    }
+                    $default = !empty($arg['isOptional']) ? $arg['defaultValue'] : [];   //参数未给出时优先使用函数的默认参数，如果无默认参数这设置为 空数组
+                    $tmp = is_array($tmp) && !empty($tmp) ? $tmp : $default;
                 }
                 $tmp_args[$arg_name] = $tmp;
             } else {
-                $tmp_args[$arg_name] = $arg['isOptional'] ? $arg['defaultValue'] : '';   //参数未给出时优先使用函数的默认参数，如果无默认参数这设置为空字符串
+                $default = $arg['isOptional'] ? $arg['defaultValue'] : '';   //参数未给出时优先使用函数的默认参数，如果无默认参数这设置为空字符串
+                $tmp_args[$arg_name] = $default;
             }
         }
         return $tmp_args;

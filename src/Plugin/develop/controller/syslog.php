@@ -25,7 +25,7 @@ class sysLog extends BaseDevelopController
 
     public function index()
     {
-        Application::forward($this->getRequest(), $this->getResponse(), ['', '', 'showlogdir']);
+        Application::app()->forward($this->getRequest(), $this->getResponse(), ['', '', 'showlogdir']);
     }
 
     public function showLogDir()

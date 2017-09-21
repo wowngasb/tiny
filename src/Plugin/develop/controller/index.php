@@ -22,7 +22,7 @@ class index extends BaseDevelopController
 
     public function index()
     {
-        Application::forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
+        Application::app()->forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
     }
 
     public function auth()
@@ -31,7 +31,7 @@ class index extends BaseDevelopController
 
         $this->_setCookieDevelopKey($develop_key);
         if (self::authDevelopKey()) {  //认证 通过
-            Application::redirect(Request::urlTo($this->getRequest(), ['', 'syslog', 'index']));
+            Application::app()->redirect(Request::urlTo($this->getRequest(), ['', 'syslog', 'index']));
         } else {
             $this->_showLoginBox($develop_key);
         }

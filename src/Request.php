@@ -20,7 +20,7 @@ class Request
     protected $_request_uri = '/';  // 当前请求的Request URI
     protected $_method = 'GET';  // 当前请求的Method, 对于命令行来说, Method为"CLI"
     protected $_language = ''; // 当前请求的希望接受的语言, 对于Http请求来说, 这个值来自分析请求头Accept-Language. 对于不能鉴别的情况, 这个值为空.
-    protected $_is_routed = false; // 表示当前请求是否已经完成路由 完成后 不可修改路由和参数信息
+    protected $_routed = false; // 表示当前请求是否已经完成路由 完成后 不可修改路由和参数信息
     protected $_http_referer = '';
     protected $_this_url = '';
     protected $_csrf_token = '';
@@ -50,7 +50,7 @@ class Request
     /**
      * @return bool
      */
-    public function getSessionStarted()
+    public function isSessionStarted()
     {
         return $this->_session_started;
     }
@@ -90,7 +90,7 @@ class Request
      */
     public function setRouteInfo(array $routeInfo)
     {
-        if ($this->_is_routed) {
+        if ($this->_routed) {
             throw new AppStartUpError('request has been routed');
         }
         if (count($routeInfo) !== 3 || empty($routeInfo[0]) || empty($routeInfo[1]) || empty($routeInfo[2])) {
@@ -136,7 +136,7 @@ class Request
      */
     public function setCurrentRoute($current_route)
     {
-        if ($this->_is_routed) {
+        if ($this->_routed) {
             throw new AppStartUpError('request has been routed');
         }
         $this->_current_route = $current_route;
@@ -170,18 +170,18 @@ class Request
     /**
      * @return bool
      */
-    public function getIsRouted()
+    public function isRouted()
     {
-        return $this->_is_routed;
+        return $this->_routed;
     }
 
     /**
      * @param bool $is_routed
      * @return $this
      */
-    public function setIsRouted($is_routed = true)
+    public function setRouted($is_routed = true)
     {
-        $this->_is_routed = $is_routed;
+        $this->_routed = $is_routed;
         return $this;
     }
 
@@ -242,7 +242,7 @@ class Request
      */
     public function reset_route()
     {
-        $this->_is_routed = false;
+        $this->_routed = false;
         $this->_current_route = '';
         $this->_params = [];
         $this->_route_info = [];

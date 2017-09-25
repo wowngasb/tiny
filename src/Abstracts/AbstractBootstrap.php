@@ -61,21 +61,21 @@ abstract class AbstractBootstrap
 
         Application::on('routerStartup', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
-            $data = ['_request' => $request, 'request' => $request->_request()];
+            $data = ['_request' => $request, 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
             self::debugConsole($data, $tag, 1);
         });
         /* Application::on('routerShutdown', function (Application $obj, Request $request, Response $response) {
             false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->strRouteInfo(), 'request' => $request->_request()];
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->strRouteInfo(), 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
             self::debugConsole($data, $tag, 1);
         }); */
         Application::on('dispatchLoopStartup', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->_request()];
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
             if ($request->isSessionStarted()) {
-                $data['session'] = $request->_session();
+                $data['session'] = $request->all_session();
             }
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopStartup');
             self::debugConsole($data, $tag, 1);
@@ -89,7 +89,7 @@ abstract class AbstractBootstrap
         }); */
         Application::on('preDispatch', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->_request(), 'session' => $request->_session(), 'cookie' => $request->_cookie()];
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->all_request(), 'session' => $request->all_session(), 'cookie' => $request->all_cookie()];
             $tag = $request->debugTag(get_class($obj) . ' #preDispatch');
             self::debugConsole($data, $tag, 1);
         });

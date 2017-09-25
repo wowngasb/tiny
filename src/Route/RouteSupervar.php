@@ -74,7 +74,7 @@ class RouteSupervar implements RouteInterface
         }
 
         $routeInfo = [$controller, $action, $module];
-        $params = $request->_request();
+        $params = $request->all_request();
         unset($params[$this->route_key]);
         return [$routeInfo, $params];
     }

@@ -253,7 +253,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
                 return [$route, $tmp,];
             }
         }
-        return [$this->_route_name, [$this->getDefaultRouteInfo(), $request->_request()]];  //无匹配路由时 始终返回自己的默认路由
+        return [$this->_route_name, [$this->getDefaultRouteInfo(), $request->all_request()]];  //无匹配路由时 始终返回自己的默认路由
     }
 
     /**
@@ -367,7 +367,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     {
         $code = $ex->getCode();
         $http_code = $code >= 500 && $code < 600 ? $code : 500;
-        $response->clearBody()->setResponseCode($http_code)->appendBody($ex->getMessage());
+        $response->resetResponse()->setResponseCode($http_code)->appendBody($ex->getMessage());
     }
 
     ###############################################################
@@ -506,14 +506,15 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     }
 
     /**
-     * 重定向请求到新的路径  HTTP 302
+     * 重定向请求到新的路径  HTTP 302  自带 exit 效果
      * @param ResponseInterface $response
      * @param string $url 要重定向到的URL
      * @return void
      */
     public static function redirect(ResponseInterface $response, $url)
     {
-        $response->resetResponse()->addHeader("Location: {$url}", true)->sendHeader();
+        $response->resetResponse()->addHeader("Location: {$url}", true)->setResponseCode(302)->sendHeader();
+        exit();
     }
 
 }

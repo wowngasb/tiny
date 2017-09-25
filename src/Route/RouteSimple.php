@@ -64,7 +64,7 @@ class RouteSimple implements RouteInterface
         $action = !empty($action) ? Func::trimlower($action) : $default_action;
 
         $routeInfo = [$module, $controller, $action];
-        $params = $request->_request();
+        $params = $request->all_request();
         unset($params[$this->module_key], $params[$this->controller_key], $params[$this->action_key]);
         return [$routeInfo, $params];
     }

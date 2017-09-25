@@ -36,7 +36,7 @@ class ApiDispatch implements DispatchInterface
      */
     public static function initMethodParams(AbstractContext $context, $action, array $params)
     {
-        $__server = $context->_server();
+        $__server = $context->getRequest()->all_server();
         if (isset($__server['CONTENT_TYPE']) && stripos($__server['CONTENT_TYPE'], 'application/json') !== false && $__server['REQUEST_METHOD'] == "POST") {
             $json_str = $context->getRequest()->raw_post_data();
             $json = !empty($json_str) ? json_decode($json_str, true) : [];

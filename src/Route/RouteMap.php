@@ -71,7 +71,7 @@ class RouteMap implements RouteInterface
 
         if (!empty($matches[1]) && !empty($matches[2]) && !empty($matches[3])) {
             $routeInfo = [Func::trimlower($matches[1]), Func::trimlower($matches[2]), Func::trimlower($matches[3])];
-            return [$routeInfo, $request->_request()];
+            return [$routeInfo, $request->all_request()];
         } else {
             return [null, null];
         }

@@ -57,7 +57,7 @@ class RouteRegex implements RouteInterface
 
         if (!empty($matches)) {
             $routeInfo = $this->_routeInfo;
-            $params = $request->_request();
+            $params = $request->all_request();
             foreach ($this->_reg_map as $idx => $key) {
                 $params[$key] = $matches[$idx];
             }

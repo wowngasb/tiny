@@ -101,6 +101,15 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public function run(RequestInterface $request, ResponseInterface $response)
     {
+        try {
+            $this->_run($request, $response);
+        } catch (Exception $ex) {   // 捕获运行期间的所有异常
+            self::traceException($request, $response, $ex);
+        }
+    }
+
+    protected function _run(RequestInterface $request, ResponseInterface $response)
+    {
         if (!$this->_bootstrap_completed) {
             throw new AppStartUpError('call run without bootstrap completed');
         }
@@ -367,7 +376,8 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     {
         $code = $ex->getCode();
         $http_code = $code >= 500 && $code < 600 ? $code : 500;
-        $response->resetResponse()->setResponseCode($http_code)->appendBody($ex->getMessage());
+        $msg = self::dev() ? $ex->getTraceAsString() : $ex->getMessage();
+        $response->resetResponse()->setResponseCode($http_code)->appendBody($msg);
     }
 
     ###############################################################

@@ -35,7 +35,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     private $_default_route_info = ['index', 'index', 'index'];
 
     // 单实例 实现
-    private static $_instance_map = [];  // Application实现单利模式, 此属性保存当前实例
+    private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
 
     /**
      * Application constructor.
@@ -401,59 +401,55 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public static function app($appname = 'app', array $config = null)
     {
-        if (!isset(self::$_instance_map[$appname])) {
-            self::$_instance_map[$appname] = new self(is_null($config) ? [] : $config, $appname);
+        if (is_null(self::$_instance)) {
+            self::$_instance = new self(is_null($config) ? [] : $config, $appname);
         }
-        return self::$_instance_map[$appname];
+        return self::$_instance;
     }
 
     /**
-     * @param string $appname
      * @return string
      */
-    public static function environ($appname = 'app')
+    public static function environ()
     {
-        return trim(self::get_config('ENVIRON', 'product', $appname));
+        return trim(self::get_config('ENVIRON', 'product'));
     }
 
-    public static function is_dev($appname = 'app')
+    public static function is_dev()
     {
-        return Func::stri_cmp('debug', self::environ($appname));
+        return Func::stri_cmp('debug', self::environ());
     }
 
     /**
      * 加密函数 使用 配置 CRYPT_KEY 作为 key
      * @param string $string 需要加密的字符串
      * @param int $expiry 加密生成的数据 的 有效期 为0表示永久有效， 单位 秒
-     * @param string $appname
      * @return string 加密结果 使用了 safe_base64_encode
      */
-    public static function encrypt($string, $expiry = 0, $appname = 'app')
+    public static function encrypt($string, $expiry = 0)
     {
-        return Func::encode($string, self::get_config('CRYPT_KEY', '', $appname), $expiry);
+        return Func::encode($string, self::get_config('CRYPT_KEY', ''), $expiry);
     }
 
     /**
      * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
      * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
-     * @param string $appname
      * @return string 解密结果
      */
-    public static function decrypt($string, $appname = 'app')
+    public static function decrypt($string)
     {
-        return Func::decode($string, self::get_config('CRYPT_KEY', '', $appname));
+        return Func::decode($string, self::get_config('CRYPT_KEY', ''));
     }
 
     /**
      * 获取 全局配置 指定key的值 不存在则返回 default
      * @param string $key
      * @param mixed $default
-     * @param string $appname
      * @return mixed
      */
-    public static function get_config($key, $default = '', $appname = 'app')
+    public static function get_config($key, $default = '')
     {
-        $config = static::app($appname)->getConfig();
+        $config = static::app()->getConfig();
         return self::_find_config($key, $default, $config);
     }
 

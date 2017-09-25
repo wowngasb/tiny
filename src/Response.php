@@ -3,12 +3,13 @@
 namespace Tiny;
 
 use Tiny\Exception\AppStartUpError;
+use Tiny\Interfaces\ResponseInterface;
 
 /**
  * Class Response
  * @package Tiny
  */
-class Response
+class Response implements ResponseInterface
 {
 
     protected $_header_list = [];  // 响应给请求的Header

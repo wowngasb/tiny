@@ -9,13 +9,15 @@
 namespace Tiny;
 
 use Tiny\Exception\AppStartUpError;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 
 /**
  * Class Request
  * 默认 Request 请求参数来源 使用默认 php 的 超全局变量
  * @package Tiny
  */
-class Request
+class Request implements RequestInterface
 {
     protected $_request_uri = '/';  // 当前请求的Request URI
     protected $_method = 'GET';  // 当前请求的Method, 对于命令行来说, Method为"CLI"
@@ -217,10 +219,10 @@ class Request
 
     /**
      * 启用 session
-     * @param Response $response
+     * @param ResponseInterface $response
      * @return $this
      */
-    public function session_start(Response $response)
+    public function session_start(ResponseInterface $response)
     {
         false && func_get_args();
 
@@ -281,13 +283,13 @@ class Request
 
     /**
      * 根据 路由信息 和 参数 按照路由规则生成 url
-     * @param Request $request
+     * @param RequestInterface $request
      * @param array $routerArr 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
      * @param array $params
      * @return string
      * @throws AppStartUpError
      */
-    public static function urlTo(Request $request, array $routerArr = [], array $params = [])
+    public static function urlTo(RequestInterface $request, array $routerArr = [], array $params = [])
     {
         $route = $request->getCurrentRoute();
         $routerArr = Func::mergeNotEmpty($request->getRouteInfo(), $routerArr);

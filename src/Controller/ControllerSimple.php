@@ -11,8 +11,8 @@ namespace Tiny\Controller;
 
 use Tiny\Abstracts\AbstractController;
 use Tiny\Func;
-use Tiny\Request;
-use Tiny\Response;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 use Tiny\View\ViewSimple;
 
 class ControllerSimple extends AbstractController
@@ -20,7 +20,7 @@ class ControllerSimple extends AbstractController
     private $_view_dir = '';
     private $_widget_dir = '';
 
-    final public function __construct(Request $request, Response $response)
+    final public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
         $this->setView(new ViewSimple());

@@ -11,7 +11,7 @@ namespace Tiny\Route;
 use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Func;
-use Tiny\Request;
+use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
 
 /**
@@ -47,10 +47,10 @@ class RouteSimple implements RouteInterface
     /**
      * 根据请求的 $_method $_request_uri $_language 得出 路由信息 及 参数
      * 匹配成功后 获得 路由信息 及 参数
-     * @param Request $request 请求对象
+     * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [$routeInfo, $params]  失败 [null, null]
      */
-    public function route(Request $request)
+    public function buildRouteInfo(RequestInterface $request)
     {
         $module = $request->_get($this->module_key, '');
         $controller = $request->_get($this->controller_key, '');
@@ -75,7 +75,7 @@ class RouteSimple implements RouteInterface
      * @param array $params 参数数组
      * @return string
      */
-    public function url(array $routeInfo, array $params = [])
+    public function buildUrl(array $routeInfo, array $params = [])
     {
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
         unset($params[$this->module_key], $params[$this->controller_key], $params[$this->action_key]);

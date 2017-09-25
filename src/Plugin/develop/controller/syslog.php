@@ -8,7 +8,6 @@ use Tiny\Func;
 use Tiny\Plugin\ApiHelper;
 use Tiny\Plugin\develop\base\BaseDevelopController;
 use Tiny\Plugin\LogHelper;
-use Tiny\Request;
 
 class sysLog extends BaseDevelopController
 {
@@ -18,7 +17,7 @@ class sysLog extends BaseDevelopController
         $params = parent::beforeAction($params);
 
         if (!$this->authDevelopKey()) {  //认证 不通过
-            Application::redirect(Request::urlTo($this->getRequest(), ['', 'index', 'index']));
+            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'index', 'index']));
         }
         return $params;
     }
@@ -104,7 +103,7 @@ class sysLog extends BaseDevelopController
                 $rst[] = [
                     'text' => $val['name'],
                     'id' => $val['name'],
-                    'href' => Request::urlTo($this->getRequest(), ['', '', 'showlogfile'], ['file' => $val['path'], 'scroll_to' => 'end']),
+                    'href' => Application::url($this->getRequest(), ['', '', 'showlogfile'], ['file' => $val['path'], 'scroll_to' => 'end']),
                     'leaf' => true,
                     'file_info' => "create_time : {$val['ctime_str']}, modify_time : {$val['mtime_str']}, size : {$val['size_str']}",
                 ];
@@ -130,7 +129,7 @@ class sysLog extends BaseDevelopController
     public function selectApi()
     {
         $appname = Application::app()->getAppName();
-        $api_path = Application::path_join([$appname, 'api']);
+        $api_path = Application::path([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         $tmp = [];
         foreach ($api_list as $key => $val) {

@@ -8,8 +8,8 @@
 
 namespace Tiny\Abstracts;
 
-use Tiny\Request;
-use Tiny\Response;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 
 
 /**
@@ -26,10 +26,10 @@ abstract class AbstractContext extends AbstractModel
 
     /**
      * BaseContext constructor.
-     * @param Request $request
-     * @param Response $response
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      */
-    public function __construct(Request $request, Response $response)
+    public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         $this->_request = $request;
         $this->_response = $response;
@@ -56,7 +56,7 @@ abstract class AbstractContext extends AbstractModel
     }
 
     /**
-     * @return null|Request
+     * @return null|RequestInterface
      */
     public function getRequest()
     {
@@ -64,7 +64,7 @@ abstract class AbstractContext extends AbstractModel
     }
 
     /**
-     * @return null|Response
+     * @return null|ResponseInterface
      */
     public function getResponse()
     {

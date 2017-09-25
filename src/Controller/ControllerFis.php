@@ -9,14 +9,14 @@
 namespace Tiny\Controller;
 
 use Tiny\Abstracts\AbstractController;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 use Tiny\View\ViewFis;
 use Tiny\Func;
-use Tiny\Request;
-use Tiny\Response;
 
 class ControllerFis extends AbstractController
 {
-    final public function __construct(Request $request, Response $response)
+    final public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
         $this->setView(new ViewFis());

@@ -1,7 +1,7 @@
 <?php
 /** @var string $json_dir */
 /** @var string $tool_title */
-/** @var \Tiny\Request $request */
+/** @var \Tiny\Interfaces\RequestInterface $request */
 /** @var array $routeInfo */
 /** @var string $color_type */
 /** @var string $file_str */
@@ -109,7 +109,7 @@
         console.info('after for:', Math.round((new Date().getTime() - START_TIME)), 'ms');
         $('#log_code').html(str_array.join("\n"));
         console.info('add html:', Math.round((new Date().getTime() - START_TIME)), 'ms');
-        if (SCROLL_TO == 'end') {
+        if (SCROLL_TO === 'end') {
             var h = $(document).height() - $(window).height();
             $(document).scrollTop(h);
         }

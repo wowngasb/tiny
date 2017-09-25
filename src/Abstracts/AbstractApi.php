@@ -12,15 +12,15 @@ abstract class AbstractApi extends AbstractContext
      * 不同的API会有不同的调用次数限制, 请检查返回 header 中的如下字段
      * header 字段	描述
      */
-    public static function _apiLimitByTimeRange($api_key, $range_sec = 300, $max_num = 100, $tag = 'all')
+    public function _apiLimitByTimeRange($api_key, $range_sec = 300, $max_num = 100, $tag = 'all')
     {
         $testRst = self::_apiLimitByTimeRangeTest($api_key, $range_sec, $max_num, $tag);
         foreach ($testRst as $key => $val) {
-            header("X-Rate-{$key}: {$val}");   // 使用原生实现 提高效率
+            $this->getResponse()->addHeader("X-Rate-{$key}: {$val}", true);
         }
 
         if (!empty($testRst['Remaining']) && $testRst['Remaining'] < 0) {
-            header("http/1.1 403 Forbidden");
+            $this->getResponse()->addHeader("http/1.1 403 Forbidden", true, 403);
             exit();
         }
         /*

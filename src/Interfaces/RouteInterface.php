@@ -8,8 +8,6 @@
 
 namespace Tiny\Interfaces;
 
-use Tiny\Request;
-
 
 /**
  * 路由接口类  实现此接口的可用于 路由分发
@@ -28,10 +26,10 @@ interface RouteInterface
     /**
      * 根据请求的 $_method $_request_uri $_language 得出 路由信息 及 参数
      * 匹配成功后 获得 路由信息 及 参数
-     * @param Request $request 请求对象
+     * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [ [$module, $controller, $action], $params ]  失败 [null, null]
      */
-    public function route(Request $request);
+    public function buildRouteInfo(RequestInterface $request);
 
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url
@@ -39,6 +37,6 @@ interface RouteInterface
      * @param array $params 参数数组
      * @return string
      */
-    public function url(array $routeInfo, array $params = []);
+    public function buildUrl(array $routeInfo, array $params = []);
 
 }

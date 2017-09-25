@@ -5,7 +5,6 @@ namespace Tiny\Plugin\develop\controller;
 
 use Tiny\Application;
 use Tiny\Plugin\develop\base\BaseDevelopController;
-use Tiny\Request;
 
 class index extends BaseDevelopController
 {
@@ -15,7 +14,7 @@ class index extends BaseDevelopController
         $params = parent::beforeAction($params);
 
         if ($this->authDevelopKey()) {  //认证 通过
-            Application::redirect(Request::urlTo($this->getRequest(), ['', 'syslog', 'index']));
+            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'syslog', 'index']));
         }
         return $params;
     }
@@ -31,7 +30,7 @@ class index extends BaseDevelopController
 
         $this->_setCookieDevelopKey($develop_key);
         if (self::authDevelopKey()) {  //认证 通过
-            Application::app()->redirect(Request::urlTo($this->getRequest(), ['', 'syslog', 'index']));
+            Application::app()->redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'syslog', 'index']));
         } else {
             $this->_showLoginBox($develop_key);
         }

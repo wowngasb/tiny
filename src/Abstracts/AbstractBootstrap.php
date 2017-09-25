@@ -11,8 +11,8 @@ namespace Tiny\Abstracts;
 
 use PhpConsole\Connector;
 use Tiny\Application;
-use Tiny\Request;
-use Tiny\Response;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 
 abstract class AbstractBootstrap
 {
@@ -25,7 +25,7 @@ abstract class AbstractBootstrap
      */
     public static function bootstrap(Application $app)
     {
-        if (Application::is_dev()) {
+        if (Application::dev()) {
             self::debugStrap();
         }
         $app->setBootstrapCompleted(true);
@@ -34,7 +34,7 @@ abstract class AbstractBootstrap
 
     public static function debugConsole($data, $tag = null, $ignoreTraceCalls = 0)
     {
-        if (Application::is_dev()) {
+        if (Application::dev()) {
             Connector::getInstance()->getDebugDispatcher()->dispatchDebug($data, $tag, $ignoreTraceCalls);
         }
     }
@@ -52,14 +52,14 @@ abstract class AbstractBootstrap
 
     private static function debugStrap()
     {
-        if (!Application::is_dev()) {  // 非调试模式下  直接返回
+        if (!Application::dev()) {  // 非调试模式下  直接返回
             return;
         }
 
         //开启 辅助调试模式 注册对应事件
-        Connector::getInstance()->setPassword(Application::get_config('ENV_DEVELOP_KEY'), true);
+        Connector::getInstance()->setPassword(Application::config('ENV_DEVELOP_KEY'), true);
 
-        Application::on('routerStartup', function (Application $obj, Request $request, Response $response) {
+        Application::on('routerStartup', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
             $data = ['_request' => $request, 'request' => $request->_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
@@ -71,7 +71,7 @@ abstract class AbstractBootstrap
             $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
             self::debugConsole($data, $tag, 1);
         }); */
-        Application::on('dispatchLoopStartup', function (Application $obj, Request $request, Response $response) {
+        Application::on('dispatchLoopStartup', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->_request()];
             if ($request->isSessionStarted()) {
@@ -87,7 +87,7 @@ abstract class AbstractBootstrap
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopShutdown');
             self::debugConsole($data, $tag, 1);
         }); */
-        Application::on('preDispatch', function (Application $obj, Request $request, Response $response) {
+        Application::on('preDispatch', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->_request(), 'session' => $request->_session(), 'cookie' => $request->_cookie()];
             $tag = $request->debugTag(get_class($obj) . ' #preDispatch');

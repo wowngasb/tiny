@@ -9,10 +9,8 @@
 namespace Tiny\Plugin\develop\controller;
 
 use Tiny\Application;
-use Tiny\Func;
 use Tiny\Plugin\ApiHelper;
 use Tiny\Plugin\develop\base\BaseDevelopController;
-use Tiny\Request;
 
 
 /**
@@ -27,7 +25,7 @@ class deploy extends BaseDevelopController
         $params = parent::beforeAction($params);
 
         if (!$this->authDevelopKey()) {  //认证 不通过
-            Application::redirect(Request::urlTo($this->getRequest(), ['', 'index', 'index']));
+            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'index', 'index']));
         }
 
         return $params;
@@ -36,17 +34,6 @@ class deploy extends BaseDevelopController
     public function phpInfo()
     {
         phpinfo();
-    }
-
-    public function runCrontab()
-    {
-        $script = $this->_get('script');
-        $script = Func::stri_endwith($script, '.php') ? $script : "{$script}.php";
-        $file = Application::path_join(['crontab', $script]);
-        if (empty($script) || strpos($script, '..') !== false || !is_file($file)) {
-            exit('error script file.');
-        }
-        include_once($file);
     }
 
     //初始化 超级管理员
@@ -92,7 +79,7 @@ EOT;
         $appname = Application::app()->getAppName();
         $html_str = '';
         $dev_debug = $this->_get('dev_debug', 0) == 1;
-        $api_path = Application::path_join([$appname, 'api']);
+        $api_path = Application::path([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         foreach ($api_list as $key => $val) {
             $class = str_replace('.php', '', $val['name']);
@@ -100,7 +87,7 @@ EOT;
             $class_name = "\\{$appname}\\api\\{$class}";
             $method_list = ApiHelper::getApiMethodList($class_name);
             $js_str = ApiHelper::model2js($class, $method_list, $dev_debug);
-            $out_path = Application::path_join([$appname, 'static', 'api']);
+            $out_path = Application::path([$appname, 'static', 'api']);
             if (!is_dir($out_path)) {
                 mkdir($out_path, 0777, true);
             }

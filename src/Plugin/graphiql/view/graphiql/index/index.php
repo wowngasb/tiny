@@ -1,7 +1,7 @@
 <?php
 /** @var string $json_api_list */
 /** @var string $tool_title */
-/** @var \Tiny\Request $request */
+/** @var \Tiny\Interfaces\RequestInterface $request */
 /** @var string $tool_title */
 
 ?>
@@ -9,14 +9,14 @@
 <html>
 <head>
     <title><?= htmlspecialchars($tool_title)?></title>
-    <link rel="stylesheet" href="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'graphiql.css']) ?>"/>
+    <link rel="stylesheet" href="<?= \Tiny\Application::url($request, ['', 'assets', 'graphiql.css']) ?>"/>
 
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'fetch.min.js']) ?>"></script>
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'react.min.js']) ?>"></script>
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'react-dom.min.js']) ?>"></script>
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'graphiql.js']) ?>"></script>
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'jquery-1.7.2.min.js']) ?>"></script>
-    <script src="<?= \Tiny\Request::urlTo($request, ['', 'assets', 'apihub.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'fetch.min.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'react.min.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'react-dom.min.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'graphiql.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'jquery-1.7.2.min.js']) ?>"></script>
+    <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'apihub.js']) ?>"></script>
 </head>
 <body>
 <div style="height: 100%">
@@ -69,7 +69,7 @@
                 return encodeURIComponent(key) + '=' +
                     encodeURIComponent(parameters[key]);
             }).join('&');
-        history.replaceState(null, null, newSearch);
+        history.replaceState(null, '', newSearch);
     }
 
     function replaceAll(str, s1, s2){

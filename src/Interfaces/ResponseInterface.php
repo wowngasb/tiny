@@ -19,18 +19,25 @@ interface ResponseInterface
      * @param string $string
      * @param bool $replace [optional]
      * @param int $http_response_code [optional]
-     * @return $this
+     * @return ResponseInterface
      * @throws \Exception HeaderError
      */
     public function addHeader($string, $replace = true, $http_response_code = null);
 
+    /**
+     * @return ResponseInterface
+     */
     public function resetResponse();
 
+    /**
+     * @param $code
+     * @return ResponseInterface
+     */
     public function setResponseCode($code);
 
     /**
      * 发送响应header给请求端
-     * @return $this
+     * @return ResponseInterface
      * @throws AppStartUpError
      */
     public function sendHeader();
@@ -39,12 +46,12 @@ interface ResponseInterface
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
      * @param string $name 此次发送消息体的 名称 可用于debug
-     * @return $this
+     * @return ResponseInterface
      */
     public function appendBody($msg, $name = '');
 
     /**
-     * @return $this
+     * @return ResponseInterface
      */
     public function sendBody();
 
@@ -56,7 +63,7 @@ interface ResponseInterface
 
     /**
      * @param string|null $name
-     * @return $this
+     * @return ResponseInterface
      */
     public function clearBody($name = null);
 

@@ -25,7 +25,7 @@ trait CacheTrait
     public static function getCacheInstance()
     {
         if (is_null(self::$_mCacheManager)) {
-            $env_cache = Application::get_config('ENV_CACHE');
+            $env_cache = Application::config('ENV_CACHE');
             $type = !empty($env_cache['type']) ? $env_cache['type'] : 'file';
             $config = !empty($env_cache['config']) ? $env_cache['config'] : [];
             self::$_mCacheManager = CacheManager::getInstance($type, $config);

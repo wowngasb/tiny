@@ -17,11 +17,11 @@ use Tiny\Interfaces\DispatchInterface;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Exception\Error;
 use Tiny\Func;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 use Tiny\Plugin\ApiHelper;
 use Tiny\Traits\CacheTrait;
 use Tiny\Traits\LogTrait;
-use Tiny\Request;
-use Tiny\Response;
 
 class ApiDispatch implements DispatchInterface
 {
@@ -38,7 +38,7 @@ class ApiDispatch implements DispatchInterface
     {
         $__server = $context->_server();
         if (isset($__server['CONTENT_TYPE']) && stripos($__server['CONTENT_TYPE'], 'application/json') !== false && $__server['REQUEST_METHOD'] == "POST") {
-            $json_str = file_get_contents('php://input') ?: '';
+            $json_str = $context->getRequest()->raw_post_data();
             $json = !empty($json_str) ? json_decode($json_str, true) : [];
             $params = array_merge($params, $json);  //补充上$_REQUEST 中的信息
         }
@@ -71,14 +71,14 @@ class ApiDispatch implements DispatchInterface
 
     /**
      * 创建需要调用的对象 并检查对象和方法的合法性
-     * @param Request $request
-     * @param Response $response
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      * @param string $namespace
      * @param string $action
      * @return AbstractContext
      * @throws AppStartUpError
      */
-    public static function initMethodContext(Request $request, Response $response, $namespace, $action)
+    public static function initMethodContext(RequestInterface $request, ResponseInterface $response, $namespace, $action)
     {
         if (!class_exists($namespace)) {
             throw new AppStartUpError("class:{$namespace} not exists with {$namespace}");
@@ -115,17 +115,17 @@ class ApiDispatch implements DispatchInterface
 
     /**
      * 处理异常接口 用于捕获分发过程中的异常
-     * @param Request $request
-     * @param Response $response
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      * @param Exception $ex
      * @param bool $get_previous
      * @throws AppStartUpError
      */
-    public static function traceException(Request $request, Response $response, Exception $ex, $get_previous = true)
+    public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex, $get_previous = true)
     {
         $response->clearBody();
         $code = $ex->getCode();  // errno为0 或 无error字段 表示没有错误  errno设置为0 会忽略error字段
-        $error = Application::is_dev() ? [
+        $error = Application::dev() ? [
             'Exception' => get_class($ex),
             'code' => $ex->getCode(),
             'message' => $ex->getMessage(),
@@ -140,7 +140,7 @@ class ApiDispatch implements DispatchInterface
         while ($get_previous && !empty($ex) && $ex->getPrevious()) {
             $result['error']['errors'] = isset($result['error']['errors']) ? $result['error']['errors'] : [];
             $ex = $ex->getPrevious();
-            $result['error']['errors'][] = Application::is_dev() ? ['Exception' => get_class($ex), 'code' => $ex->getCode(), 'message' => $ex->getMessage(), 'file' => $ex->getFile() . ' [' . $ex->getLine() . ']'] : ['code' => $ex->getCode(), 'message' => $ex->getMessage()];
+            $result['error']['errors'][] = Application::dev() ? ['Exception' => get_class($ex), 'code' => $ex->getCode(), 'message' => $ex->getMessage(), 'file' => $ex->getFile() . ' [' . $ex->getLine() . ']'] : ['code' => $ex->getCode(), 'message' => $ex->getMessage()];
         }
 
         $callback = $request->_get('callback', '');

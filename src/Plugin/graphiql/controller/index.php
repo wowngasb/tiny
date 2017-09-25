@@ -11,7 +11,6 @@ namespace Tiny\Plugin\graphiql\controller;
 
 use Tiny\Application;
 use Tiny\Plugin\graphiql\base\BaseGraphiQLController;
-use Tiny\Request;
 
 class index extends BaseGraphiQLController
 {
@@ -30,7 +29,7 @@ class index extends BaseGraphiQLController
 
         $this->_setCookieDevelopKey($develop_key);
         if (self::authDevelopKey()) {  //认证 通过
-            Application::redirect(Request::urlTo($this->getRequest(), ['', '', 'index']));
+            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', '', 'index']));
         } else {
             $this->_showLoginBox($develop_key);
         }

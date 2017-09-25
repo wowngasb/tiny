@@ -38,6 +38,10 @@ class Response implements ResponseInterface
         return $this;
     }
 
+    /**
+     * @return $this
+     * @throws AppStartUpError
+     */
     public function resetResponse()
     {
         if ($this->_header_sent) {

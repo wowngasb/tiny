@@ -10,7 +10,7 @@ namespace Tiny\Route;
 
 
 use Tiny\Func;
-use Tiny\Request;
+use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
 
 
@@ -45,10 +45,10 @@ class RouteRegex implements RouteInterface
     /**
      * 根据请求的 $_method $_request_uri $_language 得出 路由信息 及 参数
      * 匹配成功后 获得 路由信息 及 参数
-     * @param Request $request 请求对象
+     * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [ [$module, $controller, $action], $params ]  失败 [null, null]
      */
-    public function route(Request $request)
+    public function buildRouteInfo(RequestInterface $request)
     {
         $uri = $request->fixRequestPath();
         $reg_str = Func::str_startwith($this->_regex, "^\/") ? $this->_regex : "^\/{$this->_regex}";
@@ -73,7 +73,7 @@ class RouteRegex implements RouteInterface
      * @param array $params 参数数组
      * @return string
      */
-    public function url(array $routeInfo, array $params = [])
+    public function buildUrl(array $routeInfo, array $params = [])
     {
         return '';
     }

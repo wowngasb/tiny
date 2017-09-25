@@ -1,7 +1,7 @@
 <?php
 /** @var string $json_dir */
 /** @var string $tool_title */
-/** @var \Tiny\Request $request */
+/** @var \Tiny\Interfaces\RequestInterface $request */
 /** @var array $routeInfo */
 
 ?>
@@ -76,7 +76,7 @@
                     height: 70
                 },
                 xclass: 'controller',
-                content: '<h2>日志管理系统，仅供内部人员使用。<a href="<?=\Tiny\Request::urlTo($request, ['', '', 'selectapi'], [])?>" target="view_window">调试API</a></h2>'
+                content: '<h2>日志管理系统，仅供内部人员使用。<a href="<?=\Tiny\Application::url($request, ['', '', 'selectapi'], [])?>" target="view_window">调试API</a></h2>'
             }, {
                 xclass: 'controller',
                 layout: {

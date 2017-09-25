@@ -11,7 +11,7 @@ namespace Tiny\Route;
 
 use Tiny\Application;
 use Tiny\Func;
-use Tiny\Request;
+use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
 
 
@@ -45,10 +45,10 @@ class RouteMap implements RouteInterface
      * 根据请求的 $_method $_request_uri $_language 得出 路由信息 及 参数
      * 匹配成功后 获得 路由信息 及 参数  总是可以成功
      * 一般参数应设置到 php 原始 $_GET, $_POST $_REQUEST 中， 保持一致性
-     * @param Request $request 请求对象
+     * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [$routeInfo, $params]  失败 [null, null]
      */
-    public function route(Request $request)
+    public function buildRouteInfo(RequestInterface $request)
     {
         $uri_origin = $request->fixRequestPath();
         if (!Func::stri_startwith($uri_origin, $this->_base_uri)) {
@@ -83,7 +83,7 @@ class RouteMap implements RouteInterface
      * @param array $params 参数数组
      * @return string
      */
-    public function url(array $routeInfo, array $params = [])
+    public function buildUrl(array $routeInfo, array $params = [])
     {
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
 

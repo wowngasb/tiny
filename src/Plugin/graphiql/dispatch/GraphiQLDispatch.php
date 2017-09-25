@@ -13,8 +13,8 @@ use Tiny\Abstracts\AbstractContext;
 use Tiny\Application;
 use Tiny\Interfaces\DispatchInterface;
 use Tiny\Func;
-use Tiny\Request;
-use Tiny\Response;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 
 class GraphiQLDispatch implements DispatchInterface
 {
@@ -55,13 +55,13 @@ class GraphiQLDispatch implements DispatchInterface
 
     /**
      * 创建需要调用的对象 并检查对象和方法的合法性
-     * @param Request $request
-     * @param Response $response
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      * @param string $namespace
      * @param string $action
      * @return AbstractContext 可返回实现此接口的 其他对象 方便做类型限制
      */
-    public static function initMethodContext(Request $request, Response $response, $namespace, $action)
+    public static function initMethodContext(RequestInterface $request, ResponseInterface $response, $namespace, $action)
     {
         return Application::initMethodContext($request, $response, $namespace, $action);
     }
@@ -79,11 +79,11 @@ class GraphiQLDispatch implements DispatchInterface
 
     /**
      * 处理异常接口 用于捕获分发过程中的异常
-     * @param Request $request
-     * @param Response $response
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      * @param Exception $ex
      */
-    public static function traceException(Request $request, Response $response, Exception $ex)
+    public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex)
     {
         Application::traceException($request, $response, $ex);
     }

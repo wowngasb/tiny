@@ -9,8 +9,8 @@
 namespace Tiny\Abstracts;
 
 use Tiny\Application;
-use Tiny\Request;
-use Tiny\Response;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Interfaces\ResponseInterface;
 use Tiny\Interfaces\ViewInterface;
 
 /**
@@ -22,7 +22,7 @@ abstract class AbstractController extends AbstractContext
     private $_view = null;
     private $_layout = '';
 
-    public function __construct(Request $request, Response $response)
+    public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
     }
@@ -37,7 +37,7 @@ abstract class AbstractController extends AbstractContext
         return $this->_layout;
     }
 
-    protected static function extendAssign(Request $request, array $params)
+    protected static function extendAssign(RequestInterface $request, array $params)
     {
         $params['routeInfo'] = $request->getRouteInfo();
         $params['appname'] = Application::app()->getAppName();

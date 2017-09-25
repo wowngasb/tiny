@@ -1,7 +1,7 @@
 <?php
 /** @var string $json_api_list */
 /** @var string $tool_title */
-/** @var \Tiny\Request $request */
+/** @var \Tiny\Interfaces\RequestInterface $request */
 /** @var string $tool_title */
 
 ?>
@@ -26,13 +26,13 @@
     <h2 class="tip-title">常用脚本：</h2>
     <div class="control-group">
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'runCrontab'], ['script' => 'PerMinuteTask.php']) ?>">每分钟任务</a>
+           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'runCrontab'], ['script' => 'PerMinuteTask.php']) ?>">每分钟任务</a>
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'runCrontab'], ['script' => 'PerDayTask.php']) ?>">每日任务</a>
+           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'runCrontab'], ['script' => 'PerDayTask.php']) ?>">每日任务</a>
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
+           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Request::urlTo($request, ['', 'Deploy', 'phpInfo']) ?>">phpInfo</a>
+           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'phpInfo']) ?>">phpInfo</a>
         <a class="button button-success array_btn" target="new" href="<?=  \Tiny\Application::host()  ?>">首页</a>
     </div>
 </div>
@@ -86,7 +86,7 @@
     BUI.use('bui/form', function (Form) {
         //定义级联下拉框的类型
         BUI.Form.Group.Select.addType('custom1', {
-            url: "<?=\Tiny\Request::urlTo($request, ['', '', 'getmethodlist'])?>",
+            url: "<?=\Tiny\Application::url($request, ['', '', 'getmethodlist'])?>",
             root: {
                 id: '0',
                 children: <?= $json_api_list?>
@@ -99,7 +99,7 @@
         $('#api_method').change(function () {
             var cls = $('#api_class').val(),
                 method = $('#api_method').val();
-            var api_url = "<?=\Tiny\Request::urlTo($request, ['', '', 'getparamlist'])?>";
+            var api_url = "<?=\Tiny\Application::url($request, ['', '', 'getparamlist'])?>";
             $.ajax({
                 type: "GET",
                 url: api_url,
@@ -138,13 +138,13 @@
             for (var key in json_data) {
                 if (json_data.hasOwnProperty(key)) {
                     var item = json_data[key];
-                    if (item == 'null') {
+                    if (item === 'null') {
                         delete json_data[key];
                     }
                 }
             }
             var start_time = new Date().getTime();
-            if (typeof CSRF_TOKEN != "undefined" && CSRF_TOKEN) {
+            if (typeof CSRF_TOKEN !== "undefined" && CSRF_TOKEN) {
                 json_data.csrf = CSRF_TOKEN;
             }
             $.ajax({
@@ -154,7 +154,7 @@
                 dataType: "json",
                 success: function (data) {
                     var use_time = Math.round((new Date().getTime() - start_time));
-                    if (data.errno == 0 || !data.error) {
+                    if (data.errno === 0 || !data.error) {
                         api_log(cls, method, 'INFO', use_time, json_data, data);
                     } else {
                         api_log(cls, method, 'ERROR', use_time, json_data, data);
@@ -169,7 +169,7 @@
 
     function api_log(cls, func, tag, use_time, args, data) {
         delete args.csrf;
-        var _log_func_dict = (typeof console != "undefined" && typeof console.info == "function" && typeof console.warn == "function") ? {
+        var _log_func_dict = (typeof console !== "undefined" && typeof console.info === "function" && typeof console.warn === "function") ? {
             INFO: console.info.bind(console),
             ERROR: console.warn.bind(console)
         } : {};

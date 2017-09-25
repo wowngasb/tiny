@@ -33,6 +33,8 @@ class Request implements RequestInterface
 
     protected $_session_started = false;
     protected $_request_timestamp = null;
+    protected $_raw_post_data = null;
+
 
     public function __construct()
     {
@@ -57,21 +59,33 @@ class Request implements RequestInterface
         return $this->_session_started;
     }
 
+    /**
+     * @return float
+     */
     public function getRequestTimestamp()
     {
         return $this->_request_timestamp;
     }
 
+    /**
+     * @return string
+     */
     public function getCsrfToken()
     {
         return $this->_csrf_token;
     }
 
+    /**
+     * @return string
+     */
     public function getThisUrl()
     {
         return $this->_this_url;
     }
 
+    /**
+     * @return string
+     */
     public function getHttpReferer()
     {
         return $this->_http_referer;
@@ -199,11 +213,18 @@ class Request implements RequestInterface
     ############  启动及运行相关函数 ################
     ###############################################################
 
+    /**
+     * @return int
+     */
     public function usedMilliSecond()
     {
         return round(microtime(true) - $this->getRequestTimestamp(), 3) * 1000;
     }
 
+    /**
+     * @param null $tag
+     * @return null|string
+     */
     public function debugTag($tag = null)
     {
         if (!empty($tag)) {
@@ -212,6 +233,16 @@ class Request implements RequestInterface
         return $tag;
     }
 
+    /**
+     * @param string $name
+     * @param string $value
+     * @param int $expire
+     * @param string $path
+     * @param string $domain
+     * @param bool $secure
+     * @param bool $httponly
+     * @return bool
+     */
     public function setcookie($name, $value, $expire = 0, $path = "", $domain = "", $secure = false, $httponly = false)
     {
         return setcookie($name, $value, $expire, $path, $domain, $secure, $httponly);
@@ -233,6 +264,10 @@ class Request implements RequestInterface
         return $this;
     }
 
+    /**
+     * @param null $id
+     * @return null|string
+     */
     public function session_id($id = null)
     {
         return $this->_session_started ? session_id($id) : null;
@@ -281,143 +316,252 @@ class Request implements RequestInterface
         return Func::trimlower($path);
     }
 
-    /**
-     * 根据 路由信息 和 参数 按照路由规则生成 url
-     * @param RequestInterface $request
-     * @param array $routerArr 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
-     * @param array $params
-     * @return string
-     * @throws AppStartUpError
-     */
-    public static function urlTo(RequestInterface $request, array $routerArr = [], array $params = [])
-    {
-        $route = $request->getCurrentRoute();
-        $routerArr = Func::mergeNotEmpty($request->getRouteInfo(), $routerArr);
-        return Application::app()->getRoute($route)->url($routerArr, $params);
-    }
-
     ###############################################################
     ############  超全局变量 ################
     ###############################################################
 
+    ##################  $_GET ##################
+
     /**
      * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _get($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_GET) ? $_GET : []) : (isset($_GET[$name]) ? $_GET[$name] : $default);
-    }
-
-    public function set_get($name, $data)
-    {
-        return $_GET[$name] = $data;
+        return isset($_GET[$name]) ? $_GET[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_get()
+    {
+        return !empty($_GET) ? $_GET : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_get($name, $data)
+    {
+        $_GET[$name] = $data;
+    }
+
+    ##################  $_POST ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _post($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_POST) ? $_POST : []) : (isset($_POST[$name]) ? $_POST[$name] : $default);
-    }
-
-    public function set_post($name, $data)
-    {
-        return $_POST[$name] = $data;
+        return isset($_POST[$name]) ? $_POST[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_post()
+    {
+        return !empty($_POST) ? $_POST : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_post($name, $data)
+    {
+        $_POST[$name] = $data;
+    }
+
+    ##################  $_ENV ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _env($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_ENV) ? $_ENV : []) : (isset($_ENV[$name]) ? $_ENV[$name] : $default);
-    }
-
-    public function set_env($name, $data)
-    {
-        return $_ENV[$name] = $data;
+        return isset($_ENV[$name]) ? $_ENV[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_env()
+    {
+        return !empty($_ENV) ? $_ENV : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_env($name, $data)
+    {
+        $_ENV[$name] = $data;
+    }
+
+    ##################  $_SERVER ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _server($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_SERVER) ? $_SERVER : []) : (isset($_SERVER[$name]) ? $_SERVER[$name] : $default);
-    }
-
-    public function set_server($name, $data)
-    {
-        return $_SERVER[$name] = $data;
+        return isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_server()
+    {
+        return !empty($_SERVER) ? $_SERVER : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_server($name, $data)
+    {
+        $_SERVER[$name] = $data;
+    }
+
+    ##################  $_COOKIE ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _cookie($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_COOKIE) ? $_COOKIE : []) : (isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default);
-    }
-
-    public function set_cookie($name, $data)
-    {
-        return $_COOKIE[$name] = $data;
+        return isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_cookie()
+    {
+        return !empty($_COOKIE) ? $_COOKIE : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_cookie($name, $data)
+    {
+        $_COOKIE[$name] = $data;
+    }
+
+    ##################  $_FILES ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _files($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_FILES) ? $_FILES : []) : (isset($_FILES[$name]) ? $_FILES[$name] : $default);
-    }
-
-    public function set_files($name, $data)
-    {
-        return $_FILES[$name] = $data;
+        return isset($_FILES[$name]) ? $_FILES[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_files()
+    {
+        return !empty($_FILES) ? $_FILES : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_files($name, $data)
+    {
+        $_FILES[$name] = $data;
+    }
+
+    ##################  $_REQUEST ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _request($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_REQUEST) ? $_REQUEST : []) : (isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default);
-    }
-
-    public function set_request($name, $data)
-    {
-        return $_REQUEST[$name] = $data;
+        return isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
     }
 
     /**
-     * @param $name
+     * @return array
+     */
+    public function all_request()
+    {
+        return !empty($_REQUEST) ? $_REQUEST : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
+    public function set_request($name, $data)
+    {
+        $_REQUEST[$name] = $data;
+    }
+
+    ##################  $_SESSION ##################
+
+    /**
+     * @param string $name
      * @param string $default
-     * @return string|array
+     * @return string
      */
     public function _session($name = null, $default = '')
     {
-        return is_null($name) ? (!empty($_SESSION) ? $_SESSION : []) : (isset($_SESSION[$name]) ? $_SESSION[$name] : $default);
+        return isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
     }
 
+    /**
+     * @return array
+     */
+    public function all_session()
+    {
+        return !empty($_SESSION) ? $_SESSION : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string $data
+     */
     public function set_session($name, $data)
     {
-        return $_SESSION[$name] = $data;
+        $_SESSION[$name] = $data;
+    }
+
+    /**
+     * 读取原始请求数据
+     * @return string
+     */
+    public function raw_post_data()
+    {
+        if (is_null($this->_raw_post_data)) {
+            $this->_raw_post_data = file_get_contents('php://input') ?: '';
+        }
+        return $this->_raw_post_data;
     }
 
 }

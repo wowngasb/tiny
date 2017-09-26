@@ -81,8 +81,6 @@ abstract class AbstractController extends AbstractContext
      */
     abstract protected function display($tpl_path = '');
 
-    abstract protected function widget($tpl_path, array $params = []);
-
     /**
      *  注册回调函数  回调参数为 callback($this, $tpl_path, $params)
      *  1、preDisplay    在模板渲染之前触发

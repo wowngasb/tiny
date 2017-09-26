@@ -78,25 +78,8 @@ class ControllerSimple extends AbstractController
         } else {
             $html = $view->display($file_path, $params);
         }
-
+        $this->getResponse()->appendBody($html);
     }
 
-    /**
-     * @param string $tpl_path
-     * @param array $params
-     * @return string
-     * @throws \Tiny\Exception\AppStartUpError
-     */
-    protected function widget($tpl_path, array $params = [])
-    {
-        $tpl_path = Func::trimlower($tpl_path);
-        if (empty($tpl_path)) {
-            return '';
-        }
-        $tpl_path = Func::stri_endwith($tpl_path, '.php') ? $tpl_path : "{$tpl_path}.php";
-        $file_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->_widget_dir, $tpl_path]);
-        $buffer = $this->getView()->widget($file_path, $params);
-        return $buffer;
-    }
 
 }

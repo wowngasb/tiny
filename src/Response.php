@@ -3,6 +3,7 @@
 namespace Tiny;
 
 use Tiny\Exception\AppStartUpError;
+use Tiny\Exception\Interrupt;
 use Tiny\Interfaces\ResponseInterface;
 
 /**
@@ -53,6 +54,11 @@ class Response implements ResponseInterface
         return $this;
     }
 
+    /**
+     * @param $code
+     * @return $this
+     * @throws AppStartUpError
+     */
     public function setResponseCode($code)
     {
         if ($this->_header_sent) {
@@ -65,25 +71,23 @@ class Response implements ResponseInterface
     /**
      * 发送响应header给请求端
      * @return $this
-     * @throws AppStartUpError
      */
     public function sendHeader()
     {
-        if ($this->_header_sent) {
-            throw new AppStartUpError('header has been send');
+        if (!$this->_header_sent) {
+            foreach ($this->_header_list as $idx => $val) {
+                header($val[0], $val[1], $val[2]);
+            }
+            http_response_code($this->_code);
+            $this->_header_sent = true;
         }
-        foreach ($this->_header_list as $idx => $val) {
-            header($val[0], $val[1], $val[2]);
-        }
-        http_response_code($this->_code);
-        $this->_header_sent = true;
         return $this;
     }
 
     /**
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
-     * @param string $name 此次发送消息体的 名称 可用于debug
+     * @param string $name 此次发送消息体的 名称 可用于debug 或者 调整输出顺序
      * @return $this
      */
     public function appendBody($msg, $name = '')
@@ -95,20 +99,17 @@ class Response implements ResponseInterface
         return $this;
     }
 
+
     /**
-     * @return $this
+     * @return \Generator
      */
-    public function sendBody()
+    public function yieldBody()
     {
-        if (!$this->_header_sent) {
-            $this->sendHeader();
-        }
         foreach ($this->_body as $name => $body) {
             foreach ($body as $idx => $msg) {
-                echo $msg;
+                yield $msg;
             }
         }
-        return $this;
     }
 
     /**
@@ -136,4 +137,11 @@ class Response implements ResponseInterface
         return $this;
     }
 
+    /**
+     * @throws Interrupt
+     */
+    public function interrupt()
+    {
+        throw new Interrupt();
+    }
 }

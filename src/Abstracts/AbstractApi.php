@@ -20,8 +20,7 @@ abstract class AbstractApi extends AbstractContext
         }
 
         if (!empty($testRst['Remaining']) && $testRst['Remaining'] < 0) {
-            $this->getResponse()->addHeader("http/1.1 403 Forbidden", true, 403);
-            exit();
+            $this->getResponse()->resetResponse()->addHeader("http/1.1 403 Forbidden", true)->setResponseCode(403)->interrupt();
         }
         /*
         header("X-Rate-LimitTag: {$tag}");  //限制规则分类 all 代表总数限制

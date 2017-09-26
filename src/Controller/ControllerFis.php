@@ -55,21 +55,20 @@ class ControllerFis extends AbstractController
         $params = $view->getAssign();
 
         $layout = $this->getLayout();
+        $html = '';
         if (!empty($layout)) {
             $layout_tpl = Func::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
             $layout_path = $file_path = "view/{$routeInfo[0]}/{$routeInfo[1]}/{$layout_tpl}";
             if (is_file($layout_path)) {
-                ob_start();
-                ob_implicit_flush(false);
-                $view->display($file_path, $params);
-                $action_content = ob_get_clean();
+                $action_content = $view->display($file_path, $params);
 
                 $params['action_content'] = $action_content;
-                $view->display($layout_path, $params);
-                return;
+                $html = $view->display($layout_path, $params);
             }
+        } else {
+            $html = $view->display($file_path, $params);
         }
-        $view->display($file_path, $params);
+        $this->getResponse()->appendBody($html);
     }
 
     /**

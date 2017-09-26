@@ -60,12 +60,12 @@ class sysLog extends BaseDevelopController
         $path = $this->_get('file', '');
         if (empty($path)) {
             $result = ['errno' => -1, 'msg' => "参数错误"];
-            exit(json_encode($result));
+            return $this->getResponse()->appendBody(json_encode($result));
         }
         $test = pathinfo($path);
         if ($test['filename'] != date('Y-m-d')) {
             $result = ['errno' => -2, 'msg' => "不可清空今日以前日志"];
-            exit(json_encode($result));
+            return $this->getResponse()->appendBody(json_encode($result));
         }
 
         $rst = LogHelper::clearLogByPath($path);
@@ -74,7 +74,7 @@ class sysLog extends BaseDevelopController
         } else {
             $result = ['errno' => -3, 'msg' => "{$path}清空失败"];
         }
-        exit(json_encode($result));
+        return $this->getResponse()->appendBody(json_encode($result));
     }
 
     public function downLoadLogFile()
@@ -88,8 +88,7 @@ class sysLog extends BaseDevelopController
         header('Cache-Control:must-revalidate,post-check=0,pre-check=0');
         header('Expires:0');
         header('Pragma:public');
-        echo $file_str;
-        exit;
+        $this->getResponse()->appendBody($file_str);
     }
 
     private function fixPathData($arr_dir)
@@ -163,7 +162,7 @@ class sysLog extends BaseDevelopController
         }
         $rst['Args'] = $args_list;
         $rst['Note'] = $note;
-        echo json_encode($rst);
+        $this->getResponse()->appendBody(json_encode($rst));
     }
 
     public function getMethodList()
@@ -190,7 +189,7 @@ class sysLog extends BaseDevelopController
         usort($tmp, function ($a, $b) {
             return $a > $b ? 1 : -1;
         });
-        echo json_encode($tmp);
+        $this->getResponse()->appendBody(json_encode($tmp));
     }
 
 }

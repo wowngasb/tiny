@@ -9,6 +9,8 @@ use Tiny\Abstracts\AbstractController;
 
 use Tiny\Abstracts\AbstractModel;
 use Tiny\Exception\AppStartUpError;
+use Tiny\Exception\Error;
+use Tiny\Exception\Interrupt;
 use Tiny\Interfaces\DispatchInterface;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
@@ -103,11 +105,24 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     {
         try {
             $this->_run($request, $response);
+            $response->sendHeader();
+            foreach ($response->yieldBody() as $html) {
+                echo strval($html);  // 输出 响应内容
+            }
+        } catch (Interrupt $ex) {   // 中断 不做异常处理 尝试发送 http 头部信息
+            $response->sendHeader();
+        } catch (Error $ex) {   // 捕获 tiny 框架的异常
+            self::traceException($request, $response, $ex);
         } catch (Exception $ex) {   // 捕获运行期间的所有异常
             self::traceException($request, $response, $ex);
         }
     }
 
+    /**
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
+     * @throws AppStartUpError
+     */
     protected function _run(RequestInterface $request, ResponseInterface $response)
     {
         if (!$this->_bootstrap_completed) {
@@ -127,8 +142,6 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
         static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
         $this->forward($request, $response, $routeInfo, $params, $route);
         static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
-
-        $response->sendBody();
     }
 
     /**
@@ -170,7 +183,12 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
             static::fire('preDispatch', [$this, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
             static::fire('postDispatch', [$this, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
-        } catch (Exception $ex) {
+
+        } catch (Interrupt $ex) {   // 中断 不做异常处理 尝试发送 http 头部信息
+            $response->sendHeader();
+        } catch (Error $ex) {   // 捕获 tiny 框架的异常
+            $dispatcher::traceException($request, $response, $ex);
+        } catch (Exception $ex) {   // 捕获运行期间的所有异常
             $dispatcher::traceException($request, $response, $ex);
         }
     }
@@ -516,15 +534,14 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     }
 
     /**
-     * 重定向请求到新的路径  HTTP 302  自带 exit 效果
+     * 重定向请求到新的路径  HTTP 302
      * @param ResponseInterface $response
      * @param string $url 要重定向到的URL
      * @return void
      */
     public static function redirect(ResponseInterface $response, $url)
     {
-        $response->resetResponse()->addHeader("Location: {$url}", true)->setResponseCode(302)->sendHeader();
-        exit();
+        $response->resetResponse()->addHeader("Location: {$url}", true)->setResponseCode(302)->interrupt();
     }
 
 }

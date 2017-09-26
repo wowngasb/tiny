@@ -9,7 +9,7 @@
 namespace Tiny\Interfaces;
 
 
-use Tiny\Exception\AppStartUpError;
+use Tiny\Exception\Interrupt;
 
 interface ResponseInterface
 {
@@ -38,7 +38,6 @@ interface ResponseInterface
     /**
      * 发送响应header给请求端
      * @return ResponseInterface
-     * @throws AppStartUpError
      */
     public function sendHeader();
 
@@ -51,9 +50,9 @@ interface ResponseInterface
     public function appendBody($msg, $name = '');
 
     /**
-     * @return ResponseInterface
+     * @return \Generator
      */
-    public function sendBody();
+    public function yieldBody();
 
     /**
      * @param string|null $name
@@ -66,5 +65,10 @@ interface ResponseInterface
      * @return ResponseInterface
      */
     public function clearBody($name = null);
+
+    /**
+     * @throws Interrupt
+     */
+    public function interrupt();
 
 }

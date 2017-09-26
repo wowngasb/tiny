@@ -25,7 +25,7 @@ abstract class Func
     public static function mime_content_type($filename)
     {
 
-        $mime_types = array(
+        $mime_types = [
 
             'txt' => 'text/plain',
             'htm' => 'text/html',
@@ -79,16 +79,16 @@ abstract class Func
             // open office
             'odt' => 'application/vnd.oasis.opendocument.text',
             'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
-        );
+        ];
         $tmp = explode('.', $filename);
         $ext = strtolower(array_pop($tmp));
         if (array_key_exists($ext, $mime_types)) {
             return $mime_types[$ext];
         } elseif (function_exists('finfo_open')) {
-            $finfo = finfo_open(FILEINFO_MIME);
-            $mimetype = finfo_file($finfo, $filename);
-            finfo_close($finfo);
-            return $mimetype;
+            $info = finfo_open(FILEINFO_MIME);
+            $mime = finfo_file($info, $filename);
+            finfo_close($info);
+            return $mime;
         } else {
             return 'application/octet-stream';
         }
@@ -107,25 +107,25 @@ abstract class Func
                     return $var;
                 case 'resource':
                 case 'string':
-                    return '"' . str_replace(array("\r", "\n", "<", ">", "&"),
-                            array('\r', '\n', '\x3c', '\x3e', '\x26'),
+                    return '"' . str_replace(["\r", "\n", "<", ">", "&"],
+                            ['\r', '\n', '\x3c', '\x3e', '\x26'],
                             addslashes($var)) . '"';
                 case 'array':
                     if (empty ($var) || array_keys($var) === range(0, sizeof($var) - 1)) {
-                        $output = array();
+                        $output = [];
                         foreach ($var as $v) {
                             $output[] = static::jsonEncode($v);
                         }
                         return '[ ' . implode(', ', $output) . ' ]';
                     } else {
-                        $output = array();
+                        $output = [];
                         foreach ($var as $k => $v) {
                             $output[] = static::jsonEncode(strval($k)) . ': ' . static::jsonEncode($v);
                         }
                         return '{ ' . implode(', ', $output) . ' }';
                     }
                 case 'object':
-                    $output = array();
+                    $output = [];
                     foreach ($var as $k => $v) {
                         $output[] = static::jsonEncode(strval($k)) . ': ' . static::jsonEncode($v);
                     }
@@ -604,10 +604,10 @@ abstract class Func
 
         if ($operation == 'DECODE') {
             $keyc = $rnd_length > 0 ? substr($_string, 0, $rnd_length) : '';// 密匙c用于变化生成的密文
-            $cryptkey = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
+            $crypt = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
             // 解码，会从第 $keyc_length Byte开始，因为密文前 $keyc_length Byte保存 动态密匙
             $string = static::safe_base64_decode(substr($_string, $rnd_length));
-            $result = static::encodeByXor($string, $cryptkey);
+            $result = static::encodeByXor($string, $crypt);
             // 验证数据有效性
             $result_len_ = strlen($result);
             $expiry_at_ = $result_len_ >= 4 ? static::byteToInt32WithLittleEndian(substr($result, 0, 4)) : 0;
@@ -621,24 +621,24 @@ abstract class Func
             $keyc = $rnd_length > 0 ? static::rand_str($rnd_length) : '';// 密匙c用于变化生成的密文
             $checksum = substr(md5($salt . $_string . $keyb), 0, 2 * $chk_length);
             $expiry_at = $_expiry > 0 ? $_expiry + time() : 0;
-            $cryptkey = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
+            $crypt = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
             // 加密，原数据补充附加信息，共 8byte  前 4 Byte 用来保存时间戳，后 4 Byte 用来保存 $checksum 解密时验证数据完整性
             $string = static::int32ToByteWithLittleEndian($expiry_at) . hex2bin($checksum) . $_string;
-            $result = static::encodeByXor($string, $cryptkey);
+            $result = static::encodeByXor($string, $crypt);
             return $keyc . static::safe_base64_encode($result);
         }
     }
 
-    public static function encodeByXor($string, $cryptkey)
+    public static function encodeByXor($string, $crypt)
     {
         $string_length = strlen($string);
-        $key_length = strlen($cryptkey);
+        $key_length = strlen($crypt);
         $result_list = [];
         $box = range(0, 255);
         $rndkey = [];
         // 产生密匙簿
         for ($i = 0; $i <= 255; $i++) {
-            $rndkey[$i] = ord($cryptkey[$i % $key_length]);
+            $rndkey[$i] = ord($crypt[$i % $key_length]);
         }
 
         for ($j = $i = 0; $i < 256; $i++) {
@@ -889,7 +889,7 @@ EOT;
         if (!function_exists('apache_request_headers')) {
             function apache_request_headers()
             {
-                $arh = array();
+                $arh = [];
                 $rx_http = '/\AHTTP_/';
                 foreach ($_SERVER as $key => $val) {
                     if (preg_match($rx_http, $key)) {

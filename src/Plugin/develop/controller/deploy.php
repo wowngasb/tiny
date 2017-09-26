@@ -41,7 +41,7 @@ class deploy extends BaseDevelopController
     {
         $admin_id = 0;  // TODO 判断当前是否存在管理员
         if ($admin_id > 0) {
-            exit('pass');
+            return $this->getResponse()->appendBody('pass');
         }
         $username = $this->_post('username', '');
         $password = $this->_post('password', '');
@@ -53,15 +53,14 @@ class deploy extends BaseDevelopController
     <button type="submit">创建超级管理员</button>
 </form>
 EOT;
-            $this->getResponse()->appendBody($html_str);
-            return;
+            return $this->getResponse()->appendBody($html_str);
         }
         $admin_id = 0;  // TODO 创建管理员帐号
         if ($admin_id > 0) {
             $html_str = "init {$username} at {$admin_id} ok";
-            $this->getResponse()->appendBody($html_str);
-            return;
+            return $this->getResponse()->appendBody($html_str);
         }
+        return $this->getResponse()->appendBody('create admin error');
     }
 
     public function syncEnvConfig()

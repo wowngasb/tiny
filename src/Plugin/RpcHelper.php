@@ -22,11 +22,7 @@ class RpcHelper
     public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = 0, $timeout = 10)
     {
         $t1 = microtime(true);
-        //变量初始化
-        //open connection
         $ch = curl_init();
-        //set the url, number of POST vars, POST data
-        //print_r($query_url);exit();
         curl_setopt($ch, CURLOPT_URL, $query_url);
         curl_setopt($ch, CURLOPT_PORT, 80);
         curl_setopt($ch, CURLOPT_HEADER, false);

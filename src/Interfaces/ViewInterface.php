@@ -25,7 +25,7 @@ interface ViewInterface
     public static function preTreatmentWidget(callable $pre_widget);
 
     /**
-     * 渲染一个视图模板, 得到结果
+     * 渲染一个组件模板, 得到结果
      * @param string $widget_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
      * @return string
@@ -33,9 +33,10 @@ interface ViewInterface
     public static function widget($widget_path, array $tpl_vars = []);
 
     /**
-     * 渲染一个视图模板, 并直接输出给请求端
+     * 渲染一个视图模板, 得到结果
      * @param string $view_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
+     * @return string
      */
     public static function display($view_path, array $tpl_vars = []);
 

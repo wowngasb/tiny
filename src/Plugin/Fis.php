@@ -124,8 +124,15 @@ class Fis
         $path = FISResource::getUri($id);
         if (is_file($path)) {
             extract($tpl_vars, EXTR_OVERWRITE);
+
+            ob_implicit_flush(false);
+            ob_start();
             include($path);
+            $buffer = ob_get_clean();
+
+            $buffer = !empty($buffer) ? $buffer : '';
             FisResource::load($id);
+            return $buffer;
         }
         return '';
     }
@@ -134,21 +141,26 @@ class Fis
      * 渲染页面
      * @param  string $id
      * @param  array $tpl_vars
+     * @return mixed|string
      */
     public static function display($id, array $tpl_vars)
     {
         $path = FISResource::getUri($id);
 
         if (is_file($path)) {
-            ob_start();
-            ob_implicit_flush(false);
             extract($tpl_vars, EXTR_OVERWRITE);
+
+            ob_implicit_flush(false);
+            ob_start();
             include($path);
-            $html = ob_get_clean();
+            $buffer = ob_get_clean();
+
+            $buffer = !empty($buffer) ? $buffer : '';
             FisResource::load($id); //注意模板资源也要分析依赖，否则可能加载不全
-            echo FisResource::renderResponse($html);
+            return FisResource::renderResponse($buffer);
         } else {
             trigger_error($id . ' file not found!');
+            return '';
         }
     }
 

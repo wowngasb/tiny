@@ -32,21 +32,19 @@ class ViewFis extends ViewSimple implements ViewInterface
     public static function widget($widget_path, array $tpl_vars = [])
     {
         $tpl_vars = self::$pre_widget ? call_user_func_array(self::$pre_widget, [$widget_path, $tpl_vars]) : $tpl_vars;
-        ob_start();
-        ob_implicit_flush(false);
-        Fis::widget($widget_path, $tpl_vars);
-        return ob_get_clean();
+        return Fis::widget($widget_path, $tpl_vars);
     }
 
     /**
      * 渲染一个视图模板, 并直接输出给请求端
      * @param string $view_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
+     * @return string
      */
     public static function display($view_path, array $tpl_vars = [])
     {
         $tpl_vars = self::$pre_display ? call_user_func_array(self::$pre_display, [$view_path, $tpl_vars]) : $tpl_vars;
-        Fis::display($view_path, $tpl_vars);
+        return Fis::display($view_path, $tpl_vars);
     }
 
 

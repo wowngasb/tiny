@@ -63,6 +63,7 @@ class ControllerSimple extends AbstractController
         $params = $view->getAssign();
 
         $layout = $this->getLayout();
+        $html = '';
         if (!empty($layout)) {
             $layout_tpl = Func::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
             $layout_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->_view_dir, $routeInfo[0], $layout_tpl]);
@@ -72,12 +73,12 @@ class ControllerSimple extends AbstractController
                 $view->display($file_path, $params);
                 $action_content = ob_get_clean();
                 $params['action_content'] = $action_content;
-                $view->display($layout_path, $params);
-                return;
+                $html = $view->display($layout_path, $params);
             }
+        } else {
+            $html = $view->display($file_path, $params);
         }
 
-        $view->display($file_path, $params);
     }
 
     /**

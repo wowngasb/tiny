@@ -21,7 +21,7 @@ class index extends BaseDevelopController
 
     public function index()
     {
-        Application::app()->forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
+        Application::forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
     }
 
     public function auth()

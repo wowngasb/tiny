@@ -18,7 +18,7 @@ class index extends BaseGraphiQLController
     public function index()
     {
         if (!self::authDevelopKey()) {  //认证 通过
-            Application::app()->forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
+            Application::forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
         }
         $this->display();
     }

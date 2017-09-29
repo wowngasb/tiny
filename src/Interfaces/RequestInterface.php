@@ -22,10 +22,12 @@ interface RequestInterface
      * @return bool
      */
     public function isSessionStarted();
+
     /**
      * @return float
      */
     public function getRequestTimestamp();
+
     /**
      * @return string
      */
@@ -335,6 +337,14 @@ interface RequestInterface
      * @return string
      */
     public function raw_post_data();
+
+    /**
+     * 动态应用一个配置文件  返回配置 key 数组  动态导入配置工作 依靠 request 完成
+     * @param string $config_file 配置文件 绝对路径
+     * @return array
+     * @throws AppStartUpError
+     */
+    public static function requireForArray($config_file);
 
 
 }

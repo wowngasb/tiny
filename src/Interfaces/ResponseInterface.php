@@ -9,6 +9,7 @@
 namespace Tiny\Interfaces;
 
 
+use Tiny\Exception\AppStartUpError;
 use Tiny\Exception\Interrupt;
 
 interface ResponseInterface
@@ -36,7 +37,7 @@ interface ResponseInterface
     public function setResponseCode($code);
 
     /**
-     * 发送响应header给请求端
+     * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
      * @return ResponseInterface
      */
     public function sendHeader();
@@ -70,5 +71,14 @@ interface ResponseInterface
      * @throws Interrupt
      */
     public function interrupt();
+
+    /**
+     *  执行给定模版文件和变量数组 渲染模版 动态渲染模版文件 依靠 response 完成
+     * @param string $tpl_file 模版文件 绝对路径
+     * @param array $data 变量数组  变量会释放到 模版文件作用域中
+     * @return string
+     * @throws AppStartUpError
+     */
+    public static function requireForRender($tpl_file, array $data = []);
 
 }

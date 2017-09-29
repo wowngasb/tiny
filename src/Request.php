@@ -35,6 +35,7 @@ class Request implements RequestInterface
     protected $_request_timestamp = null;
     protected $_raw_post_data = null;
 
+    protected static $_config_map = [];
 
     public function __construct()
     {
@@ -564,4 +565,24 @@ class Request implements RequestInterface
         return $this->_raw_post_data;
     }
 
+    /**
+     * 动态应用一个配置文件  返回配置 key 数组  动态导入配置工作 依靠 request 完成
+     * @param string $config_file 配置文件 绝对路径
+     * @return array
+     * @throws AppStartUpError
+     */
+    public static function requireForArray($config_file)
+    {
+        $config_file = trim($config_file);
+        if (empty($config_file)) {
+            return [];
+        }
+        if (!is_file($config_file)) {
+            throw new AppStartUpError("requireForArray cannot find {$config_file}");
+        }
+        if (!isset(static::$_config_map[$config_file])) {
+            static::$_config_map[$config_file] = require($config_file);
+        }
+        return static::$_config_map[$config_file];
+    }
 }

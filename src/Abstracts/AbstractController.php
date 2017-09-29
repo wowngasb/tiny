@@ -37,8 +37,9 @@ abstract class AbstractController extends AbstractContext
         return $this->_layout;
     }
 
-    protected static function extendAssign(RequestInterface $request, array $params)
+    protected  function extendAssign(array $params)
     {
+        $request = $this->getRequest();
         $params['routeInfo'] = $request->getRouteInfo();
         $params['appname'] = Application::app()->getAppName();
         $params['request'] = $request;

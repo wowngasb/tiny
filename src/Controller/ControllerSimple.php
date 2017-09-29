@@ -26,13 +26,13 @@ class ControllerSimple extends AbstractController
         $this->setView(new ViewSimple());
 
         ViewSimple::preTreatmentDisplay(function ($file_path, $params) {
-            $params = self::extendAssign($this->getRequest(), $params);
+            $params = $this->extendAssign($params);
             static::fire('preDisplay', [$this, $file_path, $params]);
             return $params;
         });
 
         ViewSimple::preTreatmentWidget(function ($file_path, $params) {
-            $params = self::extendAssign($this->getRequest(), $params);
+            $params = $this->extendAssign($params);
             static::fire('preWidget', [$this, $file_path, $params]);
             return $params;
         });
@@ -43,7 +43,6 @@ class ControllerSimple extends AbstractController
         $this->_view_dir = $view_dir;
         $this->_widget_dir = $widget_dir;
     }
-
 
     /**
      * @param string $tpl_path
@@ -80,6 +79,5 @@ class ControllerSimple extends AbstractController
         }
         $this->getResponse()->appendBody($html);
     }
-
 
 }

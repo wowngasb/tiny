@@ -13,32 +13,44 @@ interface ViewInterface
 {
 
     /**
+     * @return callable | null
+     */
+    public function getPreDisplay();
+
+    /**
      * 用于添加 display 前的预处理函数  主要用于 添加通用变量 触发事件
      * @param callable $pre_display 参数为 pre_display($view_path, array $tpl_vars = [])
      */
-    public static function preTreatmentDisplay(callable $pre_display);
+    public function setPreDisplay($pre_display);
+
+    /**
+     * @return callable | null
+     */
+    public function getPreWidget();
 
     /**
      * 用于添加 widget 前的预处理函数  主要用于 添加通用变量 触发事件
      * @param callable $pre_widget 参数为  pre_widget($widget_path, array $tpl_vars = [])
      */
-    public static function preTreatmentWidget(callable $pre_widget);
+    public function setPreWidget(callable $pre_widget);
 
     /**
      * 渲染一个组件模板, 得到结果
+     * @param ResponseInterface $response
      * @param string $widget_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
      * @return string
      */
-    public static function widget($widget_path, array $tpl_vars = []);
+    public function widget(ResponseInterface $response, $widget_path, array $tpl_vars = []);
 
     /**
      * 渲染一个视图模板, 得到结果
+     * @param ResponseInterface $response
      * @param string $view_path 视图模板的文件, 绝对路径, 一般这个路径由Controller提供
      * @param array $tpl_vars 关联数组, 模板变量
      * @return string
      */
-    public static function display($view_path, array $tpl_vars = []);
+    public function display(ResponseInterface $response, $view_path, array $tpl_vars = []);
 
     /**
      * 添加 模板变量

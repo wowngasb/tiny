@@ -201,6 +201,8 @@ class FisResource
     public static function renderScriptPool($auto_closure = false)
     {
         $html = '';
+        $script_start = '<script type="text/javascript">';
+        $script_end = '</script>';
         if (!empty(self::$arrScriptPool)) {
             $priorities = array_keys(self::$arrScriptPool);
             rsort($priorities);
@@ -208,18 +210,18 @@ class FisResource
                 if ($auto_closure) {
                     $script = implode("}();\n!function(){", self::$arrScriptPool[$priority]);
                     $html .= <<<EOT
-<script type="text/javascript">
+{$script_start}
 !function(){
 {$script}
 }();
-</script>
+{$script_end}
 EOT;
                 } else {
                     $script = implode("\n", self::$arrScriptPool[$priority]);
                     $html .= <<<EOT
-<script type="text/javascript">
+{$script_start}
 {$script}
-</script>
+{$script_end}
 
 EOT;
                 }

@@ -41,6 +41,9 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     // 单实例 实现
     private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
 
+    /** @var callable */
+    private static $_trace_exception = null;  // 默认异常处理函数  用户可以自定义
+
     /**
      * Application constructor.
      * @param string $app_name
@@ -91,6 +94,14 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
         return $this->_config;
     }
 
+    /**
+     * @param callable $trace_exception
+     */
+    public static function setTraceException(callable $trace_exception)
+    {
+        self::$_trace_exception = $trace_exception;
+    }
+
     ###############################################################
     ############ 启动及运行相关函数 ################
     ###############################################################
@@ -111,7 +122,10 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
             }
         } catch (Interrupt $ex) {   // 中断 不做异常处理 尝试发送 http 头部信息
             $response->sendHeader();
-        } catch (Error $ex) {   // 捕获 tiny 框架的异常
+            foreach ($response->yieldBody() as $html) {
+                echo strval($html);  // 输出 响应内容
+            }
+        } catch (Error $ex) {   // 捕获 tiny 框架的异常  由默认异常处理方式进行处理
             self::traceException($request, $response, $ex);
         } catch (Exception $ex) {   // 捕获运行期间的所有异常
             self::traceException($request, $response, $ex);
@@ -140,7 +154,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
 
         static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
         static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
-        $this->forward($request, $response, $routeInfo, $params, $route);
+        self::forward($request, $response, $routeInfo, $params, $route);
         static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
     }
 
@@ -151,16 +165,17 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      * @param array $routeInfo 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
      * @param array|null $params
      * @param string|null $route
-     * @throws AppStartUpError
+     * @throws Interrupt
      */
-    public function forward(RequestInterface $request, ResponseInterface $response, array $routeInfo = [], array $params = null, $route = null)
+    public static function forward(RequestInterface $request, ResponseInterface $response, array $routeInfo = [], array $params = null, $route = null)
     {
         $routeInfo = Func::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
         // 对使用默认值 null 的参数 用当前值补全
         if (is_null($route)) {
             $route = $request->getCurrentRoute();
         }
-        $this->getRoute($route);  // 检查对应 route 是否注册过
+        $app = self::app();
+        $app->getRoute($route);  // 检查对应 route 是否注册过
         if (is_null($params)) {
             $params = $request->getParams();
         }
@@ -172,7 +187,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
         // 设置完成 锁定 $request
 
         $response->resetResponse();  // 清空已设置的 信息
-        $dispatcher = $this->getDispatch($route);
+        $dispatcher = $app->getDispatch($route);
 
         try {
             $action = $dispatcher::initMethodName($routeInfo);
@@ -180,19 +195,18 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
             $context = $dispatcher::initMethodContext($request, $response, $namespace, $action);
             $params = $dispatcher::initMethodParams($context, $action, $params);
 
-            static::fire('preDispatch', [$this, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
+            static::fire('preDispatch', [$app, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
-            static::fire('postDispatch', [$this, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
+            static::fire('postDispatch', [$app, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
 
-        } catch (Interrupt $ex) {   // 中断 不做异常处理 尝试发送 http 头部信息
-            $response->sendHeader();
-        } catch (Error $ex) {   // 捕获 tiny 框架的异常
+        } catch (Interrupt $ex) {   // 中断 不做异常处理
+            $response->interrupt();
+        } catch (Error $ex) {   // 捕获异常 交给 $dispatcher 处理
             $dispatcher::traceException($request, $response, $ex);
         } catch (Exception $ex) {   // 捕获运行期间的所有异常
             $dispatcher::traceException($request, $response, $ex);
         }
     }
-
 
     /**
      * 添加路由到 路由列表 接受请求后 根据添加的先后顺序依次进行匹配 直到成功
@@ -392,10 +406,15 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex)
     {
-        $code = $ex->getCode();
-        $http_code = $code >= 500 && $code < 600 ? $code : 500;
-        $msg = self::dev() ? $ex->getTraceAsString() : $ex->getMessage();
-        $response->resetResponse()->setResponseCode($http_code)->appendBody($msg);
+        if (!empty(self::$_trace_exception)) {
+            $func = self::$_trace_exception;
+            $func($request, $response, $ex);
+        } else {
+            $code = $ex->getCode();
+            $http_code = $code >= 500 && $code < 600 ? $code : 500;
+            $msg = self::dev() ? $ex->getTraceAsString() : $ex->getMessage();
+            $response->resetResponse()->setResponseCode($http_code)->appendBody($msg);
+        }
     }
 
     ###############################################################
@@ -429,10 +448,11 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      * @param array|null $config
      * @return Application
      */
-    public static function app($appname = 'app', array $config = null)
+    public static function app($appname = null, array $config = null)
     {
         if (is_null(self::$_instance)) {
-            self::$_instance = new self(is_null($config) ? [] : $config, $appname);
+            $_config = !is_null($config) ? $config : [];
+            self::$_instance = new self($_config, $appname);
         }
         return self::$_instance;
     }
@@ -499,7 +519,6 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
         }
         return self::_find_config($last_key, $default, $config);
     }
-
 
     ###############################################################
     ############## 常用 静态函数 放在这里方便使用 #################

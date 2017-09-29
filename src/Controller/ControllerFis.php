@@ -21,13 +21,13 @@ class ControllerFis extends AbstractController
         parent::__construct($request, $response);
         $this->setView(new ViewFis());
         ViewFis::preTreatmentDisplay(function ($file_path, $params) {
-            $params = self::extendAssign($this->getRequest(), $params);
+            $params = $this->extendAssign($params);
             static::fire('preDisplay', [$this, $file_path, $params]);
             return $params;
         });
 
         ViewFis::preTreatmentWidget(function ($file_path, $params) {
-            $params = self::extendAssign($this->getRequest(), $params);
+            $params = $this->extendAssign($params);
             static::fire('preWidget', [$this, $file_path, $params]);
             return $params;
         });

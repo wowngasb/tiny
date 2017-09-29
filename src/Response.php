@@ -69,7 +69,7 @@ class Response implements ResponseInterface
     }
 
     /**
-     * 发送响应header给请求端
+     * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
      * @return $this
      */
     public function sendHeader()
@@ -143,5 +143,30 @@ class Response implements ResponseInterface
     public function interrupt()
     {
         throw new Interrupt();
+    }
+
+    /**
+     *  执行给定模版文件和变量数组 渲染模版 动态渲染模版文件 依靠 response 完成
+     * @param string $tpl_file 模版文件 绝对路径
+     * @param array $data 变量数组  变量会释放到 模版文件作用域中
+     * @return string
+     * @throws AppStartUpError
+     */
+    public static function requireForRender($tpl_file, array $data = [])
+    {
+        $tpl_file = trim($tpl_file);
+        if (empty($tpl_file)) {
+            return '';
+        }
+        if (!is_file($tpl_file)) {
+            throw new AppStartUpError("requireForRender cannot find {$tpl_file}");
+        }
+        extract($data, EXTR_OVERWRITE);
+
+        ob_implicit_flush(false);
+        ob_start();
+        require($tpl_file);
+        $buffer = ob_get_clean();
+        return $buffer !== false ? $buffer : '';
     }
 }

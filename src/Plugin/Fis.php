@@ -8,6 +8,8 @@
 
 namespace Tiny\Plugin;
 
+use Tiny\Interfaces\ResponseInterface;
+
 class Fis
 {
 
@@ -115,22 +117,16 @@ class Fis
 
     /**
      * 加载组件
+     * @param ResponseInterface $response
      * @param  string $id
      * @param  array $tpl_vars
      * @return string
      */
-    public static function widget($id, array $tpl_vars = [])
+    public static function widget(ResponseInterface $response, $id, array $tpl_vars = [])
     {
         $path = FISResource::getUri($id);
         if (is_file($path)) {
-            extract($tpl_vars, EXTR_OVERWRITE);
-
-            ob_implicit_flush(false);
-            ob_start();
-            include($path);
-            $buffer = ob_get_clean();
-
-            $buffer = !empty($buffer) ? $buffer : '';
+            $buffer = $response::requireForRender($path, $tpl_vars);
             FisResource::load($id);
             return $buffer;
         }
@@ -139,23 +135,17 @@ class Fis
 
     /**
      * 渲染页面
+     * @param ResponseInterface $response
      * @param  string $id
      * @param  array $tpl_vars
      * @return mixed|string
      */
-    public static function display($id, array $tpl_vars)
+    public static function display(ResponseInterface $response, $id, array $tpl_vars)
     {
         $path = FISResource::getUri($id);
 
         if (is_file($path)) {
-            extract($tpl_vars, EXTR_OVERWRITE);
-
-            ob_implicit_flush(false);
-            ob_start();
-            include($path);
-            $buffer = ob_get_clean();
-
-            $buffer = !empty($buffer) ? $buffer : '';
+            $buffer = $response::requireForRender($path, $tpl_vars);
             FisResource::load($id); //注意模板资源也要分析依赖，否则可能加载不全
             return FisResource::renderResponse($buffer);
         } else {

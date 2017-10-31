@@ -34,7 +34,7 @@ CookieJar.prototype.addCookie = function (cookie) {
     }
 
     this.cookies[cookie.name].push(cookie);
-}
+};
 
 CookieJar.prototype.getCookies = function (url) {
     var keys            = Object.keys(this.cookies),
@@ -51,7 +51,7 @@ CookieJar.prototype.getCookies = function (url) {
         }
     }
     return cookies.join("; ");
-}
+};
 
 CookieJar.prototype.matchCookie = function (cookie, url) {
     var urlparts = urllib.parse(url || "", false, true),
@@ -104,7 +104,7 @@ CookieJar.prototype.matchCookie = function (cookie, url) {
     }
 
     return true;
-}
+};
 
 CookieJar.prototype.setCookie = function (cookie_str, url) {
     var parts    = (cookie_str || "").split(";"),
@@ -184,4 +184,4 @@ CookieJar.prototype.setCookie = function (cookie_str, url) {
     }
 
     this.addCookie(cookie);
-}
+};

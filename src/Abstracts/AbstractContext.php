@@ -45,12 +45,12 @@ abstract class AbstractContext extends AbstractModel
         return $params;
     }
 
-    public function getActionName()
+    public function _getActionName()
     {
         return $this->_action_name;
     }
 
-    public function setActionName($action_name)
+    public function _setActionName($action_name)
     {
         $this->_action_name = $action_name;
     }
@@ -109,6 +109,46 @@ abstract class AbstractContext extends AbstractModel
     public function _session($name = null, $default = '')
     {
         return $this->_request->_session($name, $default);
+    }
+
+    public function all_get()
+    {
+        return $this->_request->all_get();
+    }
+
+    public function all_post()
+    {
+        return $this->_request->all_post();
+    }
+
+    public function all_env()
+    {
+        return $this->_request->all_env();
+    }
+
+    public function all_server()
+    {
+        return $this->_request->all_server();
+    }
+
+    public function all_cookie()
+    {
+        return $this->_request->all_cookie();
+    }
+
+    public function all_files()
+    {
+        return $this->_request->all_files();
+    }
+
+    public function all_request()
+    {
+        return $this->_request->all_request();
+    }
+
+    public function all_session()
+    {
+        return $this->_request->all_session();
     }
 
 }

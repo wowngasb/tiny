@@ -3,26 +3,20 @@
 namespace Tiny;
 
 use Exception;
-
-use Tiny\Abstracts\AbstractContext;
-use Tiny\Abstracts\AbstractController;
-
-use Tiny\Abstracts\AbstractModel;
+use Tiny\Abstracts\AbstractBootstrap;
+use Tiny\Abstracts\AbstractDispatch;
 use Tiny\Exception\AppStartUpError;
-use Tiny\Exception\Error;
-use Tiny\Exception\Interrupt;
-use Tiny\Interfaces\DispatchInterface;
+use Tiny\Exception\NotFoundError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 use Tiny\Interfaces\RouteInterface;
 
-use Tiny\Plugin\ApiHelper;
 
 /**
  * Class Application
  * @package Tiny
  */
-final class Application extends AbstractModel implements DispatchInterface, RouteInterface
+abstract class Application extends AbstractDispatch implements RouteInterface
 {
 
     // 配置相关
@@ -41,9 +35,6 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     // 单实例 实现
     private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
 
-    /** @var callable */
-    private static $_trace_exception = null;  // 默认异常处理函数  用户可以自定义
-
     /**
      * Application constructor.
      * @param string $app_name
@@ -54,6 +45,17 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     {
         $this->_config = $config;
         $this->_app_name = $app_name;
+    }
+
+    /**
+     * 调试使用 开发模式下有效
+     * @param mixed $data
+     * @param string|null $tags
+     * @param int $ignoreTraceCalls
+     */
+    public static function _D($data, $tags = null, $ignoreTraceCalls = 0)
+    {
+        AbstractBootstrap::consoleDebug($data, $tags, $ignoreTraceCalls);
     }
 
     ###############################################################
@@ -94,14 +96,6 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
         return $this->_config;
     }
 
-    /**
-     * @param callable $trace_exception
-     */
-    public static function setTraceException(callable $trace_exception)
-    {
-        self::$_trace_exception = $trace_exception;
-    }
-
     ###############################################################
     ############ 启动及运行相关函数 ################
     ###############################################################
@@ -115,47 +109,26 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     public function run(RequestInterface $request, ResponseInterface $response)
     {
         try {
-            $this->_run($request, $response);
-            $response->sendHeader();
-            foreach ($response->yieldBody() as $html) {
-                echo strval($html);  // 输出 响应内容
+            if (!$this->_bootstrap_completed) {
+                throw new AppStartUpError('call run without bootstrap completed');
             }
-        } catch (Interrupt $ex) {   // 中断 不做异常处理 尝试发送 http 头部信息
-            $response->sendHeader();
-            foreach ($response->yieldBody() as $html) {
-                echo strval($html);  // 输出 响应内容
-            }
-        } catch (Error $ex) {   // 捕获 tiny 框架的异常  由默认异常处理方式进行处理
-            self::traceException($request, $response, $ex);
-        } catch (Exception $ex) {   // 捕获运行期间的所有异常
-            self::traceException($request, $response, $ex);
+            static::fire('routerStartup', [$this, $request, $response]);  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
+
+            list($route, list($routeInfo, $params)) = $this->buildRouteInfo($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
+            $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setParams($params)->setRouted();
+
+            static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
+            static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
+
+            self::forward($request, $response, $routeInfo, $params, $route, false);
+
+            static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
+
+            $response->end();
+
+        } catch (Exception $ex) {   // 捕获运行期间的所有异常  由默认异常处理方式进行处理
+            static::traceException($request, $response, $ex);
         }
-    }
-
-    /**
-     * @param RequestInterface $request
-     * @param ResponseInterface $response
-     * @throws AppStartUpError
-     */
-    protected function _run(RequestInterface $request, ResponseInterface $response)
-    {
-        if (!$this->_bootstrap_completed) {
-            throw new AppStartUpError('call run without bootstrap completed');
-        }
-        static::fire('routerStartup', [$this, $request, $response]);  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
-
-        list($route, list($routeInfo, $params)) = $this->buildRouteInfo($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
-
-        $request->reset_route()
-            ->setCurrentRoute($route)
-            ->setRouteInfo($routeInfo)
-            ->setParams($params)
-            ->setRouted();
-
-        static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
-        static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
-        self::forward($request, $response, $routeInfo, $params, $route);
-        static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
     }
 
     /**
@@ -165,11 +138,11 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      * @param array $routeInfo 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
      * @param array|null $params
      * @param string|null $route
-     * @throws Interrupt
+     * @param bool $auto_end
      */
-    public static function forward(RequestInterface $request, ResponseInterface $response, array $routeInfo = [], array $params = null, $route = null)
+    public static function forward(RequestInterface $request, ResponseInterface $response, array $routeInfo = [], array $params = null, $route = null, $auto_end = true)
     {
-        $routeInfo = Func::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
+        $routeInfo = Util::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
         // 对使用默认值 null 的参数 用当前值补全
         if (is_null($route)) {
             $route = $request->getCurrentRoute();
@@ -180,11 +153,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
             $params = $request->getParams();
         }
 
-        $request->reset_route()
-            ->setCurrentRoute($route)
-            ->setRouteInfo($routeInfo)
-            ->setRouted();  // 根据新的参数 再次设置 $request 的路由信息
-        // 设置完成 锁定 $request
+        $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setRouted();  // 根据新的参数 再次设置 $request 的路由信息  设置完成 锁定 $request
 
         $response->resetResponse();  // 清空已设置的 信息
         $dispatcher = $app->getDispatch($route);
@@ -198,12 +167,10 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
             static::fire('preDispatch', [$app, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
             static::fire('postDispatch', [$app, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
-
-        } catch (Interrupt $ex) {   // 中断 不做异常处理
-            $response->interrupt();
-        } catch (Error $ex) {   // 捕获异常 交给 $dispatcher 处理
-            $dispatcher::traceException($request, $response, $ex);
-        } catch (Exception $ex) {   // 捕获运行期间的所有异常
+            if ($auto_end) {
+                $response->end();
+            }
+        } catch (Exception $ex) {   // 捕获运行期间的所有异常  交给 $dispatcher 处理
             $dispatcher::traceException($request, $response, $ex);
         }
     }
@@ -212,11 +179,11 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      * 添加路由到 路由列表 接受请求后 根据添加的先后顺序依次进行匹配 直到成功
      * @param string $route
      * @param RouteInterface $router
-     * @param DispatchInterface $dispatcher 处理分发接口
+     * @param AbstractDispatch $dispatcher 处理分发接口
      * @return $this
      * @throws AppStartUpError
      */
-    public function addRoute($route, RouteInterface $router, DispatchInterface $dispatcher = null)
+    public function addRoute($route, RouteInterface $router, AbstractDispatch $dispatcher = null)
     {
         $route = strtolower($route);
         if ($this->_bootstrap_completed) {
@@ -258,7 +225,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     /**
      * 根据 名字 获取 分发器  无匹配则返回 $this
      * @param string $route
-     * @return DispatchInterface
+     * @return AbstractDispatch
      * @throws AppStartUpError
      */
     public function getDispatch($route)
@@ -281,7 +248,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      * @param RequestInterface $request 请求对象
      * @param null $route
      * @return array 匹配成功 [$route, [$routeInfo, $params], ]  失败 ['', [null, null], ]
-     * @throws AppStartUpError
+     * @throws NotFoundError
      */
     public function buildRouteInfo(RequestInterface $request, $route = null)
     {
@@ -294,16 +261,20 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
                 return [$route, $tmp,];
             }
         }
-        return [$this->_route_name, [$this->getDefaultRouteInfo(), $request->all_request()]];  //无匹配路由时 始终返回自己的默认路由
+        $uri = strtotime($request->fixRequestPath());
+        if ($uri == '/' || $uri == '/index/' || $uri == '/index/index/index/') {
+            return [$this->_route_name, [$this->getDefaultRouteInfo(), $request->all_request()]];  //无匹配路由时 始终返回自己的默认路由
+        }
+        throw new NotFoundError('page not found');
     }
 
     /**
      * 根据 路由信息 和 参数 按照路由规则生成 url
-     * @param array $routerArr
+     * @param array $routeInfo
      * @param array $params
      * @return string
      */
-    public function buildUrl(array $routerArr, array $params = [])
+    public function buildUrl(array $routeInfo, array $params = [])
     {
         return self::host();
     }
@@ -315,106 +286,6 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     public function getDefaultRouteInfo()
     {
         return $this->_default_route_info;
-    }
-
-    ###############################################################
-    ############ 实现 DispatchInterface 默认分发器 ################
-    ###############################################################
-
-    /**
-     * 根据对象和方法名 获取 修复后的参数
-     * @param AbstractContext $context
-     * @param $action
-     * @param array $params
-     * @return array
-     */
-    public static function initMethodParams(AbstractContext $context, $action, array $params)
-    {
-        $params = ApiHelper::fixActionParams($context, $action, $params);
-        $params = $context->beforeAction($params);
-        $context->getRequest()->setParams($params);
-        return $params;
-    }
-
-    /**
-     * @param array $routeInfo
-     * @return string
-     */
-    public static function initMethodName(array $routeInfo)
-    {
-        return $routeInfo[2];
-    }
-
-    /**
-     * @param array $routeInfo
-     * @return string
-     */
-    public static function initMethodNamespace(array $routeInfo)
-    {
-        $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : 'index';
-        $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : 'index';
-        $appname = Application::app()->getAppName();
-        return "\\" . Func::joinNotEmpty("\\", [$appname, $module, $controller]);
-    }
-
-    /**
-     * @param RequestInterface $request
-     * @param ResponseInterface $response
-     * @param string $namespace
-     * @param string $action
-     * @return AbstractContext
-     * @throws AppStartUpError
-     */
-    public static function initMethodContext(RequestInterface $request, ResponseInterface $response, $namespace, $action)
-    {
-        if (!class_exists($namespace)) {
-            throw new AppStartUpError("class:{$namespace} not exists with {$namespace}");
-        }
-        $context = new $namespace($request, $response);
-        if (!($context instanceof AbstractController)) {
-            throw new AppStartUpError("class:{$namespace} isn't instanceof AbstractController with {$namespace}");
-        }
-        if (!is_callable([$context, $action])) {
-            throw new AppStartUpError("action:{$namespace}::{$action} not callable with {$namespace}");
-        }
-        $context->setActionName($action);
-        return $context;
-    }
-
-    /**
-     * @param AbstractContext $context
-     * @param string $action
-     * @param array $params
-     */
-    public static function dispatch(AbstractContext $context, $action, array $params)
-    {
-        ob_start();
-        call_user_func_array([$context, $action], $params);
-        $string_buffer = ob_get_contents();
-        ob_end_clean();
-
-        if (!empty($string_buffer)) {
-            $context->getResponse()->appendBody($string_buffer);
-        }
-    }
-
-    /**
-     * 处理异常接口 用于捕获分发过程中的异常
-     * @param RequestInterface $request
-     * @param ResponseInterface $response
-     * @param Exception $ex
-     */
-    public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex)
-    {
-        if (!empty(self::$_trace_exception)) {
-            $func = self::$_trace_exception;
-            $func($request, $response, $ex);
-        } else {
-            $code = $ex->getCode();
-            $http_code = $code >= 500 && $code < 600 ? $code : 500;
-            $msg = self::dev() ? $ex->getTraceAsString() : $ex->getMessage();
-            $response->resetResponse()->setResponseCode($http_code)->appendBody($msg);
-        }
     }
 
     ###############################################################
@@ -452,7 +323,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     {
         if (is_null(self::$_instance)) {
             $_config = !is_null($config) ? $config : [];
-            self::$_instance = new self($_config, $appname);
+            self::$_instance = new static($_config, $appname);
         }
         return self::$_instance;
     }
@@ -467,7 +338,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
 
     public static function dev()
     {
-        return Func::stri_cmp('debug', self::environ());
+        return Util::stri_cmp('debug', self::environ());
     }
 
     /**
@@ -478,7 +349,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public static function encrypt($string, $expiry = 0)
     {
-        return Func::encode($string, self::config('CRYPT_KEY', ''), $expiry);
+        return Util::encode($string, self::config('CRYPT_KEY', ''), $expiry);
     }
 
     /**
@@ -488,7 +359,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public static function decrypt($string)
     {
-        return Func::decode($string, self::config('CRYPT_KEY', ''));
+        return Util::decode($string, self::config('CRYPT_KEY', ''));
     }
 
     /**
@@ -527,29 +398,30 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
     public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
     {
         // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
-        $root_path = defined('ROOT_PATH') ? ROOT_PATH : dirname(dirname(dirname(dirname(__DIR__))));
-        $abs_path = Func::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
-        return empty($abs_path) ? "{$root_path}{$seq}" : "{$root_path}{$seq}{$abs_path}{$seq}";
+        $path = self::config('ROOT_PATH', '');
+        $path = !empty($path) ? $path : dirname(dirname(dirname(dirname(__DIR__))));
+        $abs_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
+        return empty($abs_path) ? "{$path}{$seq}" : "{$path}{$seq}{$abs_path}{$seq}";
     }
 
     /**
      * 根据 路由信息 和 参数 按照路由规则生成 url
      * @param RequestInterface $request
-     * @param array $routerArr 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
+     * @param array $routeInfo 格式为 [$module, $controller, $action] 使用当前相同 设置为空即可
      * @param array $params
      * @return string
      * @throws AppStartUpError
      */
-    public static function url(RequestInterface $request, array $routerArr = [], array $params = [])
+    public static function url(RequestInterface $request, array $routeInfo = [], array $params = [])
     {
         $route = $request->getCurrentRoute();
-        $routerArr = Func::mergeNotEmpty($request->getRouteInfo(), $routerArr);
-        return Application::app()->getRoute($route)->buildUrl($routerArr, $params);
+        $routeInfo = Util::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
+        return Application::app()->getRoute($route)->buildUrl($routeInfo, $params);
     }
 
     public static function host()
     {
-        return defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
+        return self::config('SYSTEM_HOST', 'http://localhost/');
     }
 
     /**
@@ -560,7 +432,7 @@ final class Application extends AbstractModel implements DispatchInterface, Rout
      */
     public static function redirect(ResponseInterface $response, $url)
     {
-        $response->resetResponse()->addHeader("Location: {$url}", true)->setResponseCode(302)->interrupt();
+        $response->resetResponse()->addHeader("Location: {$url}")->setResponseCode(302)->end();
     }
 
 }

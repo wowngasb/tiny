@@ -13,7 +13,7 @@ use Exception;
 
 class Error extends Exception
 {
-    protected static $errno = 500;
+    protected static $errno = 510;
 
     public function __construct($message, Exception $previous = null)
     {

@@ -9,7 +9,7 @@
 namespace Tiny\OrmQuery;
 
 
-use Tiny\Func;
+use Tiny\Util;
 
 abstract class AbstractQuery
 {
@@ -33,7 +33,7 @@ abstract class AbstractQuery
 
     final public function buildQuery($column)
     {
-        $action = Func::class2name(get_class($this));
+        $action = Util::class2name(get_class($this));
         $enable = !empty($this->_filter) ? call_user_func_array($this->_filter, []) : true;
 
         $query = $this->_queryArgs();

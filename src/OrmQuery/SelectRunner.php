@@ -11,7 +11,7 @@ namespace Tiny\OrmQuery;
 
 use Tiny\Exception\OrmStartUpError;
 
-class Select
+class SelectRunner
 {
     public $method = '';
     public $key = '';

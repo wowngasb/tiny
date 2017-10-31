@@ -10,9 +10,9 @@ namespace Tiny\Route;
 
 use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
-use Tiny\Func;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
+use Tiny\Util;
 
 
 /**
@@ -38,8 +38,8 @@ class RouteSupervar implements RouteInterface
         if (empty($route_key)) {
             throw new AppStartUpError(__CLASS__ . ' some key empty');
         }
-        $this->route_key = Func::trimlower($route_key);
-        $this->_default_route_info = Func::mergeNotEmpty($this->_default_route_info, $default_route_info);
+        $this->route_key = trim($route_key);
+        $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);
     }
 
     /**
@@ -64,12 +64,12 @@ class RouteSupervar implements RouteInterface
         $route_value = substr($route_value, 0, 1) == '/' ? substr($route_value, 1) : $route_value;
         $route_array = explode('/', $route_value);
         if (count($route_array) >= 3) {
-            $module = !empty($route_array[0]) ? Func::trimlower($route_array[0]) : $default_module;
-            $controller = !empty($route_array[1]) ? Func::trimlower($route_array[1]) : $default_controller;
-            $action = !empty($route_array[2]) ? Func::trimlower($route_array[2]) : $default_action;
+            $module = !empty($route_array[0]) ? trim($route_array[0]) : $default_module;
+            $controller = !empty($route_array[1]) ? trim($route_array[1]) : $default_controller;
+            $action = !empty($route_array[2]) ? trim($route_array[2]) : $default_action;
         } else {
-            $controller = !empty($route_array[0]) ? Func::trimlower($route_array[0]) : $default_controller;
-            $action = !empty($route_array[1]) ? Func::trimlower($route_array[1]) : $default_action;
+            $controller = !empty($route_array[0]) ? trim($route_array[0]) : $default_controller;
+            $action = !empty($route_array[1]) ? trim($route_array[1]) : $default_action;
             $module = $default_module;
         }
 
@@ -89,9 +89,9 @@ class RouteSupervar implements RouteInterface
     {
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
         unset($params[$this->route_key]);
-        $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : $default_controller;
-        $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
-        $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : $default_module;
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
+        $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
 
         $url = Application::host() . 'index.php';
         $route_value = "{$module}/{$controller}/{$action}";

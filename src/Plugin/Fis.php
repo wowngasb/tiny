@@ -22,10 +22,9 @@ class Fis
         ]);
     }
 
-    public static function scriptStart()
+    public static function scriptStart(ResponseInterface $response)
     {
-        ob_start();
-        ob_implicit_flush(false);
+        $response->ob_start();
         return '';
     }
 
@@ -55,9 +54,9 @@ class Fis
         return $text;
     }
 
-    public static function scriptEnd($priority = 1)
+    public static function scriptEnd(ResponseInterface $response, $priority = 1)
     {
-        $script = ob_get_clean();
+        $script = $response->ob_get_clean();
         $text = self::getScriptContent($script);
         if (!empty($text)) {
             FisResource::addScriptPool($text, $priority);
@@ -65,16 +64,15 @@ class Fis
         return '';
     }
 
-    public static function styleStart()
+    public static function styleStart(ResponseInterface $response)
     {
-        ob_start();
-        ob_implicit_flush(false);
+        $response->ob_start();
         return '';
     }
 
-    public static function styleEnd()
+    public static function styleEnd(ResponseInterface $response)
     {
-        $style = ob_get_clean();
+        $style = $response->ob_get_clean();
         $text = self::getStyleContent($style);
         if (!empty($text)) {
             FisResource::addStylePool($text);
@@ -126,7 +124,7 @@ class Fis
     {
         $path = FISResource::getUri($id);
         if (is_file($path)) {
-            $buffer = $response::requireForRender($path, $tpl_vars);
+            $buffer = $response->requireForRender($path, $tpl_vars);
             FisResource::load($id);
             return $buffer;
         }
@@ -145,7 +143,7 @@ class Fis
         $path = FISResource::getUri($id);
 
         if (is_file($path)) {
-            $buffer = $response::requireForRender($path, $tpl_vars);
+            $buffer = $response->requireForRender($path, $tpl_vars);
             FisResource::load($id); //注意模板资源也要分析依赖，否则可能加载不全
             return FisResource::renderResponse($buffer);
         } else {

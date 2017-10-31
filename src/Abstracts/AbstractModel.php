@@ -14,7 +14,6 @@ use Tiny\Traits\LogTrait;
 
 class AbstractModel
 {
-
     use EventTrait, LogTrait, CacheTrait;
 
     protected static $detail_log = false;

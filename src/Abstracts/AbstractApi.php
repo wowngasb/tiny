@@ -14,13 +14,13 @@ abstract class AbstractApi extends AbstractContext
      */
     public function _apiLimitByTimeRange($api_key, $range_sec = 300, $max_num = 100, $tag = 'all')
     {
-        $testRst = self::_apiLimitByTimeRangeTest($api_key, $range_sec, $max_num, $tag);
+        $testRst = static::_apiLimitByTimeRangeTest($api_key, $range_sec, $max_num, $tag);
         foreach ($testRst as $key => $val) {
             $this->getResponse()->addHeader("X-Rate-{$key}: {$val}", true);
         }
 
         if (!empty($testRst['Remaining']) && $testRst['Remaining'] < 0) {
-            $this->getResponse()->resetResponse()->addHeader("http/1.1 403 Forbidden", true)->setResponseCode(403)->interrupt();
+            $this->getResponse()->resetResponse()->addHeader("http/1.1 403 Forbidden", true)->setResponseCode(403)->end();
         }
         /*
         header("X-Rate-LimitTag: {$tag}");  //限制规则分类 all 代表总数限制
@@ -48,7 +48,7 @@ abstract class AbstractApi extends AbstractContext
         $max_num = $max_num > 0 ? $max_num : 1;
         $rKey = static::$_API_LIMIT_KET . ":{$api_key}:num_{$tag}_{$time_count}_{$range_sec}";
 
-        $mCache = self::getCacheInstance();  // 可以直接换成redis实现
+        $mCache = static::_getCacheInstance();  // 可以直接换成redis实现
         $tmp = $mCache->getItem($rKey)->get();
         $count = intval($tmp) > 0 ? intval($tmp) + 1 : 1;
         $itemObj = $mCache->getItem($rKey)->set($count)->expiresAfter(2 * $range_sec);  // 多保留一段时间
@@ -76,12 +76,12 @@ abstract class AbstractApi extends AbstractContext
         return in_array($event, $allow_event);
     }
 
-    public function doneApi($action, $params, $result, $callback)
+    public function _doneApi($action, $params, $result, $callback)
     {
         static::fire('apiResult', [$this, $action, $params, $result, $callback]);
     }
 
-    public function exceptApi($action, $params, $ex, $callback)
+    public function _exceptApi($action, $params, $ex, $callback)
     {
         static::fire('apiException', [$this, $action, $params, $ex, $callback]);
     }

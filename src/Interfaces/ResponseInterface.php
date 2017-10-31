@@ -10,7 +10,7 @@ namespace Tiny\Interfaces;
 
 
 use Tiny\Exception\AppStartUpError;
-use Tiny\Exception\Interrupt;
+
 
 interface ResponseInterface
 {
@@ -68,9 +68,9 @@ interface ResponseInterface
     public function clearBody($name = null);
 
     /**
-     * @throws Interrupt
+     * @return void
      */
-    public function interrupt();
+    public function end();
 
     /**
      *  执行给定模版文件和变量数组 渲染模版 动态渲染模版文件 依靠 response 完成
@@ -79,6 +79,18 @@ interface ResponseInterface
      * @return string
      * @throws AppStartUpError
      */
-    public static function requireForRender($tpl_file, array $data = []);
+    public function requireForRender($tpl_file, array $data = []);
+
+    /**
+     * @return void
+     */
+    public function ob_start();
+
+    /**
+     * @return string
+     */
+    public function ob_get_clean();
+
+    public function send();
 
 }

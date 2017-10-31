@@ -3,14 +3,14 @@
 namespace Tiny;
 
 use Tiny\Exception\AppStartUpError;
-use Tiny\Exception\Interrupt;
 use Tiny\Interfaces\ResponseInterface;
 
 /**
- * Class Response
+ * Class StdResponse
+ * 默认 StdResponse 设置 header 输出响应 使用默认 header 函数
  * @package Tiny
  */
-class Response implements ResponseInterface
+abstract class StdResponse implements ResponseInterface
 {
 
     protected $_header_list = [];  // 响应给请求的Header
@@ -36,6 +36,9 @@ class Response implements ResponseInterface
             throw new AppStartUpError('header has been send');
         }
         $this->_header_list[] = [$string, $replace, $http_response_code];
+        if (!is_null($http_response_code)) {
+            $this->setResponseCode(intval($http_response_code));
+        }
         return $this;
     }
 
@@ -90,7 +93,7 @@ class Response implements ResponseInterface
      * @param string $name 此次发送消息体的 名称 可用于debug 或者 调整输出顺序
      * @return $this
      */
-    public function appendBody($msg, $name = '')
+    public function appendBody($msg, $name = 'main')
     {
         if (!isset($this->_body[$name])) {
             $this->_body[$name] = [];
@@ -98,7 +101,6 @@ class Response implements ResponseInterface
         $this->_body[$name][] = $msg;
         return $this;
     }
-
 
     /**
      * @return \Generator
@@ -110,6 +112,7 @@ class Response implements ResponseInterface
                 yield $msg;
             }
         }
+        $this->_body = [];
     }
 
     /**
@@ -138,11 +141,23 @@ class Response implements ResponseInterface
     }
 
     /**
-     * @throws Interrupt
+     * @return void
      */
-    public function interrupt()
+    public function end()
     {
-        throw new Interrupt();
+        $this->send();
+        exit();
+    }
+
+    public function send()
+    {
+        if (!$this->_header_sent) {
+            $this->sendHeader();
+        }
+        foreach ($this->yieldBody() as $html) {
+            echo $html;  // 输出 响应内容
+        }
+        $this->_body = [];
     }
 
     /**
@@ -152,7 +167,7 @@ class Response implements ResponseInterface
      * @return string
      * @throws AppStartUpError
      */
-    public static function requireForRender($tpl_file, array $data = [])
+    public function requireForRender($tpl_file, array $data = [])
     {
         $tpl_file = trim($tpl_file);
         if (empty($tpl_file)) {
@@ -163,10 +178,26 @@ class Response implements ResponseInterface
         }
         extract($data, EXTR_OVERWRITE);
 
-        ob_implicit_flush(false);
-        ob_start();
+
+        $this->ob_start();
         require($tpl_file);
-        $buffer = ob_get_clean();
+        $buffer = $this->ob_get_clean();
         return $buffer !== false ? $buffer : '';
+    }
+
+    /**
+     * @return void
+     */
+    public function ob_start()
+    {
+        ob_start();
+    }
+
+    /**
+     * @return string
+     */
+    public function ob_get_clean()
+    {
+        return ob_get_clean();
     }
 }

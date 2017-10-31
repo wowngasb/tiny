@@ -143,6 +143,7 @@
             if (typeof CSRF_TOKEN !== "undefined" && CSRF_TOKEN) {
                 json_data.csrf = CSRF_TOKEN;
             }
+            $('#status_log').html('');
             $.ajax({
                 type: "POST",
                 url: api_url,
@@ -150,7 +151,7 @@
                 dataType: "json",
                 success: function (data) {
                     var use_time = Math.round((new Date().getTime() - start_time));
-                    if (data.errno === 0 || !data.error) {
+                    if (data.code === 0 || !data.error) {
                         api_log(cls, method, 'INFO', use_time, json_data, data);
                     } else {
                         api_log(cls, method, 'ERROR', use_time, json_data, data);

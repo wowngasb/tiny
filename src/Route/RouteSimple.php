@@ -10,9 +10,9 @@ namespace Tiny\Route;
 
 use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
-use Tiny\Func;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
+use Tiny\Util;
 
 /**
  * Class RouteSimple
@@ -39,9 +39,9 @@ class RouteSimple implements RouteInterface
         if (empty($module_key) || empty($controller_key) || empty($action_key)) {
             throw new AppStartUpError(__CLASS__ . ' some key empty');
         }
-        list($this->module_key, $this->controller_key, $this->action_key) = [Func::trimlower($module_key), Func::trimlower($controller_key), Func::trimlower($action_key)];
+        list($this->module_key, $this->controller_key, $this->action_key) = [trim($module_key), trim($controller_key), trim($action_key)];
 
-        $this->_default_route_info = Func::mergeNotEmpty($this->_default_route_info, $default_route_info);
+        $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);
     }
 
     /**
@@ -59,9 +59,9 @@ class RouteSimple implements RouteInterface
             return [null, null];
         }
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
-        $module = !empty($module) ? Func::trimlower($module) : $default_module;
-        $controller = !empty($controller) ? Func::trimlower($controller) : $default_controller;
-        $action = !empty($action) ? Func::trimlower($action) : $default_action;
+        $module = !empty($module) ? trim($module) : $default_module;
+        $controller = !empty($controller) ? trim($controller) : $default_controller;
+        $action = !empty($action) ? trim($action) : $default_action;
 
         $routeInfo = [$module, $controller, $action];
         $params = $request->all_request();
@@ -79,9 +79,9 @@ class RouteSimple implements RouteInterface
     {
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
         unset($params[$this->module_key], $params[$this->controller_key], $params[$this->action_key]);
-        $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : $default_module;
-        $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : $default_controller;
-        $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
+        $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
 
         $url = Application::host() . 'index.php';
         $args_list = [];

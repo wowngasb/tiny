@@ -32,17 +32,18 @@ abstract class AbstractController extends AbstractContext
         $this->_layout = $layout_tpl;
     }
 
-    final protected function getLayout()
+    final public function getLayout()
     {
         return $this->_layout;
     }
 
-    protected  function extendAssign(array $params)
+    protected function extendAssign(array $params)
     {
         $request = $this->getRequest();
         $params['routeInfo'] = $request->getRouteInfo();
-        $params['appname'] = Application::app()->getAppName();
+        $params['app'] = Application::app();
         $params['request'] = $request;
+        $params['ctrl'] = $this;
         return $params;
     }
 

@@ -5,7 +5,7 @@ namespace Tiny\Plugin;
 use Illuminate\Database\Capsule\Manager;
 use Tiny\Application;
 use Tiny\Exception\OrmStartUpError;
-use Tiny\Func;
+use Tiny\Util;
 
 class DbHelper extends Manager
 {
@@ -28,15 +28,15 @@ class DbHelper extends Manager
     {
         $db_config = Application::config('ENV_DB');
         $db_config = [
-            'driver' => Func::v($db_config, 'driver', 'mysql'),
-            'host' => Func::v($db_config, 'host', '127.0.0.1'),
-            'port' => Func::v($db_config, 'port', 3306),
-            'database' => Func::v($db_config, 'database', 'test'),
-            'username' => Func::v($db_config, 'username', 'root'),
-            'password' => Func::v($db_config, 'password', ''),
-            'charset' => Func::v($db_config, 'charset', 'utf8'),
-            'collation' => Func::v($db_config, 'collation', 'utf8_unicode_ci'),
-            'prefix' => Func::v($db_config, 'prefix', ''),
+            'driver' => Util::v($db_config, 'driver', 'mysql'),
+            'host' => Util::v($db_config, 'host', '127.0.0.1'),
+            'port' => Util::v($db_config, 'port', 3306),
+            'database' => Util::v($db_config, 'database', 'test'),
+            'username' => Util::v($db_config, 'username', 'root'),
+            'password' => Util::v($db_config, 'password', ''),
+            'charset' => Util::v($db_config, 'charset', 'utf8'),
+            'collation' => Util::v($db_config, 'collation', 'utf8_unicode_ci'),
+            'prefix' => Util::v($db_config, 'prefix', ''),
         ];
         return $db_config;
     }

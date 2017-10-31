@@ -10,13 +10,13 @@ namespace Tiny\View;
 
 
 use Tiny\Interfaces\ResponseInterface;
-use Tiny\Plugin\Fis;
 use Tiny\Interfaces\ViewInterface;
+use Tiny\Plugin\Fis;
 
 class ViewFis extends ViewSimple implements ViewInterface
 {
 
-    public function setFis($config_dir, $template_dir)
+    public static function setFis($config_dir, $template_dir)
     {
         Fis::initFisResource($config_dir, $template_dir);
     }

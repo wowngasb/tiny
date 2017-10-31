@@ -8,24 +8,24 @@
 
 namespace Tiny\Dispatch;
 
-
-use Tiny\Abstracts\AbstractApi;
 use Exception;
-use Tiny\Application;
+use Tiny\Abstracts\AbstractApi;
 use Tiny\Abstracts\AbstractContext;
-use Tiny\Interfaces\DispatchInterface;
+use Tiny\Abstracts\AbstractDispatch;
+use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Exception\Error;
-use Tiny\Func;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 use Tiny\Plugin\ApiHelper;
-use Tiny\Traits\CacheTrait;
-use Tiny\Traits\LogTrait;
+use Tiny\Util;
 
-class ApiDispatch implements DispatchInterface
+class ApiDispatch extends AbstractDispatch
 {
-    use LogTrait, CacheTrait;
+
+    ####################################################################
+    ############ 实现 AbstractDispatch 默认 API 分发器 ################
+    ####################################################################
 
     /**
      * 根据对象和方法名 获取 修复后的参数
@@ -62,10 +62,10 @@ class ApiDispatch implements DispatchInterface
      */
     public static function initMethodNamespace(array $routeInfo)
     {
-        $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : 'ApiHub';
-        $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : 'api';
+        $controller = !empty($routeInfo[1]) ? $routeInfo[1] : 'ApiHub';
+        $module = !empty($routeInfo[0]) ? $routeInfo[0] : 'api';
         $appname = Application::app()->getAppName();
-        $namespace = "\\" . Func::joinNotEmpty("\\", [$appname, $module, $controller]);
+        $namespace = "\\" . Util::joinNotEmpty("\\", [$appname, $module, $controller]);
         return $namespace;
     }
 
@@ -90,7 +90,7 @@ class ApiDispatch implements DispatchInterface
         if (!is_callable([$context, $action]) || ApiHelper::isIgnoreMethod($action)) {
             throw new AppStartUpError("action:{$namespace}::{$action} not allowed with {$namespace}");
         }
-        $context->setActionName($action);
+        $context->_setActionName($action);
         return $context;
     }
 
@@ -100,15 +100,18 @@ class ApiDispatch implements DispatchInterface
         try {
             /** @var AbstractApi $context */
             $result = call_user_func_array([$context, $action], $params);
-            $context->doneApi($action, $params, $result, $callback);
+            if (!isset($result['code'])) {
+                $result['code'] = 0;
+            }
+            $context->_doneApi($action, $params, $result, $callback);
 
             $json_str = !empty($callback) ? "{$callback}(" . json_encode($result) . ');' : json_encode($result);
             $context->getResponse()->addHeader('Content-Type: application/json;charset=utf-8', false)->appendBody($json_str);
         } catch (Error $ex1) {
-            $context->exceptApi($action, $params, $ex1, $callback);
+            $context->_exceptApi($action, $params, $ex1, $callback);
             self::traceException($context->getRequest(), $context->getResponse(), $ex1);
         } catch (Exception $ex2) {
-            $context->exceptApi($action, $params, $ex2, $callback);
+            $context->_exceptApi($action, $params, $ex2, $callback);
             self::traceException($context->getRequest(), $context->getResponse(), $ex2);
         }
     }
@@ -124,18 +127,20 @@ class ApiDispatch implements DispatchInterface
     public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex, $get_previous = true)
     {
         $response->clearBody();
-        $code = $ex->getCode();  // errno为0 或 无error字段 表示没有错误  errno设置为0 会忽略error字段
+        $code = intval($ex->getCode());  // code 为0 或 无error字段 表示没有错误  code设置为0 会忽略error字段
         $error = Application::dev() ? [
             'Exception' => get_class($ex),
             'code' => $ex->getCode(),
             'message' => $ex->getMessage(),
             'file' => $ex->getFile() . ' [' . $ex->getLine() . ']',
+            'trace' => self::_fixTraceInfo($ex->getTrace(), $ex->getFile(), $ex->getLine()),
         ] : [
             'code' => $code,
-            'message' => $ex->getMessage(),
+            'message' => 'traceException',
         ];
-        $result = ['errno' => $code == 0 ? -1 : $code, 'error' => $error];
-        $result['FlagString'] = '服务异常:' . $ex->getMessage();
+        $result = ['code' => $code == 0 ? 500 : $code, 'error' => $error];
+        $msg = trim($ex->getMessage());
+        $result['msg'] = !empty($msg) ? $msg : 'Exception with empty msg';
 
         while ($get_previous && !empty($ex) && $ex->getPrevious()) {
             $result['error']['errors'] = isset($result['error']['errors']) ? $result['error']['errors'] : [];
@@ -147,4 +152,70 @@ class ApiDispatch implements DispatchInterface
         $json_str = !empty($callback) ? "{$callback}(" . json_encode($result) . ');' : json_encode($result);
         $response->addHeader('Content-Type: application/json;charset=utf-8', false)->appendBody($json_str);
     }
+
+    protected static function _fixTraceInfo(array $traces, $_file, $_line)
+    {
+        $ret = [];
+        foreach ($traces as $trace) {
+            list($args, $class, $file, $function, $line, $type) = Util::vl($trace, [
+                'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
+            ]);
+            $arg_list = [];
+            foreach ($args as $arg) {
+                $arg_list[] = self::_dumpVal($arg);
+            }
+            $args_str = join(',', $arg_list);
+            $ret[] = (!empty($class) ? "{$class}{$type}" : '') . "{$function}({$args_str}) at {$file}:{$line}";
+        }
+        return $ret;
+    }
+
+    protected static function _dumpVal($data, $is_short = false)
+    {
+        $type = gettype($data);
+        switch ($type) {
+            case 'NULL':
+                return 'null';
+            case 'boolean':
+                return ($data ? 'true' : 'false');
+            case 'integer':
+            case 'double':
+            case 'float':
+                return $data;
+            case 'string':
+                return '"' . addslashes($data) . '"';
+            case 'object':
+                $class = get_class($data);
+                return "{$class}";
+            case 'array':
+                if ($is_short) {
+                    return "<Array>";
+                }
+                $output_index_count = 0;
+                $output_indexed = array();
+                $output_associative = array();
+                $idx = 0;
+                foreach ($data as $key => $value) {
+                    if ($idx >= 5) {
+                        $output_indexed[] = '...';
+                        $output_associative[] = '...';
+                        break;
+                    }
+                    $output_indexed[] = self::_dumpVal($value, true);
+                    $output_associative[] = self::_dumpVal($key, true) . ':' . self::_dumpVal($value, true);
+                    if ($output_index_count !== NULL && $output_index_count++ !== $key) {
+                        $output_index_count = NULL;
+                    }
+                    $idx += 1;
+                }
+                if ($output_index_count !== NULL) {
+                    return '[' . implode(',', $output_indexed) . ']';
+                } else {
+                    return '{' . implode(',', $output_associative) . '}';
+                }
+            default:
+                return '<object>'; // Not supported
+        }
+    }
+
 }

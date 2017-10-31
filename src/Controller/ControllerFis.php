@@ -11,24 +11,27 @@ namespace Tiny\Controller;
 use Tiny\Abstracts\AbstractController;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
+use Tiny\Util;
 use Tiny\View\ViewFis;
-use Tiny\Func;
 
-class ControllerFis extends AbstractController
+abstract class ControllerFis extends AbstractController
 {
     final public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
         $this->setView(new ViewFis());
-        ViewFis::preTreatmentDisplay(function ($file_path, $params) {
+
+        $this->getView()->setPreDisplay(function ($file_path, $params) {
+            false && func_get_args();
+
             $params = $this->extendAssign($params);
-            static::fire('preDisplay', [$this, $file_path, $params]);
             return $params;
         });
 
-        ViewFis::preTreatmentWidget(function ($file_path, $params) {
+        $this->getView()->setPreWidget(function ($file_path, $params) {
+            false && func_get_args();
+
             $params = $this->extendAssign($params);
-            static::fire('preWidget', [$this, $file_path, $params]);
             return $params;
         });
     }
@@ -43,30 +46,30 @@ class ControllerFis extends AbstractController
      */
     public function display($tpl_path = '')
     {
-        $tpl_path = Func::trimlower($tpl_path);
+        $tpl_path = trim($tpl_path);
         $routeInfo = $this->getRequest()->getRouteInfo();
         if (empty($tpl_path)) {
             $tpl_path = $routeInfo[2] . '.php';
         } else {
-            $tpl_path = Func::stri_endwith($tpl_path, '.php') ? $tpl_path : "{$tpl_path}.php";
+            $tpl_path = Util::stri_endwith($tpl_path, '.php') ? $tpl_path : "{$tpl_path}.php";
         }
         $file_path = "view/{$routeInfo[0]}/{$routeInfo[1]}/{$tpl_path}";
         $view = $this->getView();
         $params = $view->getAssign();
-
+        $response = $this->getResponse();
         $layout = $this->getLayout();
         $html = '';
         if (!empty($layout)) {
-            $layout_tpl = Func::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
+            $layout_tpl = Util::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
             $layout_path = $file_path = "view/{$routeInfo[0]}/{$routeInfo[1]}/{$layout_tpl}";
             if (is_file($layout_path)) {
-                $action_content = $view->display($file_path, $params);
+                $action_content = $view->display($response, $file_path, $params);
 
                 $params['action_content'] = $action_content;
-                $html = $view->display($layout_path, $params);
+                $html = $view->display($response, $layout_path, $params);
             }
         } else {
-            $html = $view->display($file_path, $params);
+            $html = $view->display($response, $file_path, $params);
         }
         $this->getResponse()->appendBody($html);
     }

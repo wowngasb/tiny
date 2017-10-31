@@ -10,9 +10,9 @@ namespace Tiny\Plugin\graphiql\controller;
 
 
 use Tiny\Application;
-use Tiny\Plugin\graphiql\base\BaseGraphiQLController;
+use Tiny\Plugin\graphiql\GraphiQLController;
 
-class index extends BaseGraphiQLController
+class index extends GraphiQLController
 {
 
     public function index()
@@ -27,7 +27,7 @@ class index extends BaseGraphiQLController
     {
         $develop_key = $this->_post('develop_key', '');
 
-        $this->_setCookieDevelopKey($develop_key);
+        self::_setDevelopKey($this->getRequest(), $develop_key);
         if (self::authDevelopKey()) {  //认证 通过
             Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', '', 'index']));
         } else {

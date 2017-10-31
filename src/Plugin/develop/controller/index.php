@@ -3,10 +3,11 @@
 namespace Tiny\Plugin\develop\controller;
 
 
+use Tiny\Abstracts\AbstractBootstrap;
 use Tiny\Application;
-use Tiny\Plugin\develop\base\BaseDevelopController;
+use Tiny\Plugin\develop\DevelopController;
 
-class index extends BaseDevelopController
+class index extends DevelopController
 {
 
     public function beforeAction(array $params)
@@ -14,7 +15,8 @@ class index extends BaseDevelopController
         $params = parent::beforeAction($params);
 
         if ($this->authDevelopKey()) {  //认证 通过
-            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'syslog', 'index']));
+            $url = Application::url($this->getRequest(), ['', 'syslog', 'index']);
+            Application::redirect($this->getResponse(), $url);
         }
         return $params;
     }
@@ -28,7 +30,7 @@ class index extends BaseDevelopController
     {
         $develop_key = $this->_post('develop_key', '');
 
-        $this->_setCookieDevelopKey($develop_key);
+        self::_setDevelopKey($this->getRequest(), $develop_key);
         if (self::authDevelopKey()) {  //认证 通过
             Application::app()->redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'syslog', 'index']));
         } else {

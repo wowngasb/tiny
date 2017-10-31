@@ -13,19 +13,17 @@ use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 
 /**
- * Class Request
- * 默认 Request 请求参数来源 使用默认 php 的 超全局变量
+ * Class StdRequest
+ * 默认 StdRequest 请求参数来源 使用默认 php 的 超全局变量
  * @package Tiny
  */
-class Request implements RequestInterface
+abstract class StdRequest implements RequestInterface
 {
     protected $_request_uri = '/';  // 当前请求的Request URI
     protected $_method = 'GET';  // 当前请求的Method, 对于命令行来说, Method为"CLI"
     protected $_language = ''; // 当前请求的希望接受的语言, 对于Http请求来说, 这个值来自分析请求头Accept-Language. 对于不能鉴别的情况, 这个值为空.
     protected $_routed = false; // 表示当前请求是否已经完成路由 完成后 不可修改路由和参数信息
     protected $_http_referer = '';
-    protected $_this_url = '';
-    protected $_csrf_token = '';
 
     protected $_current_route = '';  // 当前使用的 路由名称 在注册路由时给出的
     protected $_route_info = [];  // 当前 路由信息 [$controller, $action, $module]
@@ -33,9 +31,11 @@ class Request implements RequestInterface
 
     protected $_session_started = false;
     protected $_request_timestamp = null;
-    protected $_raw_post_data = null;
 
-    protected static $_config_map = [];
+    private $_request_header = null;
+    private $_agent_browser = null;
+    private $_raw_post_data = null;
+    private $_is_mobile = null;
 
     public function __construct()
     {
@@ -44,8 +44,6 @@ class Request implements RequestInterface
         $this->_method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : '';
         $this->_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
         $this->_http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
-        $this->_this_url = Application::host() . substr($this->_request_uri, 1);
-        $this->_csrf_token = self::_request('CSRF', '');
     }
 
     ###############################################################
@@ -66,22 +64,6 @@ class Request implements RequestInterface
     public function getRequestTimestamp()
     {
         return $this->_request_timestamp;
-    }
-
-    /**
-     * @return string
-     */
-    public function getCsrfToken()
-    {
-        return $this->_csrf_token;
-    }
-
-    /**
-     * @return string
-     */
-    public function getThisUrl()
-    {
-        return $this->_this_url;
     }
 
     /**
@@ -113,7 +95,7 @@ class Request implements RequestInterface
         if (count($routeInfo) !== 3 || empty($routeInfo[0]) || empty($routeInfo[1]) || empty($routeInfo[2])) {
             throw new AppStartUpError('not like [module, Controller, Action] routeInfo:' . json_encode($routeInfo));
         }
-        $this->_route_info = [Func::trimlower($routeInfo[0]), Func::trimlower($routeInfo[1]), Func::trimlower($routeInfo[2])];
+        $this->_route_info = [trim($routeInfo[0]), trim($routeInfo[1]), trim($routeInfo[2])];
         return $this;
     }
 
@@ -265,6 +247,11 @@ class Request implements RequestInterface
         return $this;
     }
 
+    public function session_status()
+    {
+        return session_status();
+    }
+
     /**
      * @param null $id
      * @return null|string
@@ -289,7 +276,7 @@ class Request implements RequestInterface
 
     /**
      * @param string $uri
-     * @return Request
+     * @return StdRequest
      */
     public function copy($uri = null)
     {
@@ -314,7 +301,7 @@ class Request implements RequestInterface
         if (substr($path, -1, 1) != '/') {
             $path .= '/';
         }
-        return Func::trimlower($path);
+        return trim($path);
     }
 
     ###############################################################
@@ -328,7 +315,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _get($name = null, $default = '')
+    public function _get($name, $default = '')
     {
         return isset($_GET[$name]) ? $_GET[$name] : $default;
     }
@@ -357,7 +344,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _post($name = null, $default = '')
+    public function _post($name, $default = '')
     {
         return isset($_POST[$name]) ? $_POST[$name] : $default;
     }
@@ -386,7 +373,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _env($name = null, $default = '')
+    public function _env($name, $default = '')
     {
         return isset($_ENV[$name]) ? $_ENV[$name] : $default;
     }
@@ -415,7 +402,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _server($name = null, $default = '')
+    public function _server($name, $default = '')
     {
         return isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
     }
@@ -444,7 +431,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _cookie($name = null, $default = '')
+    public function _cookie($name, $default = '')
     {
         return isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
     }
@@ -473,7 +460,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _files($name = null, $default = '')
+    public function _files($name, $default = '')
     {
         return isset($_FILES[$name]) ? $_FILES[$name] : $default;
     }
@@ -502,7 +489,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _request($name = null, $default = '')
+    public function _request($name, $default = '')
     {
         return isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
     }
@@ -531,7 +518,7 @@ class Request implements RequestInterface
      * @param string $default
      * @return string
      */
-    public function _session($name = null, $default = '')
+    public function _session($name, $default = '')
     {
         return isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
     }
@@ -553,6 +540,8 @@ class Request implements RequestInterface
         $_SESSION[$name] = $data;
     }
 
+    ##################  HTTP INFO ##################
+
     /**
      * 读取原始请求数据
      * @return string
@@ -564,6 +553,129 @@ class Request implements RequestInterface
         }
         return $this->_raw_post_data;
     }
+
+    /**
+     * 获取request 头部信息 全部使用小写名字
+     * @return array
+     */
+    public function getAllHeader()
+    {
+        $server = $this->all_server();
+        if (!is_null($this->_request_header)) {
+            return $this->_request_header;
+        }
+
+        if (!function_exists('apache_request_headers')) {
+            $header = [];
+            $rx_http = '/\AHTTP_/';
+            foreach ($server as $key => $val) {
+                if (preg_match($rx_http, $key)) {
+                    $arh_key = preg_replace($rx_http, '', $key);
+                    $rx_matches = explode('_', $arh_key);
+                    if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
+                        foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
+                        $arh_key = implode('-', $rx_matches);
+                    }
+                    $arh[$arh_key] = $val;
+                }
+            }
+        } else {
+            $header = apache_request_headers();
+        }
+
+        if (isset($server['PHP_AUTH_DIGEST'])) {
+            $header['AUTHORIZATION'] = $server['PHP_AUTH_DIGEST'];
+        } elseif (isset($server['PHP_AUTH_USER']) && isset($server['PHP_AUTH_PW'])) {
+            $header['AUTHORIZATION'] = base64_encode($server['PHP_AUTH_USER'] . ':' . $server['PHP_AUTH_PW']);
+        }
+        if (isset($server['CONTENT_LENGTH'])) {
+            $header['CONTENT-LENGTH'] = $server['CONTENT_LENGTH'];
+        }
+        if (isset($server['CONTENT_TYPE'])) {
+            $header['CONTENT-TYPE'] = $server['CONTENT_TYPE'];
+        }
+        foreach ($header as $key => $item) {
+            $header[strtolower($key)] = $item;
+        }
+
+        $this->_request_header = $header;
+        return $this->_request_header;
+    }
+
+    /**
+     * 根据 HTTP_USER_AGENT 获取客户端浏览器信息
+     * @return array 浏览器相关信息 ['name', 'version']
+     */
+    public function agentBrowser()
+    {
+        if (!is_null($this->_agent_browser)) {
+            return $this->_agent_browser;
+        }
+        $browser = [];
+        $agent = $this->_server('HTTP_USER_AGENT', '');
+        if (stripos($agent, "Firefox/") > 0) {
+            preg_match("/Firefox\/([^;)]+)+/i", $agent, $b);
+            $browser[0] = "Firefox";
+            $browser[1] = $b[1];  //获取火狐浏览器的版本号
+        } elseif (stripos($agent, "Maxthon") > 0) {
+            preg_match("/Maxthon\/([\d\.]+)/", $agent, $maxthon);
+            $browser[0] = "Maxthon";
+            $browser[1] = $maxthon[1];
+        } elseif (stripos($agent, "MSIE") > 0) {
+            preg_match("/MSIE\s+([^;)]+)+/i", $agent, $ie);
+            $browser[0] = "IE";
+            $browser[1] = $ie[1];  //获取IE的版本号
+        } elseif (stripos($agent, "OPR") > 0) {
+            preg_match("/OPR\/([\d\.]+)/", $agent, $opera);
+            $browser[0] = "Opera";
+            $browser[1] = $opera[1];
+        } elseif (stripos($agent, "Edge") > 0) {
+            //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
+            preg_match("/Edge\/([\d\.]+)/", $agent, $Edge);
+            $browser[0] = "Edge";
+            $browser[1] = $Edge[1];
+        } elseif (stripos($agent, "Chrome") > 0) {
+            preg_match("/Chrome\/([\d\.]+)/", $agent, $google);
+            $browser[0] = "Chrome";
+            $browser[1] = $google[1];  //获取google chrome的版本号
+        } elseif (stripos($agent, 'rv:') > 0 && stripos($agent, 'Gecko') > 0) {
+            preg_match("/rv:([\d\.]+)/", $agent, $IE);
+            $browser[0] = "IE";
+            $browser[1] = $IE[1];
+        } else {
+            $browser[0] = "UNKNOWN";
+            $browser[1] = "";
+        }
+
+        $this->_agent_browser = $browser;
+        return $this->_agent_browser;
+    }
+
+    public function isMobile()
+    {
+        if (!is_null($this->_is_mobile)) {
+            return $this->_is_mobile;
+        }
+
+        $mobile_agents = ['xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte"];
+
+        $user_agent = $this->_server('HTTP_USER_AGENT', '');
+        if (empty($user_agent)) {
+            return false;
+        }
+        $is_mobile = false;
+        foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
+            if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
+                $is_mobile = true;
+                break;
+            }
+        }
+
+        $this->_is_mobile = $is_mobile;
+        return $this->_is_mobile;
+    }
+
+    ##################  PHP HOOK ##################
 
     /**
      * 动态应用一个配置文件  返回配置 key 数组  动态导入配置工作 依靠 request 完成
@@ -580,9 +692,8 @@ class Request implements RequestInterface
         if (!is_file($config_file)) {
             throw new AppStartUpError("requireForArray cannot find {$config_file}");
         }
-        if (!isset(static::$_config_map[$config_file])) {
-            static::$_config_map[$config_file] = require($config_file);
-        }
-        return static::$_config_map[$config_file];
+
+        $ret = include($config_file);
+        return $ret;
     }
 }

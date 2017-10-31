@@ -9,9 +9,9 @@
 namespace Tiny\Route;
 
 
-use Tiny\Func;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
+use Tiny\Util;
 
 
 /**
@@ -32,13 +32,13 @@ class RouteRegex implements RouteInterface
 
     public function __construct($regex, array $routeInfo, array $reg_map, array $default_route_info = [])
     {
-        $regex = Func::trimlower($regex);
-        $regex = Func::str_startwith($regex, "/") ? substr($regex, 1) : $regex;
+        $regex = trim($regex);
+        $regex = Util::str_startwith($regex, "/") ? substr($regex, 1) : $regex;
 
         $this->_regex = $regex;
         $this->_routeInfo = $routeInfo;
         $this->_reg_map = $reg_map;
-        $this->_default_route_info = Func::mergeNotEmpty($this->_default_route_info, $default_route_info);
+        $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);
     }
 
 
@@ -51,7 +51,7 @@ class RouteRegex implements RouteInterface
     public function buildRouteInfo(RequestInterface $request)
     {
         $uri = $request->fixRequestPath();
-        $reg_str = Func::str_startwith($this->_regex, "^\/") ? $this->_regex : "^\/{$this->_regex}";
+        $reg_str = Util::str_startwith($this->_regex, "^\/") ? $this->_regex : "^\/{$this->_regex}";
         $matches = [];
         preg_match("/{$reg_str}/i", $uri, $matches);
 

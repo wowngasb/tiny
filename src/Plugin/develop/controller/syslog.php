@@ -4,12 +4,12 @@ namespace Tiny\Plugin\develop\controller;
 
 
 use Tiny\Application;
-use Tiny\Func;
+use Tiny\Util;
 use Tiny\Plugin\ApiHelper;
-use Tiny\Plugin\develop\base\BaseDevelopController;
+use Tiny\Plugin\develop\DevelopController;
 use Tiny\Plugin\LogHelper;
 
-class sysLog extends BaseDevelopController
+class sysLog extends DevelopController
 {
 
     public function beforeAction(array $params)
@@ -97,7 +97,7 @@ class sysLog extends BaseDevelopController
         foreach ($arr_dir as $key => $val) {
             $val['ctime_str'] = date('Y-m-d H:i:s', $val['ctime']);
             $val['mtime_str'] = date('Y-m-d H:i:s', $val['mtime']);
-            $val['size_str'] = Func::byte2size($val['size']) . 'B';
+            $val['size_str'] = Util::byte2size($val['size']) . 'B';
             if ($val['type'] == 'file') {
                 $rst[] = [
                     'text' => $val['name'],

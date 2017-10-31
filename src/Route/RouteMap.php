@@ -10,9 +10,9 @@ namespace Tiny\Route;
 
 
 use Tiny\Application;
-use Tiny\Func;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
+use Tiny\Util;
 
 
 /**
@@ -33,12 +33,12 @@ class RouteMap implements RouteInterface
 
     public function __construct($base_uri = '/', $default_module = '', array $default_route_info = [])
     {
-        $base_uri = Func::trimlower($base_uri);
-        $base_uri = Func::str_startwith($base_uri, '/') ? $base_uri : "/{$base_uri}";
-        $base_uri = Func::str_endwith($base_uri, '/') ? $base_uri : "{$base_uri}/";
+        $base_uri = trim($base_uri);
+        $base_uri = Util::str_startwith($base_uri, '/') ? $base_uri : "/{$base_uri}";
+        $base_uri = Util::str_endwith($base_uri, '/') ? $base_uri : "{$base_uri}/";
         $this->_base_uri = $base_uri;
-        $this->_default_module = Func::trimlower($default_module);
-        $this->_default_route_info = Func::mergeNotEmpty($this->_default_route_info, $default_route_info);
+        $this->_default_module = trim($default_module);
+        $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);
     }
 
     /**
@@ -51,13 +51,13 @@ class RouteMap implements RouteInterface
     public function buildRouteInfo(RequestInterface $request)
     {
         $uri_origin = $request->fixRequestPath();
-        if (!Func::stri_startwith($uri_origin, $this->_base_uri)) {
+        if (!Util::stri_startwith($uri_origin, $this->_base_uri)) {
             return [null, null];
         }
 
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
         $uri = str_replace($this->_base_uri, '/', $uri_origin);
-        $split_list = Func::splitNotEmpty('/', $uri);
+        $split_list = Util::splitNotEmpty('/', $uri);
         if (!empty($this->_default_module)) {
             $split_list = [$this->_default_module, isset($split_list[0]) ? $split_list[0] : $default_controller, isset($split_list[1]) ? $split_list[1] : $default_action];
         } else {
@@ -70,7 +70,7 @@ class RouteMap implements RouteInterface
         preg_match("/{$reg_str}/i", $_uri, $matches);
 
         if (!empty($matches[1]) && !empty($matches[2]) && !empty($matches[3])) {
-            $routeInfo = [Func::trimlower($matches[1]), Func::trimlower($matches[2]), Func::trimlower($matches[3])];
+            $routeInfo = [trim($matches[1]), trim($matches[2]), trim($matches[3])];
             return [$routeInfo, $request->all_request()];
         } else {
             return [null, null];
@@ -87,9 +87,9 @@ class RouteMap implements RouteInterface
     {
         list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
 
-        $module = !empty($routeInfo[0]) ? Func::trimlower($routeInfo[0]) : $default_module;
-        $controller = !empty($routeInfo[1]) ? Func::trimlower($routeInfo[1]) : $default_controller;
-        $action = !empty($routeInfo[2]) ? Func::trimlower($routeInfo[2]) : $default_action;
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
+        $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
 
         $url = Application::host() . "{$module}/{$controller}/{$action}";
         $args_list = [];

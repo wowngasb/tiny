@@ -12,9 +12,10 @@ namespace Tiny\Plugin;
 use Tiny\Application;
 use Tiny\Controller\ControllerSimple;
 use Tiny\Exception\AppStartUpError;
-use Tiny\Func;
+use Tiny\Interfaces\RequestInterface;
+use Tiny\Util;
 
-class DevAuthControllerSimple extends ControllerSimple
+class DevAuthController extends ControllerSimple
 {
 
     private static $_SVR_DEVELOP_KEY = 'develop_key';
@@ -23,7 +24,7 @@ class DevAuthControllerSimple extends ControllerSimple
     protected function sendFile($file_path)
     {
         $response = $this->getResponse();
-        $content_type = Func::mime_content_type($file_path);
+        $content_type = Util::mime_content_type($file_path);
         if (!is_file($file_path)) {
             $response->addHeader("Content-Type:{$content_type}", true, 404);
         } elseif (!is_readable($file_path)) {
@@ -36,7 +37,7 @@ class DevAuthControllerSimple extends ControllerSimple
 
     protected function _showLoginBox($develop_key)
     {
-        $this->_delCookieDevelopKey();
+        self::_delDevelopKey($this->getRequest());
         $err_msg = empty($develop_key) ? 'Input develop key.' : 'Auth failed.';
         $html_str = <<<EOT
 <form action="" method="POST">
@@ -49,51 +50,56 @@ EOT;
     }
 
 
-    public function authDevelopKey()
-    {
-        $env_develop_key = Application::config('ENV_DEVELOP_KEY');
-        if (empty($env_develop_key)) {
-            throw new AppStartUpError('must set ENV_DEVELOP_KEY in config');
-        }
-        $develop_key = $this->_getCookieDevelopKey();
-        $test = Func::str_cmp($env_develop_key, $develop_key);
-        $test && $this->_setCookieDevelopKey($develop_key);
-        return $test;
-    }
-
-    protected function _getCookieDevelopKey()
-    {
-        $name = self::$_SVR_DEVELOP_KEY;
-        $crypt_key = Application::config('ENV_CRYPT_KEY');
-        $auth_str = $this->_cookie($name, '');
-        $develop_key = Func::decode($auth_str, $crypt_key);
-        return $develop_key;
-    }
-
     protected function _checkRequestDevelopKeyToken()
     {
         $dev_token = $this->_request('dev_token', '');
         if (!empty($dev_token)) {
             $crypt_key = Application::config('ENV_CRYPT_KEY');
-            $develop_key = Func::decode($dev_token, $crypt_key);
-            $develop_key && $this->_setCookieDevelopKey($develop_key);
+            $develop_key = Util::decode($dev_token, $crypt_key);
+            $develop_key && self::_setDevelopKey($this->getRequest(), $develop_key);
         }
     }
 
-    protected function _setCookieDevelopKey($develop_key)
+    public function authDevelopKey()
+    {
+        $test = self::_checkDevelopKey($this->getRequest());
+        $test && self::_setDevelopKey($this->getRequest(), Application::config('ENV_DEVELOP_KEY'));
+        return $test;
+    }
+
+    final public static function _checkDevelopKey(RequestInterface $request)
+    {
+        $env_develop_key = Application::config('ENV_DEVELOP_KEY');
+        if (empty($env_develop_key)) {
+            throw new AppStartUpError('must set ENV_DEVELOP_KEY in config');
+        }
+        $develop_key = self::_getDevelopKey($request);
+        return Util::str_cmp($env_develop_key, $develop_key);
+    }
+
+    final public static function _getDevelopKey(RequestInterface $request)
     {
         $name = self::$_SVR_DEVELOP_KEY;
         $crypt_key = Application::config('ENV_CRYPT_KEY');
-        $value = Func::encode($develop_key, $crypt_key, self::$_SVR_DEVELOP_EXPIRY);
-        $this->getRequest()->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
-        $this->getRequest()->set_cookie($name, $value);
+        $auth_str = $request->_cookie($name, '');
+        $develop_key = Util::decode($auth_str, $crypt_key);
+        return $develop_key;
     }
 
-    protected function _delCookieDevelopKey()
+    final public static function _setDevelopKey(RequestInterface $request, $develop_key)
+    {
+        $name = self::$_SVR_DEVELOP_KEY;
+        $crypt_key = Application::config('ENV_CRYPT_KEY');
+        $value = Util::encode($develop_key, $crypt_key, self::$_SVR_DEVELOP_EXPIRY);
+        $request->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
+        $request->set_cookie($name, $value);
+    }
+
+    final public function _delDevelopKey(RequestInterface $request)
     {
         $name = self::$_SVR_DEVELOP_KEY;
         $value = '';
-        $this->getRequest()->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
+        $request->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
     }
 
 

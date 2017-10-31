@@ -21,34 +21,34 @@ trait LogTrait
 
     public static function debug($msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
-        return self::log('DEBUG', $msg, $method, $class, $line_no);
+        return static::log('DEBUG', $msg, $method, $class, $line_no);
     }
 
     public static function info($msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
-        return self::log('INFO', $msg, $method, $class, $line_no);
+        return static::log('INFO', $msg, $method, $class, $line_no);
     }
 
     public static function warn($msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
-        return self::log('WARN', $msg, $method, $class, $line_no);
+        return static::log('WARN', $msg, $method, $class, $line_no);
     }
 
     public static function error($msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
-        return self::log('ERROR', $msg, $method, $class, $line_no);
+        return static::log('ERROR', $msg, $method, $class, $line_no);
     }
 
     public static function fatal($msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
-        return self::log('FATAL', $msg, $method, $class, $line_no);
+        return static::log('FATAL', $msg, $method, $class, $line_no);
     }
 
     public static function debugResult($result, $method = '', $class = 'sys_log', $line_no = 0, $max_items = 10, $max_chars = 50)
     {
-        $tmp_msg = self::mixed2msg($result, $max_items, $max_chars);  //简化结果显示 隐藏过多的条目
+        $tmp_msg = self::_mixed2msg($result, $max_items, $max_chars);  //简化结果显示 隐藏过多的条目
         $log_msg = "FuncResult:{$tmp_msg}";
-        self::debug($log_msg, $method, $class . '_', $line_no);
+        static::debug($log_msg, $method, $class . '_', $line_no);
     }
 
     public static function debugArgs(array $args, $method = '', $class = 'sys_log', $line_no = 0, $max_items = 10, $max_chars = 50)
@@ -67,11 +67,11 @@ trait LogTrait
                 error_log("debugArgs Exception target:{$method}, error:" . $e->getMessage());
             }
         }
-        $log_msg = "FuncArgs:" . self::mixed2msg($args, $max_items, $max_chars);
-        self::debug($log_msg, $method, $class . '_', $line_no);
+        $log_msg = "FuncArgs:" . self::_mixed2msg($args, $max_items, $max_chars);
+        static::debug($log_msg, $method, $class . '_', $line_no);
     }
 
-    private static function mixed2msg($var, $max_items, $max_chars, $indent = 0)
+    private static function _mixed2msg($var, $max_items, $max_chars, $indent = 0)
     {
         $tab = str_repeat("  ", $indent + 1);
         $tab_pre = str_repeat("  ", $indent);
@@ -100,7 +100,7 @@ trait LogTrait
                             $output[] = "{$tab}\"...total<{$total}>items...\"";
                             break;
                         }
-                        $output[] = $tab . self::mixed2msg($v, $max_items, $max_chars, $indent + 1);
+                        $output[] = $tab . self::_mixed2msg($v, $max_items, $max_chars, $indent + 1);
                         $item_idx += 1;
                     }
                     return "[\n" . implode(",  \n", $output) . "\n{$tab_pre}]";
@@ -113,7 +113,7 @@ trait LogTrait
                         $output[] = "{$tab}\"...total<{$total}>keys...\": \"....items..\"";
                         break;
                     }
-                    $output[] = $tab . strval($k) . ': ' . self::mixed2msg($v, $max_items, $max_chars, $indent + 1);
+                    $output[] = $tab . strval($k) . ': ' . self::_mixed2msg($v, $max_items, $max_chars, $indent + 1);
                     $item_idx += 1;
                 }
                 return "{\n" . implode(",  \n", $output) . "\n{$tab_pre}}";

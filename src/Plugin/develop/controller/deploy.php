@@ -10,7 +10,7 @@ namespace Tiny\Plugin\develop\controller;
 
 use Tiny\Application;
 use Tiny\Plugin\ApiHelper;
-use Tiny\Plugin\develop\base\BaseDevelopController;
+use Tiny\Plugin\develop\DevelopController;
 
 
 /**
@@ -18,7 +18,7 @@ use Tiny\Plugin\develop\base\BaseDevelopController;
  * Class Deploy
  * @package app\controllers
  */
-class deploy extends BaseDevelopController
+class deploy extends DevelopController
 {
     public function beforeAction(array $params)
     {
@@ -86,7 +86,7 @@ EOT;
             $class_name = "\\{$appname}\\api\\{$class}";
             $method_list = ApiHelper::getApiMethodList($class_name);
             $js_str = ApiHelper::model2js($class, $method_list, $dev_debug);
-            $out_path = Application::path([$appname, 'static', 'api']);
+            $out_path = Application::path(['public', 'static', 'api']);
             if (!is_dir($out_path)) {
                 mkdir($out_path, 0777, true);
             }
@@ -100,7 +100,8 @@ EOT;
     //指定API生成单一model.js
     public function actionGetModelJs()
     {
-        $dev_debug = $this->_get('dev_debug', 0) == 1;
+        $dev_debug = $this->_get('dev_debug', Application::dev());
+        $dev_debug = !empty($dev_debug);
         $method_list = [];
         $cls = $this->_get('cls', '');
         if (!empty($cls)) {
@@ -114,7 +115,7 @@ EOT;
 //清空m缓存
     public function cleanCache()
     {
-        $mCache = self::getCacheInstance();
+        $mCache = self::_getCacheInstance();
         if (!empty($mCache)) {
             $mCache->clear();
         }

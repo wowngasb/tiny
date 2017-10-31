@@ -18,16 +18,18 @@ class ApiHelper
         'warn' => 1,
         'error' => 1,
         'fatal' => 1,
-        'beforeapi' => 1,
         'beforeaction' => 1,
         'getrequest' => 1,
         'getresponse' => 1,
-        'getactionname' => 1,
-        'getcacheinstance' => 1,
-        'setactionname' => 1,
         'on' => 1,
-        'exceptapi' => 1,
-        'doneapi' => 1,
+        'all_get' => 1,
+        'all_post' => 1,
+        'all_env' => 1,
+        'all_server' => 1,
+        'all_cookie' => 1,
+        'all_files' => 1,
+        'all_request' => 1,
+        'all_session' => 1,
     ];
 
     public static function fixActionParams($obj, $func, $params)
@@ -80,6 +82,7 @@ class ApiHelper
     public static function model2js($cls, $method_list, $dev_debug = true)
     {
         $date_str = date('Y-m');
+        $_dev_debug = $dev_debug ? 'true' : 'false';
         $log_msg = "build API.js@{$cls}, method:" . json_encode($method_list);
         self::debug($log_msg, __METHOD__, __CLASS__, __LINE__);
         $js_str = <<<EOT
@@ -91,55 +94,69 @@ class ApiHelper
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
-	(global.Vue = factory());
+	(global.{$cls} = factory());
 }(this, (function () { 'use strict';
 
 /*  */
 
 function {$cls}Helper(){
-    var _this = this;
-    this.DEBUG = {$dev_debug};
-    var _log_func = (typeof console != "undefined" && typeof console.info == "function" && typeof console.warn == "function") ? {INFO: console.info.bind(console), ERROR: console.warn.bind(console)} : {};
+    var self = this;
+    this.debug = {$_dev_debug};
     
-    var _formatDate = function(){
+    var _h = location.hostname;
+    var _s = 'https:' === document.location.protocol ? 'https' : 'http';
+    var _l = (typeof console !== "undefined" && typeof console.log === "function") ? {
+        DEBUG: typeof console.debug === "function" ? console.debug.bind(console) : console.log.bind(console),
+        INFO: typeof console.info === "function" ? console.info.bind(console) : console.log.bind(console),
+        WARN: typeof console.warn === "function" ? console.warn.bind(console) : console.log.bind(console),
+        ERROR: typeof console.error === "function" ? console.error.bind(console) : console.log.bind(console),
+    } : {};
+    var _d = function(){
         var now = new Date(new Date().getTime());
         var year = now.getFullYear();
         var month = now.getMonth()+1;
         var date = now.getDate();
         var hour = now.getHours();
         var minute = now.getMinutes();
-        if(minute < 10){
-            minute = '0' + minute.toString();
-        } 
+        if(minute < 10){ minute = '0' + minute.toString(); } 
         var seconds = now.getSeconds();
-        if(seconds < 10){
-            seconds = '0' + seconds.toString();
-        }
+        if(seconds < 10){ seconds = '0' + seconds.toString(); }
         return year+"-"+month+"-"+date+" "+hour+":"+minute+":"+seconds;
     };
     
-    var _rfcApi = function(type, url, args, success, error, log){
-        var start_time = new Date().getTime();
-        if( typeof CSRF_TOKEN != "undefined" && CSRF_TOKEN ){
+    var _ajax = function (host, path, args, success, failure, logHandler, logLevelHandler, fixArgs) {
+        args = args || {};
+        fixArgs = fixArgs || {};
+        logHandler = logHandler || function (logLevel, use_time, args, data) {
+            logLevel in _l && (_l[logLevel])(_d(), '[' + logLevel + '] ' + path + '(' + use_time + 'ms)', 'args:', args, 'data:', data)
+        };
+        logLevelHandler = logLevelHandler || function (res) {
+            return (res.code) ? ( res.code === 0 ? 'INFO' : 'ERROR') : (!res.error ? 'INFO' : 'ERROR');
+        };
+    
+        var api_url = _s + "://" + host + path,
+            start_time = new Date().getTime();
+            
+        if( typeof CSRF_TOKEN !== "undefined" && CSRF_TOKEN ){
             args.csrf = CSRF_TOKEN;
         }
-        $.ajax({
-            type: type,
-            url: url,
+        
+        return $.ajax($.extend({}, {
+            type: host === location.hostname.toLowerCase() ? "POST" : "GET",
+            url: api_url,
             data: args,
-            dataType: 'json',
-            success:
-                function(data) {
-                    var use_time = Math.round( (new Date().getTime() - start_time) );
-                    if(data.errno == 0 || typeof data.error == "undefined" ){
-                        log('INFO', use_time, args, data);
-                        typeof(success) == 'function' && success(data);
-                    } else {
-                        log('ERROR', use_time, args, data);
-                        typeof(error) == 'function' && error(data);
-                    }
+            cache: false,
+            dataType: host === location.hostname.toLowerCase() ? "json" : "jsonp",
+            success: function (res) {
+                self.debug && typeof logHandler === 'function' && logHandler(logLevelHandler(res), Math.round((new Date().getTime() - start_time)), args, res);
+                var code = typeof res.code !== 'undefined' ? parseInt(res.code) : -1
+                if (code === 0 || (typeof res.code !== 'undefined' && !res.error)) {
+                    typeof success === 'function' && success(res);
+                } else {
+                    typeof failure === 'function' && failure(res);
                 }
-        });
+            }
+        }, fixArgs));
     };
 
 EOT;
@@ -152,13 +169,12 @@ EOT;
             $func_item = <<<EOT
 
     {$doc_str}
-    this.{$name} = function(args, success, error) {
-        args = args || {};
-        var log = function(tag, use_time, args, data){
-            var f = _log_func[tag]; typeof args.csrf != "undefined" && delete args.csrf;
-            _this.DEBUG && f && f(_formatDate(), '['+tag+'] {$cls}.{$name}('+use_time+'ms)', 'args:', args, 'data:', data);
+    this.{$name} = function(args, success, failure, logHandler, logLevelHandler, fixArgs) {
+        var _p = '/api/{$cls}/{$name}';args = args || {};
+        logHandler = logHandler || function (t, u, a, d) {
+            t in _l && (_l[t])(_d(),'['+t+'] '+_p+'('+u+'ms)','args:',a,'data:',d);
         };
-        return _rfcApi('POST', '/api/{$cls}/{$name}' ,args, success, error, log);
+        return _ajax(_h, _p, args, success, failure, logHandler, logLevelHandler, fixArgs);
     };
     {$args_str}
 

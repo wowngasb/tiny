@@ -34,7 +34,7 @@ class ViewSimple implements ViewInterface
     {
         $_pre_widget = $this->getPreWidget();
         $tpl_vars = !empty($_pre_widget) ? call_user_func_array($_pre_widget, [$widget_path, $tpl_vars]) : $tpl_vars;
-        return self::display($response, $widget_path, $tpl_vars);
+        return static::display($response, $widget_path, $tpl_vars);
     }
 
     /**
@@ -48,7 +48,7 @@ class ViewSimple implements ViewInterface
     {
         $_pre_display = $this->getPreDisplay();
         $tpl_vars = $_pre_display ? call_user_func_array($_pre_display, [$view_path, $tpl_vars]) : $tpl_vars;
-        return $response::requireForRender($view_path, $tpl_vars);
+        return $response->requireForRender($view_path, $tpl_vars);
     }
 
     /**

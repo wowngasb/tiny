@@ -13,7 +13,6 @@ use Tiny\Exception\AppStartUpError;
 
 interface RequestInterface
 {
-
     ###############################################################
     ############  私有属性 getter setter ################
     ###############################################################
@@ -27,16 +26,6 @@ interface RequestInterface
      * @return float
      */
     public function getRequestTimestamp();
-
-    /**
-     * @return string
-     */
-    public function getCsrfToken();
-
-    /**
-     * @return string
-     */
-    public function getThisUrl();
 
     /**
      * @return string
@@ -152,6 +141,12 @@ interface RequestInterface
     public function session_id($id = null);
 
     /**
+     * 返回当前会话状态
+     * @return int
+     */
+    public function session_status();
+
+    /**
      * @return $this
      * @throws AppStartUpError
      */
@@ -159,7 +154,7 @@ interface RequestInterface
 
     /**
      * @param string $uri
-     * @return ResponseInterface
+     * @return RequestInterface
      */
     public function copy($uri = null);
 
@@ -179,7 +174,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _get($name = null, $default = '');
+    public function _get($name, $default = '');
 
     /**
      * @return array
@@ -199,7 +194,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _post($name = null, $default = '');
+    public function _post($name, $default = '');
 
     /**
      * @return array
@@ -219,7 +214,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _env($name = null, $default = '');
+    public function _env($name, $default = '');
 
     /**
      * @return array
@@ -239,7 +234,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _server($name = null, $default = '');
+    public function _server($name, $default = '');
 
     /**
      * @return array
@@ -259,7 +254,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _cookie($name = null, $default = '');
+    public function _cookie($name, $default = '');
 
     /**
      * @return array
@@ -279,7 +274,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _files($name = null, $default = '');
+    public function _files($name, $default = '');
 
     /**
      * @return array
@@ -299,7 +294,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _request($name = null, $default = '');
+    public function _request($name, $default = '');
 
     /**
      * @return array
@@ -319,7 +314,7 @@ interface RequestInterface
      * @param string $default
      * @return string
      */
-    public function _session($name = null, $default = '');
+    public function _session($name, $default = '');
 
     /**
      * @return array
@@ -332,11 +327,29 @@ interface RequestInterface
      */
     public function set_session($name, $data);
 
+    ##################  HTTP INFO ##################
+
     /**
      * 读取原始请求数据
      * @return string
      */
     public function raw_post_data();
+
+    /**
+     * 获取request 头部信息 全部使用小写名字
+     * @return array
+     */
+    public function getAllHeader();
+
+    /**
+     * 根据 HTTP_USER_AGENT 获取客户端浏览器信息
+     * @return array 浏览器相关信息 ['name', 'version']
+     */
+    public function agentBrowser();
+
+    public function isMobile();
+
+    ##################  PHP HOOK ##################
 
     /**
      * 动态应用一个配置文件  返回配置 key 数组  动态导入配置工作 依靠 request 完成
@@ -345,6 +358,4 @@ interface RequestInterface
      * @throws AppStartUpError
      */
     public static function requireForArray($config_file);
-
-
 }

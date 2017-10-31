@@ -37,10 +37,10 @@ trait EventTrait
         if (!static::isAllowedEvent($event)) {
             throw new AppStartUpError("event:{$event} not support");
         }
-        if (!isset(self::$_event_map[$event])) {
-            self::$_event_map[$event] = [];
+        if (!isset(static::$_event_map[$event])) {
+            static::$_event_map[$event] = [];
         }
-        self::$_event_map[$event][] = $callback;
+        static::$_event_map[$event][] = $callback;
     }
 
     /**
@@ -54,7 +54,7 @@ trait EventTrait
         if (!static::isAllowedEvent($event)) {
             throw new AppStartUpError("event:{$event} not support");
         }
-        $callback_list = isset(self::$_event_map[$event]) ? self::$_event_map[$event] : [];
+        $callback_list = isset(static::$_event_map[$event]) ? static::$_event_map[$event] : [];
         foreach ($callback_list as $idx => $val) {
             call_user_func_array($val, $args);
         }

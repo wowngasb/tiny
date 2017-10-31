@@ -8,9 +8,36 @@
 
 namespace Tiny;
 
-
-abstract class Func
+abstract class Util
 {
+
+    public static function dsl($str, $split = '#', $kv = '=')
+    {
+        list($str, $split, $kv) = [trim($str), trim($split), trim($kv)];
+        if (empty($str)) {
+            return [
+                'base' => $str,
+                'args' => [],
+            ];
+        }
+
+        $matchs = [];
+        $reg = "/{$split}([A-Za-z0-9_]+){$kv}([A-Za-z0-9_]*)/";
+        preg_match_all($reg, $str, $matchs);
+        $args = [];
+        foreach ($matchs[0] as $item) {
+            $str = str_replace($item, '', $str);
+        }
+
+        foreach ($matchs[1] as $idx => $key) {
+            $val = $matchs[2][$idx];
+            $args[$key] = is_numeric($val) ? ($val + 0) : $val;
+        }
+        return [
+            'base' => $str,
+            'args' => $args,
+        ];
+    }
 
     public static function _class()
     {
@@ -20,6 +47,82 @@ abstract class Func
     public static function _namespace()
     {
         return __NAMESPACE__;
+    }
+
+    public static function split_seq($str, $skip = 3, $seq = ',')
+    {
+        $str = strval($str);
+        $str_len = static::utf8_strlen($str);
+        if ($str_len <= $skip) {
+            return $str;
+        }
+
+        $char_list = [];
+        for ($idx = 0; $idx < $str_len; $idx++) {
+            $char_list[] = static::utf8_substr($str, $idx, 1);
+        }
+        $char_list = array_reverse($char_list);
+        $out_list = [];
+        foreach ($char_list as $idx => $char) {
+            $out_list[] = $idx > 0 && $idx % $skip == 0 ? "{$char}{$seq}" : $char;
+        }
+        return join('', array_reverse($out_list));
+    }
+
+    public static function utf8_substr($str, $start, $length = null, $suffix = "")
+    {
+        if (is_null($length)) {
+            $length = static::utf8_strlen($str) - $start;
+        }
+        if (function_exists("mb_substr")) {
+            $slice = mb_substr($str, $start, $length, "utf-8");
+        } elseif (function_exists('iconv_substr')) {
+            $slice = iconv_substr($str, $start, $length, "utf-8");
+        } else {
+            $re = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xff][\x80-\xbf]{3}/";
+            preg_match_all($re, $str, $match);
+            $slice = join("", array_slice($match[0], $start, $length));
+        }
+        return $slice . (static::utf8_strlen($slice) < static::utf8_strlen($str) ? $suffix : '');
+    }
+
+    /**
+     * 获取某年某月最大天数
+     * @param int $year 年
+     * @param int $month 月
+     * @return int 最大天数
+     */
+    public static function max_days($year, $month)
+    {
+        return $month == 2 ? ($year % 4 != 0 ? 28 : ($year % 100 != 0 ? 29 : ($year % 400 != 0 ? 28 : 29))) : (($month - 1) % 7 % 2 != 0 ? 30 : 31);
+    }
+
+    /**
+     * 20120304 日期转为时间戳
+     * @param int $per_day
+     * @return false|int
+     */
+    public static function intday2time($per_day)
+    {
+        $per_day = intval($per_day);
+        $month = floor($per_day / 100) % 100;
+        $day = $per_day % 100;
+        $year = floor($per_day / 10000);
+        return mktime(0, 0, 0, $month, $day, $year);
+    }
+
+    public static function url_query($url, $need)
+    {
+        $tmp = "{$need}=";
+        $idx = strpos($url, $tmp);
+        if (empty($idx)) {
+            return '';
+        }
+        $idx += strlen($tmp);
+        $end = strpos($url, '&', $idx);
+        $len = ($end > $idx) ? $end - $idx : strlen($url) - $idx;
+        $rst = substr($url, $idx, $len);
+        return urldecode($rst);
     }
 
     public static function mime_content_type($filename)
@@ -192,6 +295,15 @@ abstract class Func
         return isset($val[$key]) ? $val[$key] : $default;
     }
 
+    public static function vl(array $val, array $keys)
+    {
+        $ret = [];
+        foreach ($keys as $key => $default) {
+            $ret[] = static::v($val, $key, $default);
+        }
+        return $ret;
+    }
+
     ##########################
     ######## 时间处理 ########
     ##########################
@@ -252,6 +364,24 @@ abstract class Func
     public static function str_time($stime, $etime)
     {
         $c = abs(intval($etime - $stime));
+        $s = $c % 60;
+        $c = ($c - $s) / 60;
+        $m = $c % 60;
+        $h = ($c - $m) / 60;
+        $rst = $h > 0 ? "{$h}小时" : '';
+        $rst .= $m > 0 ? "{$m}分" : '';
+        $rst .= $s > 0 ? "{$s}秒" : '';
+        return $rst;
+    }
+
+    /**
+     * 计算两个时间戳的差值 字符串
+     * @param $c
+     * @return string 时间差 xx小时xx分xx秒
+     */
+    public static function interval2str($c)
+    {
+        $c = abs(intval($c));
         $s = $c % 60;
         $c = ($c - $s) / 60;
         $m = $c % 60;
@@ -680,6 +810,42 @@ abstract class Func
         return $data;
     }
 
+    public static function safe_str($str)
+    {
+        $safe_chars = str_split('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_');
+        $safe_map = self::build_map($safe_chars);
+        $chars = self::utf8_str_split($str);
+        $ret_list = [];
+        foreach ($chars as $char) {
+            if (!empty($safe_map[$char])) {
+                $ret_list[] = $char;
+            }
+        }
+        return join('', $ret_list);
+    }
+
+    public static function build_map(array $list)
+    {
+        $map = [];
+        foreach ($list as $item) {
+            $map[$item] = 1;
+        }
+        return $map;
+    }
+
+    public static function utf8_str_split($str, $l = 0)
+    {
+        if ($l > 0) {
+            $ret = array();
+            $len = mb_strlen($str, "UTF-8");
+            for ($i = 0; $i < $len; $i += $l) {
+                $ret[] = mb_substr($str, $i, $l, "UTF-8");
+            }
+            return $ret;
+        }
+        return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
+    }
+
     /**
      * xss 过滤函数 清洗字符串
      * @param string $val
@@ -687,8 +853,6 @@ abstract class Func
      */
     public static function xss_clean($val)
     {
-        // this prevents some character re-spacing such as <java\0script>
-        // note that you have to handle splits with \n, \r, and \t later since they *are* allowed in some inputs
         $val = preg_replace('/([\x00-\x09,\x0a-\x0c,\x0e-\x19])/', '', $val);
         $search = <<<EOT
 abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()~`";:?+/={}[]-_|'\<>
@@ -714,7 +878,7 @@ EOT;
      * @param array $args 附加参数
      * @return string  拼接出的网址
      */
-    public static function build_url($base_url, array $args = [])
+    public static function build_get($base_url, array $args = [])
     {
         if (empty($args)) {
             return $base_url;
@@ -852,156 +1016,29 @@ EOT;
         return $arr1;
     }
 
-    private static $_http_info_cache = [];
-
     /**
      * 获取当前请求的 url
+     * @param string $sys_host
+     * @param string $request_uri
      * @return string
      */
-    public static function this_url()
+    public static function build_url($sys_host, $request_uri = '/')
     {
-        if (isset(static::$_http_info_cache[__METHOD__])) {
-            return static::$_http_info_cache[__METHOD__];
-        }
-        $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
-        $sys_host = defined('SYSTEM_HOST') ? SYSTEM_HOST : 'http://localhost/';
-        $sys_host = static::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
-        $url = $sys_host . substr($uri, 1);
-
-        static::$_http_info_cache[__METHOD__] = $url;
+        $uri = !empty($request_uri) ? $request_uri : '/';
+        $uri = Util::str_startwith($uri, '/') ? substr($uri, 1) : $uri;
+        $sys_host = Util::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
+        $url = "{$sys_host}{$uri}";
         return $url;
     }
 
-
-    /**
-     * 获取request 头部信息 全部使用小写名字
-     * @return array
-     */
-    public static function request_header()
+    public static function lower_key(array $data)
     {
-        if (isset(static::$_http_info_cache[__METHOD__])) {
-            return static::$_http_info_cache[__METHOD__];
+        $rst = [];
+        foreach ($data as $key => $item) {
+            $key = static::trimlower($key);
+            $rst[$key] = $item;
         }
-        /**
-         * 补全 apache_request_headers 函数
-         * @return array
-         */
-        if (!function_exists('apache_request_headers')) {
-            function apache_request_headers()
-            {
-                $arh = [];
-                $rx_http = '/\AHTTP_/';
-                foreach ($_SERVER as $key => $val) {
-                    if (preg_match($rx_http, $key)) {
-                        $arh_key = preg_replace($rx_http, '', $key);
-                        $rx_matches = explode('_', $arh_key);
-                        if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
-                            foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
-                            $arh_key = implode('-', $rx_matches);
-                        }
-                        $arh[$arh_key] = $val;
-                    }
-                }
-                return $arh;
-            }
-        }
-
-        $header = apache_request_headers();
-        if (isset($_SERVER['PHP_AUTH_DIGEST'])) {
-            $header['AUTHORIZATION'] = $_SERVER['PHP_AUTH_DIGEST'];
-        } elseif (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
-            $header['AUTHORIZATION'] = base64_encode($_SERVER['PHP_AUTH_USER'] . ':' . $_SERVER['PHP_AUTH_PW']);
-        }
-        if (isset($_SERVER['CONTENT_LENGTH'])) {
-            $header['CONTENT-LENGTH'] = $_SERVER['CONTENT_LENGTH'];
-        }
-        if (isset($_SERVER['CONTENT_TYPE'])) {
-            $header['CONTENT-TYPE'] = $_SERVER['CONTENT_TYPE'];
-        }
-        foreach ($header as $key => $item) {
-            $header[strtolower($key)] = $item;
-        }
-
-        static::$_http_info_cache[__METHOD__] = $header;
-        return $header;
-    }
-
-    /**
-     * 根据 HTTP_USER_AGENT 获取客户端浏览器信息
-     * @return array 浏览器相关信息 ['name', 'version']
-     */
-    public static function agent_browser()
-    {
-        if (isset(static::$_http_info_cache[__METHOD__])) {
-            return static::$_http_info_cache[__METHOD__];
-        }
-        $browser = [];
-        $sys = $_SERVER['HTTP_USER_AGENT'];  //获取用户代理字符串
-        if (stripos($sys, "Firefox/") > 0) {
-            preg_match("/Firefox\/([^;)]+)+/i", $sys, $b);
-            $browser[0] = "Firefox";
-            $browser[1] = $b[1];  //获取火狐浏览器的版本号
-        } elseif (stripos($sys, "Maxthon") > 0) {
-            preg_match("/Maxthon\/([\d\.]+)/", $sys, $maxthon);
-            $browser[0] = "Maxthon";
-            $browser[1] = $maxthon[1];
-        } elseif (stripos($sys, "MSIE") > 0) {
-            preg_match("/MSIE\s+([^;)]+)+/i", $sys, $ie);
-            $browser[0] = "IE";
-            $browser[1] = $ie[1];  //获取IE的版本号
-        } elseif (stripos($sys, "OPR") > 0) {
-            preg_match("/OPR\/([\d\.]+)/", $sys, $opera);
-            $browser[0] = "Opera";
-            $browser[1] = $opera[1];
-        } elseif (stripos($sys, "Edge") > 0) {
-            //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
-            preg_match("/Edge\/([\d\.]+)/", $sys, $Edge);
-            $browser[0] = "Edge";
-            $browser[1] = $Edge[1];
-        } elseif (stripos($sys, "Chrome") > 0) {
-            preg_match("/Chrome\/([\d\.]+)/", $sys, $google);
-            $browser[0] = "Chrome";
-            $browser[1] = $google[1];  //获取google chrome的版本号
-        } elseif (stripos($sys, 'rv:') > 0 && stripos($sys, 'Gecko') > 0) {
-            preg_match("/rv:([\d\.]+)/", $sys, $IE);
-            $browser[0] = "IE";
-            $browser[1] = $IE[1];
-        } else {
-            $browser[0] = "UNKNOWN";
-            $browser[1] = "";
-        }
-
-        static::$_http_info_cache[__METHOD__] = $browser;
-        return $browser;
-    }
-
-    public static function is_mobile()
-    {
-        if (isset(static::$_http_info_cache[__METHOD__])) {
-            return static::$_http_info_cache[__METHOD__];
-        }
-
-        $mobile_agents = Array('xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte");
-
-        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
-        if (empty($user_agent)) {
-            return false;
-        }
-        $is_mobile = false;
-        foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
-            if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
-                $is_mobile = true;
-                break;
-            }
-        }
-
-        static::$_http_info_cache[__METHOD__] = $is_mobile;
-        return $is_mobile;
-    }
-
-    public static function preMd5($str, $crypt_key = '')
-    {
-        return md5("{$crypt_key}{$str}");
+        return $rst;
     }
 
 

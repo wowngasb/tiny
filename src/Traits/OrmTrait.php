@@ -8,12 +8,13 @@
 
 namespace Tiny\Traits;
 
+use Illuminate\Database\Query\Builder;
 use Tiny\Exception\OrmStartUpError;
-use Tiny\Func;
-use Tiny\Plugin\DbHelper;
 use Tiny\OrmQuery\AbstractQuery;
 use Tiny\OrmQuery\OrmConfig;
-use Tiny\OrmQuery\Select;
+use Tiny\OrmQuery\SelectRunner;
+use Tiny\Plugin\DbHelper;
+use Tiny\Util;
 
 /**
  * Class BaseOrmModel
@@ -42,19 +43,17 @@ use Tiny\OrmQuery\Select;
  */
 trait OrmTrait
 {
-
-    protected static $_REDIS_PREFIX_DB = 'DbCache';
-
     private static $_db = null;
     private static $_cache_dict = [];
+    private static $_REDIS_PREFIX_DB = 'DbCache';
 
-    protected static $_orm_config_map = null;
+    protected static $_orm_config_map = [];
 
     ####################################
     ############ 获取配置 ##############
     ####################################
 
-    protected static function _fixFiledKey($filed)
+    private static function _fixFiledKey($filed)
     {
         $idx = strpos($filed, '#');
         $filed = $idx > 0 ? substr($filed, 0, $idx) : $filed;
@@ -64,7 +63,7 @@ trait OrmTrait
     /**
      * 直接获取 ORM table 不推荐直接使用该接口  推荐使用模块预设方法
      * @param array $where 检索条件数组 具体格式参见文档
-     * @return \Illuminate\Database\Query\Builder
+     * @return Builder
      * @throws OrmStartUpError
      */
     public static function tableItem(array $where = [])
@@ -155,14 +154,21 @@ trait OrmTrait
     /**
      * 使用这个特性的子类必须 实现这个方法 返回特定格式的数组 表示数据表的配置
      * @return OrmConfig
+     * @throws OrmStartUpError
      */
     protected static function getOrmConfig()
     {
         $class_name = get_called_class();
         if (!isset(static::$_orm_config_map[$class_name])) {
-            static::$_orm_config_map[$class_name] = new OrmConfig('', '');
+            throw new OrmStartUpError("cannot call OrmTrait::getOrmConfig() must overwrite it");
+            // static::$_orm_config_map[$class_name] = new OrmConfig('', '');
         }
         return static::$_orm_config_map[$class_name];
+    }
+
+    public static function primaryKey()
+    {
+        return static::getOrmConfig()->getPrimaryKey();
     }
 
     ####################################
@@ -199,7 +205,7 @@ trait OrmTrait
             return $tmp;
         }, function ($data) {
             return !empty($data);
-        }, $timeCache, false, static::$_REDIS_PREFIX_DB, ["{$table}?$tag",]);
+        }, $timeCache, false, self::$_REDIS_PREFIX_DB, ["{$table}?$tag",]);
 
         if (!empty($data)) {
             self::$_cache_dict[$table][$tag] = $data;
@@ -246,7 +252,7 @@ trait OrmTrait
         }
 
         if (!empty($no_cache_list)) {
-            $tmp_dict = self::dictItem([$primary_key => $no_cache_list]);
+            $tmp_dict = static::dictItem([$primary_key => $no_cache_list]);
             $cache_dict = $tmp_dict + $cache_dict;
         }
         $ret_list = [];
@@ -274,9 +280,9 @@ trait OrmTrait
             return [];
         }
         if (!empty($data)) {
-            static::getItem($id, $data);
+            static::setItem($id, $data);
         }
-        return self::getOneById($id, 0);
+        return static::getOneById($id, 0);
     }
 
     /**
@@ -288,7 +294,7 @@ trait OrmTrait
     {
         if (!empty($data)) {
             $id = static::newItem($data);
-            return self::getOneById($id, 0);
+            return static::getOneById($id, 0);
         } else {
             return [];
         }
@@ -307,15 +313,20 @@ trait OrmTrait
     ############ 辅助函数 ##############
     ####################################
 
+    protected static function raw($value)
+    {
+        return call_user_func_array([self::$_db, 'raw'], [$value]);
+    }
+
     /**
      * 运行查询 并给出缓存的key 缓存结果  默认只缓存非空结果
-     * @param Select $select
+     * @param SelectRunner $select
      * @param string $prefix
      * @param bool $is_log
      * @return array
      * @throws OrmStartUpError
      */
-    protected static function runSelect(Select $select, $prefix = null, $is_log = false)
+    protected static function runSelect(SelectRunner $select, $prefix = null, $is_log = false)
     {
         if (empty($select->key)) {
             throw new OrmStartUpError("runQuery with empty key");
@@ -324,7 +335,7 @@ trait OrmTrait
             throw new OrmStartUpError("runQuery with empty func but timeCache gte 0");  //timeCache 为负数时 可以允许空的 func
         }
 
-        $prefix = !is_null($prefix) ? $prefix : static::$_REDIS_PREFIX_DB;
+        $prefix = !is_null($prefix) ? $prefix : self::$_REDIS_PREFIX_DB;
 
         return CacheTrait::_cacheDataManager($select->method, $select->key, $select->func, $select->filter, $select->timeCache, $is_log, $prefix, $select->tags);
     }
@@ -342,7 +353,7 @@ trait OrmTrait
      */
     public static function getFiledById($name, $id, $default = null)
     {
-        $tmp = self::getOneById($id);
+        $tmp = static::getOneById($id);
         return isset($tmp[$name]) ? $tmp[$name] : $default;
     }
 
@@ -406,279 +417,354 @@ trait OrmTrait
     /**
      * Get a single column's value from the first result of a query.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function value(array $where, $column)
+    public static function value(Builder $table, $column)
     {
-        return self::tableItem($where)->value($column);
+        $start_time = microtime(true);
+        $result = $table->value($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Execute the query and get the first result.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  array $columns
      * @return mixed|static
      */
-    public static function first(array $where, $columns = ['*'])
+    public static function first(Builder $table, $columns = ['*'])
     {
-        return self::tableItem($where)->first($columns);
+        $start_time = microtime(true);
+        $result = $table->first($columns);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return (array)$result;
     }
 
     /**
      * Execute the query as a "select" statement.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  array $columns
      * @return array|static[]
      */
-    public static function get(array $where, $columns = ['*'])
+    public static function get(Builder $table, $columns = ['*'])
     {
-        return self::tableItem($where)->get($columns);
+        $start_time = microtime(true);
+        $result = $table->get($columns);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+
+        $rst = [];
+        foreach ($result as $key => $val) {
+            $rst[] = (array)$val;
+        }
+        return $rst;
     }
 
 
     /**
      * Chunk the results of the query.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  int $count
      * @param  callable $callback
      * @return bool
      */
-    public static function chunk(array $where, $count, callable $callback)
+    public static function chunk(Builder $table, $count, callable $callback)
     {
-        return self::tableItem($where)->chunk($count, $callback);
+        $start_time = microtime(true);
+        $result = $table->chunk($count, $callback);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Chunk the results of a query by comparing numeric IDs.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  int $count
      * @param  callable $callback
      * @param  string $column
      * @param  string $alias
      * @return bool
      */
-    public static function chunkById(array $where, $count, callable $callback, $column = 'id', $alias = null)
+    public static function chunkById(Builder $table, $count, callable $callback, $column = 'id', $alias = null)
     {
-        return self::tableItem($where)->chunkById($count, $callback, $column, $alias);
+        $start_time = microtime(true);
+        $result = $table->chunkById($count, $callback, $column, $alias);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Execute a callback over each item while chunking.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  callable $callback
      * @param  int $count
      * @return bool
      */
-    public static function each(array $where, callable $callback, $count = 1000)
+    public static function each(Builder $table, callable $callback, $count = 1000)
     {
-        return self::tableItem($where)->each($callback, $count);
+        $start_time = microtime(true);
+        $result = $table->each($callback, $count);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Get an array with the values of a given column.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @param  string|null $key
      * @return array
      */
-    public static function pluck(array $where, $column, $key = null)
+    public static function pluck(Builder $table, $column, $key = null)
     {
-        return self::tableItem($where)->pluck($column, $key);
+        $start_time = microtime(true);
+        $result = $table->pluck($column, $key);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        $rst = [];
+        foreach ($result as $key => $val) {
+            $rst[] = (array)$val;
+        }
+        return $rst;
     }
 
     /**
      * Concatenate values of a given column as a string.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @param  string $glue
      * @return string
      */
-    public static function implode(array $where, $column, $glue = '')
+    public static function implode(Builder $table, $column, $glue = '')
     {
-        return self::tableItem($where)->implode($column, $glue);
+        $start_time = microtime(true);
+        $result = $table->implode($column, $glue);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Determine if any rows exist for the current query.
      *
-     * @param array $where
+     * @param Builder $table
      * @return bool
      */
-    public static function exists(array $where)
+    public static function exists(Builder $table)
     {
-        return self::tableItem($where)->exists();
+        $start_time = microtime(true);
+        $result = $table->exists();
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Retrieve the "count" result of the query.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $columns
      * @return int
      */
-    public static function count(array $where, $columns = '*')
+    public static function count(Builder $table, $columns = '*')
     {
-        return self::tableItem($where)->count($columns);
+        $start_time = microtime(true);
+        $result = $table->count($columns);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Retrieve the minimum value of a given column.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function min(array $where, $column)
+    public static function min(Builder $table, $column)
     {
-        return self::tableItem($where)->min($column);
+        $start_time = microtime(true);
+        $result = $table->min($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Retrieve the maximum value of a given column.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function max(array $where, $column)
+    public static function max(Builder $table, $column)
     {
-        return self::tableItem($where)->max($column);
+        $start_time = microtime(true);
+        $result = $table->max($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Retrieve the sum of the values of a given column.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function sum(array $where, $column)
+    public static function sum(Builder $table, $column)
     {
-        return self::tableItem($where)->sum($column);
+        $start_time = microtime(true);
+        $result = $table->sum($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Retrieve the average of the values of a given column.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function avg(array $where, $column)
+    public static function avg(Builder $table, $column)
     {
-        return self::tableItem($where)->avg($column);
+        $start_time = microtime(true);
+        $result = $table->avg($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Alias for the "avg" method.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function average(array $where, $column)
+    public static function average(Builder $table, $column)
     {
-        return self::tableItem($where)->average($column);
+        $start_time = microtime(true);
+        $result = $table->average($column);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Execute an aggregate function on the database.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $function
      * @param  array $columns
      * @return mixed
      */
-    public static function aggregate(array $where, $function, $columns = ['*'])
+    public static function aggregate(Builder $table, $function, $columns = ['*'])
     {
-        return self::tableItem($where)->aggregate($function, $columns);
+        $start_time = microtime(true);
+        $result = $table->aggregate($function, $columns);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Execute a numeric aggregate function on the database.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $function
      * @param  array $columns
      * @return float|int
      */
-    public static function numericAggregate(array $where, $function, $columns = ['*'])
+    public static function numericAggregate(Builder $table, $function, $columns = ['*'])
     {
-        return self::tableItem($where)->numericAggregate($function, $columns);
+        $start_time = microtime(true);
+        $result = $table->numericAggregate($function, $columns);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Update a record in the database.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  array $values
      * @return int
      */
-    public static function update(array $where, array $values)
+    public static function update(Builder $table, array $values)
     {
-        return self::tableItem($where)->update($values);
+        $start_time = microtime(true);
+        $result = $table->update($values);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Insert or update a record matching the attributes, and fill it with values.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  array $attributes
      * @param  array $values
      * @return bool
      */
-    public static function updateOrInsert(array $where, array $attributes, array $values = [])
+    public static function updateOrInsert(Builder $table, array $attributes, array $values = [])
     {
-        return self::tableItem($where)->updateOrInsert($attributes, $values);
+        $start_time = microtime(true);
+        $result = $table->updateOrInsert($attributes, $values);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Increment a column's value by a given amount.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @param  int $amount
      * @param  array $extra
      * @return int
      */
-    public static function increment(array $where, $column, $amount = 1, array $extra = [])
+    public static function increment(Builder $table, $column, $amount = 1, array $extra = [])
     {
-        return self::tableItem($where)->increment($column, $amount, $extra);
+        $start_time = microtime(true);
+        $result = $table->increment($column, $amount, $extra);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Decrement a column's value by a given amount.
      *
-     * @param array $where
+     * @param Builder $table
      * @param  string $column
      * @param  int $amount
      * @param  array $extra
      * @return int
      */
-    public static function decrement(array $where, $column, $amount = 1, array $extra = [])
+    public static function decrement(Builder $table, $column, $amount = 1, array $extra = [])
     {
-        return self::tableItem($where)->decrement($column, $amount, $extra);
+        $start_time = microtime(true);
+        $result = $table->decrement($column, $amount, $extra);
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     /**
      * Delete a record from the database.
      *
-     * @param array $where
+     * @param Builder $table
      * @return int
      * @internal param mixed $id
      */
-    public static function delete(array $where)
+    public static function delete(Builder $table)
     {
-        return self::tableItem($where)->delete();
+        $start_time = microtime(true);
+        $result = $table->delete();
+        static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
     }
 
     ####################################
@@ -726,7 +812,7 @@ trait OrmTrait
         }
         if (!empty($sort_option[0])) {
             $field = trim($sort_option[0]);
-            $direction = !empty($sort_option[1]) ? Func::trimlower($sort_option[1]) : 'asc';
+            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
             $direction = $direction == 'desc' ? 'desc' : 'asc';
             $table->orderBy($field, $direction);
         }
@@ -751,7 +837,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $max_select = static::getOrmConfig()->getMaxSelect();
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $table = static::tableItem($where);
         $table->take($max_select);
         $data = $table->get($columns);
@@ -779,7 +865,7 @@ trait OrmTrait
         $table = static::tableItem($where);
         if (!empty($sort_option[0])) {
             $field = trim($sort_option[0]);
-            $direction = !empty($sort_option[1]) ? Func::trimlower($sort_option[1]) : 'asc';
+            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
             $direction = $direction == 'desc' ? 'desc' : 'asc';
             $table->orderBy($field, $direction);
         }
@@ -796,7 +882,7 @@ trait OrmTrait
      */
     public static function upsertItem(array $where, array $data)
     {
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $tmp = static::firstItem($where);
         if (empty($tmp)) {
             return static::newItem($data);
@@ -820,7 +906,7 @@ trait OrmTrait
      */
     public static function getItem($value, $filed = null, array $columns = ['*'])
     {
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $filed = $filed ?: $primary_key;
         return static::firstItem([strtolower($filed) => $value], [], $columns);
     }
@@ -833,11 +919,8 @@ trait OrmTrait
     public static function newItem(array $data)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
-        unset($data[$primary_key]);
-        $default = [
-        ];
-        $data = array_merge($default, $data);
+        $primary_key = self::primaryKey();
+
         foreach ($data as $key => $value) {
             if (is_array($value)) {
                 $data[$key] = json_encode($value);
@@ -858,7 +941,7 @@ trait OrmTrait
     public static function setItem($id, array $data)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         unset($data[$primary_key]);
         $table = static::tableItem()->where($primary_key, $id);
         $update = $table->update($data);
@@ -874,7 +957,7 @@ trait OrmTrait
     public static function delItem($id)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $delete = $table->delete();
         static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -891,7 +974,7 @@ trait OrmTrait
     public static function incItem($id, $filed, $value = 1)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $increment = $table->increment($filed, $value);
         static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -908,7 +991,7 @@ trait OrmTrait
     public static function decItem($id, $filed, $value = 1)
     {
         $start_time = microtime(true);
-        $primary_key = static::getOrmConfig()->getPrimaryKey();
+        $primary_key = static::primaryKey();
         $table = static::tableItem()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value);
         static::getOrmConfig()->isDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);

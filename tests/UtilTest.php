@@ -4,7 +4,7 @@ namespace Tiny\Tests;
 
 use phpmock\phpunit\PHPMock;
 use PHPUnit_Framework_Assert;
-use Tiny\Func;
+use Tiny\Util;
 
 /**
  * Created by PhpStorm.
@@ -12,11 +12,67 @@ use Tiny\Func;
  * Date: 2017/4/10 0010
  * Time: 10:25
  */
-class FuncTest extends BaseNothingTest
+class UtilTest extends BaseNothingTest
 {
     public static $_class = '';
 
     use PHPMock;
+
+    ##########################
+    ######## DSL相关 ########
+    ##########################
+
+    public function test_safe_str()
+    {
+        Util::safe_str('abc');
+        $_func = self::_buildFunc(__METHOD__);
+        $test_data = [
+            [
+                'args' => [''],
+                'return' => ''
+            ], [
+                'args' => ['test#a=1#bACW=2'],
+                'return' => 'testa1bACW2'
+            ], [
+                'args' => ['test%$21"da-adw_s'],
+                'return' => 'test21da-adw_s'
+            ], [
+                'args' => ['中文#a=1#b=2#d=s'],
+                'return' => 'a1b2ds'
+            ],
+        ];
+        foreach ($test_data as $test_item) {
+            $item = $test_item['args'];
+            $tmp = call_user_func_array([static::$_class, $_func], $item);
+            PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
+        }
+    }
+
+    public function test_dsl()
+    {
+        Util::dsl('abc');
+        $_func = self::_buildFunc(__METHOD__);
+        $test_data = [
+            [
+                'args' => [''],
+                'return' => ['base' => '', 'args' => []]
+            ], [
+                'args' => ['test#a=1#b=2'],
+                'return' => ['base' => 'test', 'args' => ['a' => 1, 'b' => 2]]
+            ], [
+                'args' => ['test#a=1#b=2#d=s'],
+                'return' => ['base' => 'test', 'args' => ['a' => 1, 'b' => 2, 'd' => 's']]
+            ], [
+                'args' => ['中文#a=1#b=2#d=s'],
+                'return' => ['base' => '中文', 'args' => ['a' => 1, 'b' => 2, 'd' => 's']]
+            ],
+        ];
+        foreach ($test_data as $test_item) {
+            $item = $test_item['args'];
+            $tmp = call_user_func_array([static::$_class, $_func], $item);
+            PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
+        }
+    }
 
     ##########################
     ######## 数组处理 ########
@@ -25,7 +81,7 @@ class FuncTest extends BaseNothingTest
     public function __construct($name = '', array $data = [], $dataName = '')
     {
         parent::__construct($name, $data, $dataName);
-        static::$_class = Func::_class();
+        static::$_class = Util::_class();
     }
 
     public function test_filter_keys()
@@ -142,8 +198,8 @@ class FuncTest extends BaseNothingTest
             list($day, $hour, $min, $sec) = [rand(0, 10000), rand(0, 23), rand(0, 59), rand(0, 59)];
             $test_i = time();
             $tmp = $test_i + $day * 24 * 3600 + $hour * 3600 + $min * 60 + $sec * 1;
-            $test_o = Func::diff_time($test_i, $tmp);
-            $test_o2 = Func::diff_time($tmp, $test_i);
+            $test_o = Util::diff_time($test_i, $tmp);
+            $test_o2 = Util::diff_time($tmp, $test_i);
             $test_r = ["day" => $day, "hour" => $hour, "min" => $min, "sec" => $sec];
             PHPUnit_Framework_Assert::assertEquals($test_r, $test_o);
             PHPUnit_Framework_Assert::assertEquals($test_r, $test_o2);
@@ -176,8 +232,8 @@ class FuncTest extends BaseNothingTest
             list($hour, $min, $sec) = [rand(0, 23), rand(0, 59), rand(0, 59)];
             $test_i = time();
             $tmp = $test_i + $hour * 3600 + $min * 60 + $sec * 1;
-            $test_o = Func::str_time($test_i, $tmp);
-            $test_o2 = Func::str_time($tmp, $test_i);
+            $test_o = Util::str_time($test_i, $tmp);
+            $test_o2 = Util::str_time($tmp, $test_i);
             $test_r = $hour > 0 ? "{$hour}小时" : '';
             $test_r .= $min > 0 ? "{$min}分" : '';
             $test_r .= $sec > 0 ? "{$sec}秒" : '';
@@ -356,7 +412,7 @@ class FuncTest extends BaseNothingTest
             ['str1' => 'abc1', 'str2' => 'ABC', 'return' => false],
         ];
         foreach ($test_data as $item) {
-            $tmp = Func::stri_cmp($item['str1'], $item['str2']);
+            $tmp = Util::stri_cmp($item['str1'], $item['str2']);
             PHPUnit_Framework_Assert::assertEquals($item['return'], $tmp);
         }
     }
@@ -512,7 +568,7 @@ class FuncTest extends BaseNothingTest
         }
     }
 
-    /* public function test_unicode_decode()
+    public function test_unicode_decode()
     {
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
@@ -548,7 +604,7 @@ class FuncTest extends BaseNothingTest
             PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
         }
 
-    } */
+    }
 
     ##########################
     ######## 编码相关 ########
@@ -569,15 +625,15 @@ class FuncTest extends BaseNothingTest
     public function test_safe_base64()
     {
         foreach (self::$test_str_data as $test_i) {
-            $rst = Func::safe_base64_encode($test_i);
-            $test_o = Func::safe_base64_decode($rst);
+            $rst = Util::safe_base64_encode($test_i);
+            $test_o = Util::safe_base64_decode($rst);
             PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
         }
 
         foreach (self::$test_str_data as $test_i) {
             $test_i = strval($test_i);
-            $rst = Func::safe_base64_encode($test_i);
-            $test_o = Func::safe_base64_decode($rst);
+            $rst = Util::safe_base64_encode($test_i);
+            $test_o = Util::safe_base64_decode($rst);
             PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
         }
     }
@@ -587,12 +643,12 @@ class FuncTest extends BaseNothingTest
         $key = 'zT5hF$E24*(#dfS^Yq3&6A^6';
         $test_i = 'abc';
         $now = time();
-        $rst = Func::encode($test_i, $key, 10 * 365 * 24 * 3600);   //设置有效期为 10 年
+        $rst = Util::encode($test_i, $key, 10 * 365 * 24 * 3600);   //设置有效期为 10 年
 
-        $time = $this->getFunctionMock(Func::_namespace(), "time");  // Mock Func 命名空间下 time 函数
+        $time = $this->getFunctionMock(Util::_namespace(), "time");  // Mock Func 命名空间下 time 函数
         $time->expects($this->once())->willReturn($now + 10 * 365 * 24 * 3600 - 100);    //模拟 10年 - 10秒后的时间
 
-        $test_o = Func::decode($rst, $key);
+        $test_o = Util::decode($rst, $key);
         PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
     }
 
@@ -601,12 +657,12 @@ class FuncTest extends BaseNothingTest
         $key = 'zT5hF$E24*(#dfS^Yq3&6A^6';
         $test_i = 'abc';
         $now = time();
-        $rst = Func::encode($test_i, $key, 10 * 365 * 24 * 3600);   //设置有效期为 10 年
+        $rst = Util::encode($test_i, $key, 10 * 365 * 24 * 3600);   //设置有效期为 10 年
 
-        $time = $this->getFunctionMock(Func::_namespace(), "time");  // Mock Func 命名空间下 time 函数
+        $time = $this->getFunctionMock(Util::_namespace(), "time");  // Mock Func 命名空间下 time 函数
         $time->expects($this->once())->willReturn($now + 10 * 365 * 24 * 3600 + 100);    //模拟 10年 + 10秒后的时间
 
-        $test_o = Func::decode($rst, $key);
+        $test_o = Util::decode($rst, $key);
         PHPUnit_Framework_Assert::assertEmpty($test_o);
     }
 
@@ -616,12 +672,12 @@ class FuncTest extends BaseNothingTest
         $test_i = 'abc';
         $now = time();
 
-        $rst = Func::encode($test_i, $key, 10);   //设置有效期为 10 s
+        $rst = Util::encode($test_i, $key, 10);   //设置有效期为 10 s
 
-        $time = $this->getFunctionMock(Func::_namespace(), "time");  // Mock Func 命名空间下 time 函数
+        $time = $this->getFunctionMock(Util::_namespace(), "time");  // Mock Func 命名空间下 time 函数
         $time->expects($this->once())->willReturn($now + 100);
 
-        $test_o = Func::decode($rst, $key);
+        $test_o = Util::decode($rst, $key);
         PHPUnit_Framework_Assert::assertEquals($test_o, '');
     }
 
@@ -629,8 +685,8 @@ class FuncTest extends BaseNothingTest
     {
         $key = 'zT5hF$E24*(#dfS^Yq3&6A^6';
         $test_i = 'abc';
-        $rst = Func::encode($test_i, $key, 10);
-        $test_o = Func::decode($rst, $key);
+        $rst = Util::encode($test_i, $key, 10);
+        $test_o = Util::decode($rst, $key);
         PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
 
         /* $tmp = [
@@ -650,24 +706,24 @@ class FuncTest extends BaseNothingTest
     {
         $key = 'zT5hF$E24*(#dfS^Yq3&6A^1';
         foreach (self::$test_str_data as $test_i) {
-            $rst = Func::encode($test_i, $key);
-            $test_o = Func::decode($rst, $key);
+            $rst = Util::encode($test_i, $key);
+            $test_o = Util::decode($rst, $key);
             PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
         }
 
         $key = 'zT5hF$E24*(#dfS^Yq3&6A^2';
         foreach (self::$test_str_data as $test_i) {
             $test_i = strval($test_i);
-            $rst = Func::encode($test_i, $key);
-            $test_o = Func::decode($rst, $key);
+            $rst = Util::encode($test_i, $key);
+            $test_o = Util::decode($rst, $key);
             PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
         }
 
         $key1 = 'zT5hF$E24*(#dfS^Yq3&6A^3';
         $key2 = 'zT5hF$E24*(#dfS^Yq3&6A^4';
         foreach (self::$test_str_data as $test_i) {
-            $rst = Func::encode($test_i, $key1);
-            $test_o = Func::decode($rst, $key2);
+            $rst = Util::encode($test_i, $key1);
+            $test_o = Util::decode($rst, $key2);
             PHPUnit_Framework_Assert::assertEmpty($test_o);
         }
     }
@@ -708,8 +764,9 @@ class FuncTest extends BaseNothingTest
     ######## URL相关 ########
     ##########################
 
-    public function test_build_url()
+    public function test_build_get()
     {
+        Util::build_get("http://test.com", []);
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [

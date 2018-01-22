@@ -17,7 +17,7 @@ use Tiny\Interfaces\ResponseInterface;
  * 一个空的接口  实现此接口的类 才可以被分发器执行
  * @package Tiny
  */
-abstract class AbstractContext extends AbstractModel
+abstract class AbstractContext extends AbstractClass
 {
 
     private $_request = null;

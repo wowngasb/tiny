@@ -136,7 +136,7 @@ class OrmConfig
     /**
      * @return bool
      */
-    public function isDebug()
+    public function getDebug()
     {
         return $this->_debug;
     }

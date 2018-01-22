@@ -18,6 +18,44 @@ class UtilTest extends BaseNothingTest
 
     use PHPMock;
 
+    public function test_file_name()
+    {
+        Util::file_name('http://g.cn/a.html');
+        $_func = self::_buildFunc(__METHOD__);
+        $test_data = [
+            [
+                'args' => ['http://g.cn/a.html'],
+                'return' => 'a.html'
+            ], [
+                'args' => ['http://g.cn/a'],
+                'return' => 'a'
+            ], [
+                'args' => ['http://g.cn/a.html?b=1'],
+                'return' => 'a.html'
+            ], [
+                'args' => ['http://g.cn/a.html#c=2'],
+                'return' => 'a.html'
+            ], [
+                'args' => ['D:\g\cn\a.html'],
+                'return' => 'a.html'
+            ], [
+                'args' => ['D:\g\cn\a'],
+                'return' => 'a'
+            ], [
+                'args' => ['D:\g\cn\a.html?b=1'],
+                'return' => 'a.html'
+            ], [
+                'args' => ['D:\g\cn\a.html#c=2'],
+                'return' => 'a.html'
+            ],
+        ];
+        foreach ($test_data as $test_item) {
+            $item = $test_item['args'];
+            $tmp = call_user_func_array([static::$_class, $_func], $item);
+            PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
+        }
+    }
+
     ##########################
     ######## DSL相关 ########
     ##########################
@@ -688,18 +726,6 @@ class UtilTest extends BaseNothingTest
         $rst = Util::encode($test_i, $key, 10);
         $test_o = Util::decode($rst, $key);
         PHPUnit_Framework_Assert::assertEquals($test_i, $test_o);
-
-        /* $tmp = [
-            'key' => $key,
-            'test_list' => [],
-        ];
-        foreach ([
-                     '', '1', '12', '123', '1234','1234','1234','1234','1234',
-                 ] as $test) {
-            $v = Func::encode($test, $key);
-            $tmp['test_list'][$v] = $test;
-        }
-        echo "\n" . json_encode($tmp). "\n"; */
     }
 
     public function test_authcode()

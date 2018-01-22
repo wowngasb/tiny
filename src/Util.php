@@ -1,15 +1,38 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: Administrator
- * Date: 2017/4/10 0010
- * Time: 0:15
+ * User: kongl
+ * Date: 2017/12/15 0015
+ * Time: 11:47
  */
 
 namespace Tiny;
 
+
 abstract class Util
 {
+
+    public static function file_name($path)
+    {
+        $path = trim($path);
+        if (empty($path)) {
+            return '';
+        }
+        $idx = strpos($path, '?');
+        $path = $idx > 0 ? substr($path, 0, $idx) : $path;
+        $idx = strpos($path, '#');
+        $path = $idx > 0 ? substr($path, 0, $idx) : $path;
+        $idx = strrpos($path, '/');
+        if ($idx !== false) {
+            $path = substr($path, $idx + 1);
+        }
+        $idx = strrpos($path, '\\');
+        if ($idx !== false) {
+            $path = substr($path, $idx + 1);
+        }
+        return $path;
+    }
+
 
     public static function dsl($str, $split = '#', $kv = '=')
     {
@@ -883,8 +906,13 @@ EOT;
         if (empty($args)) {
             return $base_url;
         }
-        $base_url .= substr($base_url, -1, 1) == '/' ? '' : '/';
-        $base_url .= stripos($base_url, '?') > 0 ? '' : "?";
+        $base_url = trim($base_url);
+        if (stripos($base_url, '?') > 0) {
+
+        } else {
+            $base_url .= substr($base_url, -1, 1) == '/' ? '' : '/';
+            $base_url .= stripos($base_url, '?') > 0 ? '' : "?";
+        }
         $base_url = (substr($base_url, -1) == '?' || substr($base_url, -1) == '&') ? $base_url : "{$base_url}&";
         $args_list = [];
         foreach ($args as $key => $val) {
@@ -1025,8 +1053,8 @@ EOT;
     public static function build_url($sys_host, $request_uri = '/')
     {
         $uri = !empty($request_uri) ? $request_uri : '/';
-        $uri = Util::str_startwith($uri, '/') ? substr($uri, 1) : $uri;
-        $sys_host = Util::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
+        $uri = static::str_startwith($uri, '/') ? substr($uri, 1) : $uri;
+        $sys_host = static::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
         $url = "{$sys_host}{$uri}";
         return $url;
     }
@@ -1041,5 +1069,92 @@ EOT;
         return $rst;
     }
 
+
+    public static function get_port($url, $default_post = 80)
+    {
+        $s_idx = stripos($url, '://');
+        if ($s_idx === false) {
+            return $default_post;
+        }
+        $url = substr($url, $s_idx + 3);
+        $domain = explode('/', $url)[0];
+        $p_idx = strrpos($domain, ':');
+        if ($p_idx === false) {
+            return $default_post;
+        }
+        return intval(substr($domain, $p_idx + 1));
+    }
+
+
+    /**
+     * post请求url，并返回结果
+     * @param string $query_url
+     * @param array $header
+     * @param string $type
+     * @param array $post_fields
+     * @param int $base_auth
+     * @param int $timeout
+     * @param bool $is_log
+     * @return array
+     */
+    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = 0, $timeout = 20, $is_log = true)
+    {
+        $t1 = microtime(true);
+
+        $ch = curl_init();
+        $port = static::get_port($query_url, 80);
+        curl_setopt($ch, CURLOPT_URL, $query_url);
+        curl_setopt($ch, CURLOPT_PORT, $port);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, true);
+        if ($base_auth) {
+            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        }
+        if ($type == 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            if (!empty($post_fields)) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+            }
+        }
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($type));
+
+        if (!empty($header)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        }
+
+        //execute post
+        $response = curl_exec($ch);
+        //get response code
+        $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        //close connection
+        $http_ok = $response_code == 200 || $response_code == 201 || $response_code == 204;
+        $use_time = round(microtime(true) - $t1, 3) * 1000 . 'ms';
+
+        $log_msg = " use:{$use_time}, query_url:{$query_url}, response_code:{$response_code}";
+        $total = strlen($response);
+        $log_msg .= $total > 500 ? ', rst:' . substr($response, 0, 500) . "...total<{$total}>chars..." : ", rst:{$response}";
+        if (!$http_ok) {
+            $log_msg .= ', curl_error:' . curl_error($ch);
+            $log_msg .= ', curl_errno:' . curl_errno($ch);
+            error_log("{$log_msg}");
+        } else {
+            $is_log && error_log("{$log_msg}");;
+        }
+        curl_close($ch);
+        //return result
+        if ($http_ok) {
+            $data = json_decode(trim($response), true);
+            return !is_null($data) ? $data : ['code' => 0, 'msg' => '接口返回非json', 'resp' => $response];
+        } else {
+            return ['code' => 500, 'msg' => '调用远程接口失败', 'resp' => $response, 'HttpCode' => $response_code];
+        }
+    }
 
 }

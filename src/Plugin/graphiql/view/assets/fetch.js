@@ -112,7 +112,7 @@ FetchStream.prototype.normalizeOptions = function () {
     if (typeof this.options.rejectUnauthorized === 'undefined') {
         this.options.rejectUnauthorized = true;
     }
-};
+}
 
 FetchStream.prototype.parseUrl = function (url) {
     var urlparts   = urllib.parse(url, false, true),
@@ -157,11 +157,11 @@ FetchStream.prototype.parseUrl = function (url) {
         urloptions: urloptions,
         transport:  transport
     }
-};
+}
 
 FetchStream.prototype.setEncoding = function (encoding) {
     this.options.encoding = encoding;
-};
+}
 
 FetchStream.prototype.absoluteUrl = function (url, base) {
 
@@ -212,7 +212,7 @@ FetchStream.prototype.absoluteUrl = function (url, base) {
 
     return (base_url.protocol || "http:") + "//" + (base_url.hostname || "") + "/" +
         final_path.join("/") + (target_url.search || "");
-};
+}
 
 FetchStream.prototype.runStream = function (url) {
     var url_data = this.parseUrl(url),
@@ -254,7 +254,7 @@ FetchStream.prototype.runStream = function (url) {
     } else {
         this._runStream(url_data, url);
     }
-};
+}
 
 FetchStream.prototype._runStream = function (url_data, url) {
 
@@ -281,7 +281,7 @@ FetchStream.prototype._runStream = function (url_data, url) {
             finalUrl:        url,
             redirectCount:   this._redirect_count,
             cookieJar:       this.cookieJar
-        };
+        }
 
         var curlen  = 0,
             maxlen,
@@ -360,7 +360,7 @@ FetchStream.prototype._runStream = function (url_data, url) {
     } else {
         req.end();
     }
-};
+}
 
 function fetchUrl(url, options, callback) {
     if (!callback && typeof options == "function") {

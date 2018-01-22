@@ -18,6 +18,13 @@ interface RequestInterface
     ###############################################################
 
     /**
+     * 绑定
+     * @param ResponseInterface $response
+     */
+    public function bindingResponse(ResponseInterface $response);
+
+
+    /**
      * @return bool
      */
     public function isSessionStarted();
@@ -129,10 +136,9 @@ interface RequestInterface
 
     /**
      * 启用 session
-     * @param ResponseInterface $response
      * @return $this
      */
-    public function session_start(ResponseInterface $response);
+    public function session_start();
 
     /**
      * @param null $id
@@ -172,9 +178,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _get($name, $default = '');
+    public function _get($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -192,9 +199,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _post($name, $default = '');
+    public function _post($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -212,9 +220,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _env($name, $default = '');
+    public function _env($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -232,9 +241,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _server($name, $default = '');
+    public function _server($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -252,9 +262,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _cookie($name, $default = '');
+    public function _cookie($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -272,9 +283,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _files($name, $default = '');
+    public function _files($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -292,9 +304,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _request($name, $default = '');
+    public function _request($name, $default = '', $setBack = false);
 
     /**
      * @return array
@@ -312,9 +325,10 @@ interface RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _session($name, $default = '');
+    public function _session($name, $default = '', $setBack = false);
 
     /**
      * @return array

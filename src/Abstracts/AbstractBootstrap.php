@@ -69,12 +69,13 @@ abstract class AbstractBootstrap
             $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
             static::consoleDebug($data, $tag, 1);
         });
-        /* Application::on('routerShutdown', function (Application $obj, Request $request, Response $response) {
+        /*
+        Application::on('routerShutdown', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->strRouteInfo(), 'request' => $request->all_request()];
-            $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
-            static::debugConsole($data, $tag, 1);
-        }); */
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
+            $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
+            static::consoleDebug($data, $tag, 1);
+        });
         Application::on('dispatchLoopStartup', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
@@ -83,32 +84,34 @@ abstract class AbstractBootstrap
             }
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopStartup');
             static::consoleDebug($data, $tag, 1);
-        });
-        /*
-        Application::on('dispatchLoopShutdown', function (Application $obj, Request $request, Response $response) {
-            false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->strRouteInfo(), 'body' => $response->getBody()];
-            $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopShutdown');
-            static::debugConsole($data, $tag, 1);
         }); */
+
+        /*
+        Application::on('dispatchLoopShutdown', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
+            false && func_get_args();
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'body' => $response->getBody()];
+            $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopShutdown');
+            static::consoleDebug($data, $tag, 1);
+        });
         Application::on('preDispatch', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
             false && func_get_args();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->all_request(), 'session' => $request->all_session(), 'cookie' => $request->all_cookie()];
             $tag = $request->debugTag(get_class($obj) . ' #preDispatch');
             static::consoleDebug($data, $tag, 1);
-        });
-        /*
-        Application::on('postDispatch', function (Application $obj, Request $request, Response $response) {
-            false && func_get_args();
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->strRouteInfo()];
-            $tag = $request->debugTag(get_class($obj) . ' #postDispatch');
-            static::debugConsole($data, $tag, 1);
         }); */
+
+        Application::on('postDispatch', function (Application $obj, RequestInterface $request, ResponseInterface $response) {
+            false && func_get_args();
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri()];
+            $tag = $request->debugTag(get_class($obj) . ' #postDispatch');
+            static::consoleDebug($data, $tag, 1);
+        });
 
         AbstractController::on('preDisplay', function (AbstractController $obj, $tpl_path, array $params) {
             false && func_get_args();
             $layout = $obj->getLayout();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
+            unset($params['action_content']);
             $data = ['params' => $params, 'tpl_path' => $tpl_path];
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #preDisplay' . (!empty($layout) ? "[{$file_name} #{$layout}]" : ''));
             static::consoleDebug($data, $tag, 1);
@@ -120,15 +123,6 @@ abstract class AbstractBootstrap
             $tag = $obj->getRequest()->debugTag(get_class($obj) . " #preWidget [{$file_name}]");
             static::consoleDebug($data, $tag, 1);
         });  // 注册 组件渲染 打印组件变量  用于调试
-
-
-        /*
-        OrmConfig::on('runSql', function (OrmConfig $obj, $sql_str, $time, $_tag) {
-            false && func_get_args();
-            $time_str = round($time, 3) * 1000;
-            static::debugConsole("{$sql_str} <{$time_str}ms>", $_tag, 1);
-        });  // 注册 SQl执行 打印相关信息  用于调试
-        */
 
         AbstractApi::on('apiResult', function (AbstractApi $obj, $action, $params, $result, $callback) {
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #apiResult');

@@ -22,7 +22,7 @@ use Tiny\Util;
  * 分发器 虚类 已默认实现 分发页面相关逻辑
  * @package Tiny\Abstracts
  */
-abstract class AbstractDispatch extends AbstractModel
+abstract class AbstractDispatch extends AbstractClass
 {
 
     ##############################################################

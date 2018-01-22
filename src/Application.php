@@ -112,17 +112,21 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             if (!$this->_bootstrap_completed) {
                 throw new AppStartUpError('call run without bootstrap completed');
             }
+
             static::fire('routerStartup', [$this, $request, $response]);  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
 
             list($route, list($routeInfo, $params)) = $this->buildRouteInfo($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
             $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setParams($params)->setRouted();
 
             static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
+
+            $request->bindingResponse($response);
+
             static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
 
             self::forward($request, $response, $routeInfo, $params, $route, false);
 
-            static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送
+            static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送  有可能提前结束处理过程 不会调用
 
             $response->end();
 

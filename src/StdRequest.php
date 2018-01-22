@@ -37,6 +37,8 @@ abstract class StdRequest implements RequestInterface
     private $_raw_post_data = null;
     private $_is_mobile = null;
 
+    private $_response = null;
+
     public function __construct()
     {
         $this->_request_timestamp = microtime(true);
@@ -44,6 +46,19 @@ abstract class StdRequest implements RequestInterface
         $this->_method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : '';
         $this->_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
         $this->_http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+    }
+
+    /**
+     * 绑定
+     * @param ResponseInterface $response
+     * @throws AppStartUpError
+     */
+    public function bindingResponse(ResponseInterface $response)
+    {
+        if (!is_null($this->_response)) {
+            throw new AppStartUpError('bindingResponse only run once');
+        }
+        $this->_response = $response;
     }
 
     ###############################################################
@@ -233,13 +248,10 @@ abstract class StdRequest implements RequestInterface
 
     /**
      * 启用 session
-     * @param ResponseInterface $response
      * @return $this
      */
-    public function session_start(ResponseInterface $response)
+    public function session_start()
     {
-        false && func_get_args();
-
         if (!$this->_session_started) {
             session_start();
             $this->_session_started = true;
@@ -313,11 +325,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _get($name, $default = '')
+    public function _get($name, $default = '', $setBack = false)
     {
-        return isset($_GET[$name]) ? $_GET[$name] : $default;
+        $val = isset($_GET[$name]) ? $_GET[$name] : $default;
+        if ($setBack) {
+            $_GET[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -342,11 +359,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _post($name, $default = '')
+    public function _post($name, $default = '', $setBack = false)
     {
-        return isset($_POST[$name]) ? $_POST[$name] : $default;
+        $val = isset($_POST[$name]) ? $_POST[$name] : $default;
+        if ($setBack) {
+            $_POST[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -371,11 +393,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _env($name, $default = '')
+    public function _env($name, $default = '', $setBack = false)
     {
-        return isset($_ENV[$name]) ? $_ENV[$name] : $default;
+        $val = isset($_ENV[$name]) ? $_ENV[$name] : $default;
+        if ($setBack) {
+            $_ENV[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -400,11 +427,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _server($name, $default = '')
+    public function _server($name, $default = '', $setBack = false)
     {
-        return isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
+        $val = isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
+        if ($setBack) {
+            $_SERVER[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -429,11 +461,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _cookie($name, $default = '')
+    public function _cookie($name, $default = '', $setBack = false)
     {
-        return isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
+        $val = isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
+        if ($setBack) {
+            $_COOKIE[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -458,11 +495,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _files($name, $default = '')
+    public function _files($name, $default = '', $setBack = false)
     {
-        return isset($_FILES[$name]) ? $_FILES[$name] : $default;
+        $val = isset($_FILES[$name]) ? $_FILES[$name] : $default;
+        if ($setBack) {
+            $_FILES[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -487,11 +529,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _request($name, $default = '')
+    public function _request($name, $default = '', $setBack = false)
     {
-        return isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
+        $val = isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
+        if ($setBack) {
+            $_REQUEST[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -516,11 +563,16 @@ abstract class StdRequest implements RequestInterface
     /**
      * @param string $name
      * @param string $default
+     * @param bool $setBack
      * @return string
      */
-    public function _session($name, $default = '')
+    public function _session($name, $default = '', $setBack = false)
     {
-        return isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
+        $val = isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
+        if ($setBack) {
+            $_SESSION[$name] = $val;
+        }
+        return $val;
     }
 
     /**
@@ -693,7 +745,7 @@ abstract class StdRequest implements RequestInterface
             throw new AppStartUpError("requireForArray cannot find {$config_file}");
         }
 
-        $ret = include($config_file);
+        $ret = include($config_file);  // 动态引入文件 得到数组 用于读取配置
         return $ret;
     }
 }

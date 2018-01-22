@@ -58,7 +58,7 @@ class RpcHelper
         $use_time = round(microtime(true) - $t1, 3) * 1000 . 'ms';
         //记录日志 参数中会有私密信息 不把私密信息存入日志
         $log_msg = " use:{$use_time}, query_url:{$query_url}, response_code:{$response_code}";
-        $total = strlen($response) > 500;
+        $total = strlen($response);
         $log_msg .= $total > 500 ? ', rst:' . substr($log_msg, 0, 500) . "...total<{$total}>chars..." : ", rst:{$response}";
         if (!$http_ok) {
             $log_msg .= ', curl_error:' . curl_error($ch);

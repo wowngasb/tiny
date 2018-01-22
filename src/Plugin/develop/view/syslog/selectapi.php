@@ -14,6 +14,12 @@
     <link href="http://g.alicdn.com/bui/bui/1.1.21/css/bs3/bui.css" rel="stylesheet">
     <link href="http://g.tbcdn.cn/fi/bui/css/layout-min.css" rel="stylesheet">
     <link href="http://help.aodianyun.com/css/tomorrow.min.css" rel="stylesheet">
+    <style type="text/css">
+        .demo-content{
+            margin-left: 10px;
+            margin-top: 10px;
+        }
+    </style>
     <script src="http://g.tbcdn.cn/fi/bui/jquery-1.8.1.min.js"></script>
     <script src="http://g.alicdn.com/bui/seajs/2.3.0/sea.js"></script>
     <script src="http://g.alicdn.com/bui/bui/1.1.21/config.js"></script>

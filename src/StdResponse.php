@@ -180,7 +180,7 @@ abstract class StdResponse implements ResponseInterface
 
 
         $this->ob_start();
-        require($tpl_file);
+        require($tpl_file);  // 动态引入文件 得到字符串 用于渲染模版
         $buffer = $this->ob_get_clean();
         return $buffer !== false ? $buffer : '';
     }

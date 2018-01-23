@@ -159,15 +159,30 @@ interface RequestInterface
     public function reset_route();
 
     /**
+     * @param string $method
      * @param string $uri
+     * @param array $args
      * @return RequestInterface
      */
-    public function copy($uri = null);
+    public function copy($method = null, $uri = null, array $args = []);
 
     /**
      * @return string
      */
     public function fixRequestPath();
+
+    /**
+     * 模拟 http 参数 主要用于测试
+     * @param array $args
+     * @return void
+     */
+    public function hookHttpArgs(array $args = []);
+
+    /**
+     * 清除 缓存状态
+     * @return void
+     */
+    public function resetHttpArgs();
 
     ###############################################################
     ############  超全局变量 ################
@@ -353,15 +368,15 @@ interface RequestInterface
      * 获取request 头部信息 全部使用小写名字
      * @return array
      */
-    public function getAllHeader();
+    public function request_header();
 
     /**
      * 根据 HTTP_USER_AGENT 获取客户端浏览器信息
      * @return array 浏览器相关信息 ['name', 'version']
      */
-    public function agentBrowser();
+    public function agent_browser();
 
-    public function isMobile();
+    public function is_mobile();
 
     ##################  PHP HOOK ##################
 

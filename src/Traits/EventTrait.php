@@ -10,6 +10,7 @@ namespace Tiny\Traits;
 
 
 use Tiny\Exception\AppStartUpError;
+use Tiny\Interfaces\EventInterface;
 
 trait EventTrait
 {
@@ -32,31 +33,31 @@ trait EventTrait
      * @param string $event
      * @param callable $callback
      */
-    public static function on($event, callable $callback)
+    public static function on($type, callable $callback)
     {
-        if (!static::isAllowedEvent($event)) {
-            throw new AppStartUpError("event:{$event} not support");
+        if (!static::isAllowedEvent($type)) {
+            throw new AppStartUpError("event:{$type} not support");
         }
-        if (!isset(static::$_event_map[$event])) {
-            static::$_event_map[$event] = [];
+        if (!isset(static::$_event_map[$type])) {
+            static::$_event_map[$type] = [];
         }
-        static::$_event_map[$event][] = $callback;
+        static::$_event_map[$type][] = $callback;
     }
 
     /**
      * 触发事件  依次调用注册的回调
-     * @param  string $event 事件名称
-     * @param array $args 调用触发回调的参数
+     * @param  EventInterface $event 事件名称
      * @throws AppStartUpError
      */
-    protected static function fire($event, array $args)
+    protected static function fire(EventInterface $event)
     {
-        if (!static::isAllowedEvent($event)) {
-            throw new AppStartUpError("event:{$event} not support");
+        $type = $event->getType();
+        if (!static::isAllowedEvent($type)) {
+            throw new AppStartUpError("event:{$type} not support");
         }
-        $callback_list = isset(static::$_event_map[$event]) ? static::$_event_map[$event] : [];
-        foreach ($callback_list as $idx => $val) {
-            call_user_func_array($val, $args);
+        $callback_list = isset(static::$_event_map[$type]) ? static::$_event_map[$type] : [];
+        foreach ($callback_list as $idx => $func) {
+            call_user_func_array($func, [$event]);
         }
     }
 

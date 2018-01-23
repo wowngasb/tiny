@@ -18,6 +18,45 @@ class UtilTest extends BaseNothingTest
 
     use PHPMock;
 
+    public function test_deep_merge()
+    {
+        Util::deep_merge(['a' => 1], ['b' => 2]);
+        $_func = self::_buildFunc(__METHOD__);
+        $test_data = [
+            [
+                'args' => [
+                    ['a' => 1], ['b' => 2]
+                ],
+                'return' => ['a' => 1, 'b' => 2]
+            ], [
+                'args' => [
+                    ['a' => 1], ['a' => 2]
+                ],
+                'return' => ['a' => 2]
+            ], [
+                'args' => [
+                    ['a' => ['c' => 1]], ['b' => 2]
+                ],
+                'return' => ['a' => ['c' => 1], 'b' => 2]
+            ], [
+                'args' => [
+                    ['a' => ['c' => 1]], ['a' => ['d' => 1]]
+                ],
+                'return' => ['a' => ['c' => 1, 'd' => 1]]
+            ], [
+                'args' => [
+                    ['a' => ['c' => 1]], ['a' => ['c' => 2]]
+                ],
+                'return' => ['a' => ['c' => 2]]
+            ],
+        ];
+        foreach ($test_data as $test_item) {
+            $item = $test_item['args'];
+            $tmp = call_user_func_array([static::$_class, $_func], $item);
+            PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
+        }
+    }
+
     public function test_file_name()
     {
         Util::file_name('http://g.cn/a.html');

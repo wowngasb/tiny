@@ -10,12 +10,12 @@ namespace Tiny\Plugin;
 
 
 use Tiny\Application;
-use Tiny\Controller\ControllerSimple;
+use Tiny\Controller\SimpleController;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Util;
 
-class DevAuthController extends ControllerSimple
+class DevAuthController extends SimpleController
 {
 
     private static $_SVR_DEVELOP_KEY = 'develop_key';

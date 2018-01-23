@@ -11,7 +11,7 @@ namespace Tiny\Traits;
 use Illuminate\Database\Query\Builder;
 use Tiny\Exception\OrmStartUpError;
 use Tiny\OrmQuery\AbstractQuery;
-use Tiny\OrmQuery\OrmConfig;
+use Tiny\OrmQuery\OrmContext;
 use Tiny\OrmQuery\SelectRunner;
 use Tiny\Plugin\DbHelper;
 use Tiny\Util;
@@ -66,7 +66,7 @@ trait OrmTrait
      * @return Builder
      * @throws OrmStartUpError
      */
-    public static function tableItem(array $where = [])
+    public static function tableBuilder(array $where = [])
     {
         $table_name = static::tableName();
         $table = static::_getDb()->table($table_name);
@@ -153,7 +153,7 @@ trait OrmTrait
 
     /**
      * 使用这个特性的子类必须 实现这个方法 返回特定格式的数组 表示数据表的配置
-     * @return OrmConfig
+     * @return OrmContext
      * @throws OrmStartUpError
      */
     protected static function getOrmConfig()
@@ -314,7 +314,7 @@ trait OrmTrait
      * @param array $data
      * @return array
      */
-    public static function newDataItem(array $data)
+    public static function createAndGetItem(array $data)
     {
         if (!empty($data)) {
             $id = static::newItem($data);
@@ -409,7 +409,7 @@ trait OrmTrait
 
         $sql_str = static::showQuery($sql, $param);
         $_tag = str_replace(__TRAIT__, "{$db_name}.{$table_name}", $tag);
-        static::getOrmConfig()->doneSql($sql_str, $time, $_tag);
+        static::getOrmConfig()->doneSql($sql_str, $param, $time, $_tag);
     }
 
     protected static function showQuery($query, $params)
@@ -445,7 +445,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function value(Builder $table, $column)
+    public static function _value(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->value($column);
@@ -460,7 +460,7 @@ trait OrmTrait
      * @param  array $columns
      * @return mixed|static
      */
-    public static function first(Builder $table, $columns = ['*'])
+    public static function _first(Builder $table, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->first($columns);
@@ -475,7 +475,7 @@ trait OrmTrait
      * @param  array $columns
      * @return array|static[]
      */
-    public static function get(Builder $table, $columns = ['*'])
+    public static function _get(Builder $table, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->get($columns);
@@ -497,7 +497,7 @@ trait OrmTrait
      * @param  callable $callback
      * @return bool
      */
-    public static function chunk(Builder $table, $count, callable $callback)
+    public static function _chunk(Builder $table, $count, callable $callback)
     {
         $start_time = microtime(true);
         $result = $table->chunk($count, $callback);
@@ -515,7 +515,7 @@ trait OrmTrait
      * @param  string $alias
      * @return bool
      */
-    public static function chunkById(Builder $table, $count, callable $callback, $column = 'id', $alias = null)
+    public static function _chunkById(Builder $table, $count, callable $callback, $column = 'id', $alias = null)
     {
         $start_time = microtime(true);
         $result = $table->chunkById($count, $callback, $column, $alias);
@@ -531,7 +531,7 @@ trait OrmTrait
      * @param  int $count
      * @return bool
      */
-    public static function each(Builder $table, callable $callback, $count = 1000)
+    public static function _each(Builder $table, callable $callback, $count = 1000)
     {
         $start_time = microtime(true);
         $result = $table->each($callback, $count);
@@ -547,7 +547,7 @@ trait OrmTrait
      * @param  string|null $key
      * @return array
      */
-    public static function pluck(Builder $table, $column, $key = null)
+    public static function _pluck(Builder $table, $column, $key = null)
     {
         $start_time = microtime(true);
         $result = $table->pluck($column, $key);
@@ -567,7 +567,7 @@ trait OrmTrait
      * @param  string $glue
      * @return string
      */
-    public static function implode(Builder $table, $column, $glue = '')
+    public static function _implode(Builder $table, $column, $glue = '')
     {
         $start_time = microtime(true);
         $result = $table->implode($column, $glue);
@@ -581,7 +581,7 @@ trait OrmTrait
      * @param Builder $table
      * @return bool
      */
-    public static function exists(Builder $table)
+    public static function _exists(Builder $table)
     {
         $start_time = microtime(true);
         $result = $table->exists();
@@ -596,7 +596,7 @@ trait OrmTrait
      * @param  string $columns
      * @return int
      */
-    public static function count(Builder $table, $columns = '*')
+    public static function _count(Builder $table, $columns = '*')
     {
         $start_time = microtime(true);
         $result = $table->count($columns);
@@ -611,7 +611,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function min(Builder $table, $column)
+    public static function _min(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->min($column);
@@ -626,7 +626,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function max(Builder $table, $column)
+    public static function _max(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->max($column);
@@ -641,7 +641,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function sum(Builder $table, $column)
+    public static function _sum(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->sum($column);
@@ -656,7 +656,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function avg(Builder $table, $column)
+    public static function _avg(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->avg($column);
@@ -671,7 +671,7 @@ trait OrmTrait
      * @param  string $column
      * @return mixed
      */
-    public static function average(Builder $table, $column)
+    public static function _average(Builder $table, $column)
     {
         $start_time = microtime(true);
         $result = $table->average($column);
@@ -687,7 +687,7 @@ trait OrmTrait
      * @param  array $columns
      * @return mixed
      */
-    public static function aggregate(Builder $table, $function, $columns = ['*'])
+    public static function _aggregate(Builder $table, $function, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->aggregate($function, $columns);
@@ -703,7 +703,7 @@ trait OrmTrait
      * @param  array $columns
      * @return float|int
      */
-    public static function numericAggregate(Builder $table, $function, $columns = ['*'])
+    public static function _numericAggregate(Builder $table, $function, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->numericAggregate($function, $columns);
@@ -718,7 +718,7 @@ trait OrmTrait
      * @param  array $values
      * @return int
      */
-    public static function update(Builder $table, array $values)
+    public static function _update(Builder $table, array $values)
     {
         $start_time = microtime(true);
         $result = $table->update($values);
@@ -734,7 +734,7 @@ trait OrmTrait
      * @param  array $values
      * @return bool
      */
-    public static function updateOrInsert(Builder $table, array $attributes, array $values = [])
+    public static function _updateOrInsert(Builder $table, array $attributes, array $values = [])
     {
         $start_time = microtime(true);
         $result = $table->updateOrInsert($attributes, $values);
@@ -751,7 +751,7 @@ trait OrmTrait
      * @param  array $extra
      * @return int
      */
-    public static function increment(Builder $table, $column, $amount = 1, array $extra = [])
+    public static function _increment(Builder $table, $column, $amount = 1, array $extra = [])
     {
         $start_time = microtime(true);
         $result = $table->increment($column, $amount, $extra);
@@ -768,7 +768,7 @@ trait OrmTrait
      * @param  array $extra
      * @return int
      */
-    public static function decrement(Builder $table, $column, $amount = 1, array $extra = [])
+    public static function _decrement(Builder $table, $column, $amount = 1, array $extra = [])
     {
         $start_time = microtime(true);
         $result = $table->decrement($column, $amount, $extra);
@@ -783,7 +783,7 @@ trait OrmTrait
      * @return int
      * @internal param mixed $id
      */
-    public static function delete(Builder $table)
+    public static function _delete(Builder $table)
     {
         $start_time = microtime(true);
         $result = $table->delete();
@@ -804,7 +804,7 @@ trait OrmTrait
     public static function countItem(array $where = [], array $columns = ['*'])
     {
         $start_time = microtime(true);
-        $table = static::tableItem($where);
+        $table = static::tableBuilder($where);
         $count = $table->count($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $count;
@@ -823,7 +823,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $max_select = static::maxSelect();
-        $table = static::tableItem($where);
+        $table = static::tableBuilder($where);
         $start = $start <= 0 ? 0 : $start;
         $limit = $limit > $max_select ? $max_select : $limit;
         if ($start > 0) {
@@ -862,7 +862,7 @@ trait OrmTrait
         $start_time = microtime(true);
         $max_select = static::maxSelect();
         $primary_key = static::primaryKey();
-        $table = static::tableItem($where);
+        $table = static::tableBuilder($where);
         $table->take($max_select);
         $data = $table->get($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -886,7 +886,7 @@ trait OrmTrait
     public static function firstItem(array $where, array $sort_option = [], array $columns = ['*'])
     {
         $start_time = microtime(true);
-        $table = static::tableItem($where);
+        $table = static::tableBuilder($where);
         if (!empty($sort_option[0])) {
             $field = trim($sort_option[0]);
             $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
@@ -950,7 +950,7 @@ trait OrmTrait
                 $data[$key] = json_encode($value);
             }
         }
-        $table = static::tableItem();
+        $table = static::tableBuilder();
         $id = $table->insertGetId($data, $primary_key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $id;
@@ -967,7 +967,7 @@ trait OrmTrait
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         unset($data[$primary_key]);
-        $table = static::tableItem()->where($primary_key, $id);
+        $table = static::tableBuilder()->where($primary_key, $id);
         $update = $table->update($data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $update;
@@ -982,7 +982,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
-        $table = static::tableItem()->where($primary_key, $id);
+        $table = static::tableBuilder()->where($primary_key, $id);
         $delete = $table->delete();
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $delete;
@@ -999,7 +999,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
-        $table = static::tableItem()->where($primary_key, $id);
+        $table = static::tableBuilder()->where($primary_key, $id);
         $increment = $table->increment($filed, $value);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $increment;
@@ -1016,7 +1016,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
-        $table = static::tableItem()->where($primary_key, $id);
+        $table = static::tableBuilder()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $decrement;

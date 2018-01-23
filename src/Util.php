@@ -12,6 +12,33 @@ namespace Tiny;
 abstract class Util
 {
 
+    public static function assoc_array(array $var)
+    {
+        return empty ($var) || array_keys($var) === range(0, sizeof($var) - 1);
+    }
+
+    public static function deep_merge(array $arr1, array $arr2)
+    {
+        if (static::assoc_array($arr1) || static::assoc_array($arr2)) {
+            return array_merge($arr1, $arr2);
+        }
+        foreach ($arr1 as $key => $item) {
+            if (isset($arr2[$key])) {
+                if (is_array($item) && is_array($arr2[$key])) {
+                    $arr1[$key] = static::deep_merge($item, $arr2[$key]);
+                } else {
+                    $arr1[$key] = $arr2[$key];
+                }
+            }
+        }
+        foreach ($arr2 as $key => $item) {
+            if (!isset($arr1[$key])) {
+                $arr1[$key] = $item;
+            }
+        }
+        return $arr1;
+    }
+
     public static function file_name($path)
     {
         $path = trim($path);
@@ -305,6 +332,32 @@ abstract class Util
         }
         return $rst;
     }
+
+    /**
+     * 过滤列表的每一个元素  取出需要的key
+     * @param array $list 列表 每行为一个数组
+     * @param array $need 需要的 keys 列表
+     * @return array
+     */
+    public static function filter_list(array $list, array $need)
+    {
+        $need_map = [];
+        foreach ($need as $n) {
+            $need_map[$n] = 1;
+        }
+        $ret = [];
+        foreach ($list as $item) {
+            $tmp = [];
+            foreach ($item as $k => $v) {
+                if (isset($need_map[$k])) {
+                    $tmp[$k] = $v;
+                }
+            }
+            $ret[] = $tmp;
+        }
+        return $ret;
+    }
+
 
     /**
      * 获取一个数组的指定键值 未设置则使用 默认值

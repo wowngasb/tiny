@@ -13,7 +13,7 @@ use Tiny\Interfaces\ResponseInterface;
 use Tiny\Interfaces\ViewInterface;
 use Tiny\Plugin\Fis;
 
-class ViewFis extends ViewSimple implements ViewInterface
+class FisView extends SimpleView implements ViewInterface
 {
 
     public static function setFis($config_dir, $template_dir)

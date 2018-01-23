@@ -32,20 +32,29 @@ abstract class StdRequest implements RequestInterface
     protected $_session_started = false;
     protected $_request_timestamp = null;
 
-    private $_request_header = null;
-    private $_agent_browser = null;
-    private $_raw_post_data = null;
-    private $_is_mobile = null;
+    private $_cache_map = [];
 
     private $_response = null;
 
+    private $_get = [];
+    private $_post = [];
+    private $_server = [];
+    private $_env = [];
+    private $_cookie = [];
+    private $_files = [];
+    private $_request = [];
+    private $_session = [];
+
+
     public function __construct()
     {
+        list($this->_get, $this->_post, $this->_server, $this->_env, $this->_cookie, $this->_files, $this->_request, $this->_session) = [$_GET, $_POST, $_SERVER, $_ENV, $_COOKIE, $_FILES, $_REQUEST, $_SESSION];
+
         $this->_request_timestamp = microtime(true);
-        $this->_request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
-        $this->_method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : '';
-        $this->_language = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
-        $this->_http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+        $this->_request_uri = $this->_server('REQUEST_URI', '/');
+        $this->_method = $this->_server('REQUEST_METHOD', 'GET');
+        $this->_language = $this->_server('HTTP_ACCEPT_LANGUAGE', '');
+        $this->_http_referer = $this->_server('HTTP_REFERER', '');
     }
 
     /**
@@ -287,17 +296,76 @@ abstract class StdRequest implements RequestInterface
     }
 
     /**
+     * @param string $method
      * @param string $uri
+     * @param array $args
      * @return StdRequest
      */
-    public function copy($uri = null)
+    public function copy($method = null, $uri = null, array $args = [])
     {
         $tmp = clone $this;
+        if (!is_null($method)) {
+            $tmp->_method = $method;
+        }
         if (!is_null($uri)) {
             $tmp->_request_uri = $uri;
         }
+        $tmp->resetHttpArgs();
+        $tmp->hookHttpArgs($args);
         $tmp->reset_route();
         return $tmp;
+    }
+
+    public function hookHttpArgs(array $args = [])
+    {
+        if (empty($args)) {
+            return;
+        }
+
+        if (isset($args['GET'])) {
+            $this->_get = $args['GET'];
+        }
+        if (isset($args['POST'])) {
+            $this->_post = $args['POST'];
+        }
+        $this->_request = array_merge($this->_get, $this->_post);  //  默认按照 GET POST 的顺序覆盖  不包含 COOKIE 的值
+
+        if (isset($args['SERVER'])) {
+            $this->_server = $args['SERVER'];
+        }
+        if (isset($args['ENV'])) {
+            $this->_env = $args['ENV'];
+        }
+        if (isset($args['COOKIE'])) {
+            $this->_cookie = $args['COOKIE'];
+        }
+        if (isset($args['FILES'])) {
+            $this->_files = $args['FILES'];
+        }
+        if (isset($args['SESSION'])) {
+            $this->_session = $args['SESSION'];
+        }
+
+        if (isset($args['php://input'])) {
+            $this->_cache_map['raw_post_data'] = $args['php://input'];
+        }
+
+        if (isset($args['request_header'])) {
+            $this->_cache_map['request_header'] = $args['request_header'];
+        }
+
+        if (isset($args['agent_browser'])) {
+            $this->_cache_map['agent_browser'] = $args['agent_browser'];
+        }
+
+        if (isset($args['is_mobile'])) {
+            $this->_cache_map['is_mobile'] = $args['is_mobile'];
+        }
+    }
+
+    public function resetHttpArgs()
+    {
+        $this->_cache_map = [];
     }
 
     /**
@@ -305,22 +373,25 @@ abstract class StdRequest implements RequestInterface
      */
     public function fixRequestPath()
     {
-        $tmp = explode('?', $this->_request_uri);
-        $path = !empty($tmp[0]) ? $tmp[0] : '/';
+        $path = $this->_request_uri;
+        $idx = strpos($path, '?');
+        if ($idx > 0) {
+            $path = substr($path, 0, $idx);
+        }
         while (strpos($path, '//') !== false) {
             $path = str_replace('//', '/', $path);
         }
         if (substr($path, -1, 1) != '/') {
             $path .= '/';
         }
-        return trim($path);
+        return $path;
     }
 
     ###############################################################
     ############  超全局变量 ################
     ###############################################################
 
-    ##################  $_GET ##################
+    ##################  $this->_get_ ##################
 
     /**
      * @param string $name
@@ -330,9 +401,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _get($name, $default = '', $setBack = false)
     {
-        $val = isset($_GET[$name]) ? $_GET[$name] : $default;
+        $val = isset($this->_get[$name]) ? $this->_get[$name] : $default;
         if ($setBack) {
-            $_GET[$name] = $val;
+            $this->_get[$name] = $val;
         }
         return $val;
     }
@@ -342,7 +413,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_get()
     {
-        return !empty($_GET) ? $_GET : [];
+        return !empty($this->_get) ? $this->_get : [];
     }
 
     /**
@@ -351,10 +422,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_get($name, $data)
     {
-        $_GET[$name] = $data;
+        $this->_get[$name] = $data;
     }
 
-    ##################  $_POST ##################
+    ##################  $this->__post ##################
 
     /**
      * @param string $name
@@ -364,9 +435,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _post($name, $default = '', $setBack = false)
     {
-        $val = isset($_POST[$name]) ? $_POST[$name] : $default;
+        $val = isset($this->_post[$name]) ? $this->_post[$name] : $default;
         if ($setBack) {
-            $_POST[$name] = $val;
+            $this->_post[$name] = $val;
         }
         return $val;
     }
@@ -376,7 +447,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_post()
     {
-        return !empty($_POST) ? $_POST : [];
+        return !empty($this->_post) ? $this->_post : [];
     }
 
     /**
@@ -385,10 +456,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_post($name, $data)
     {
-        $_POST[$name] = $data;
+        $this->_post[$name] = $data;
     }
 
-    ##################  $_ENV ##################
+    ##################  $this->_env_ ##################
 
     /**
      * @param string $name
@@ -398,9 +469,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _env($name, $default = '', $setBack = false)
     {
-        $val = isset($_ENV[$name]) ? $_ENV[$name] : $default;
+        $val = isset($this->_env[$name]) ? $this->_env[$name] : $default;
         if ($setBack) {
-            $_ENV[$name] = $val;
+            $this->_env[$name] = $val;
         }
         return $val;
     }
@@ -410,7 +481,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_env()
     {
-        return !empty($_ENV) ? $_ENV : [];
+        return !empty($this->_env) ? $this->_env : [];
     }
 
     /**
@@ -419,10 +490,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_env($name, $data)
     {
-        $_ENV[$name] = $data;
+        $this->_env[$name] = $data;
     }
 
-    ##################  $_SERVER ##################
+    ##################  $this->_server_ ##################
 
     /**
      * @param string $name
@@ -432,9 +503,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _server($name, $default = '', $setBack = false)
     {
-        $val = isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
+        $val = isset($this->_server[$name]) ? $this->_server[$name] : $default;
         if ($setBack) {
-            $_SERVER[$name] = $val;
+            $this->_server[$name] = $val;
         }
         return $val;
     }
@@ -444,7 +515,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_server()
     {
-        return !empty($_SERVER) ? $_SERVER : [];
+        return !empty($this->_server) ? $this->_server : [];
     }
 
     /**
@@ -453,10 +524,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_server($name, $data)
     {
-        $_SERVER[$name] = $data;
+        $this->_server[$name] = $data;
     }
 
-    ##################  $_COOKIE ##################
+    ##################  $this->_cookie_ ##################
 
     /**
      * @param string $name
@@ -466,9 +537,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _cookie($name, $default = '', $setBack = false)
     {
-        $val = isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
+        $val = isset($this->_cookie[$name]) ? $this->_cookie[$name] : $default;
         if ($setBack) {
-            $_COOKIE[$name] = $val;
+            $this->_cookie[$name] = $val;
         }
         return $val;
     }
@@ -478,7 +549,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_cookie()
     {
-        return !empty($_COOKIE) ? $_COOKIE : [];
+        return !empty($this->_cookie) ? $this->_cookie : [];
     }
 
     /**
@@ -487,10 +558,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_cookie($name, $data)
     {
-        $_COOKIE[$name] = $data;
+        $this->_cookie[$name] = $data;
     }
 
-    ##################  $_FILES ##################
+    ##################  $this->_files_ ##################
 
     /**
      * @param string $name
@@ -500,9 +571,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _files($name, $default = '', $setBack = false)
     {
-        $val = isset($_FILES[$name]) ? $_FILES[$name] : $default;
+        $val = isset($this->_files[$name]) ? $this->_files[$name] : $default;
         if ($setBack) {
-            $_FILES[$name] = $val;
+            $this->_files[$name] = $val;
         }
         return $val;
     }
@@ -512,7 +583,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_files()
     {
-        return !empty($_FILES) ? $_FILES : [];
+        return !empty($this->_files) ? $this->_files : [];
     }
 
     /**
@@ -521,10 +592,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_files($name, $data)
     {
-        $_FILES[$name] = $data;
+        $this->_files[$name] = $data;
     }
 
-    ##################  $_REQUEST ##################
+    ##################  $this->_request_ ##################
 
     /**
      * @param string $name
@@ -534,9 +605,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _request($name, $default = '', $setBack = false)
     {
-        $val = isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
+        $val = isset($this->_request[$name]) ? $this->_request[$name] : $default;
         if ($setBack) {
-            $_REQUEST[$name] = $val;
+            $this->_request[$name] = $val;
         }
         return $val;
     }
@@ -546,7 +617,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_request()
     {
-        return !empty($_REQUEST) ? $_REQUEST : [];
+        return !empty($this->_request) ? $this->_request : [];
     }
 
     /**
@@ -555,10 +626,10 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_request($name, $data)
     {
-        $_REQUEST[$name] = $data;
+        $this->_request[$name] = $data;
     }
 
-    ##################  $_SESSION ##################
+    ##################  $this->_session_ ##################
 
     /**
      * @param string $name
@@ -568,9 +639,9 @@ abstract class StdRequest implements RequestInterface
      */
     public function _session($name, $default = '', $setBack = false)
     {
-        $val = isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
+        $val = isset($this->_session[$name]) ? $this->_session[$name] : $default;
         if ($setBack) {
-            $_SESSION[$name] = $val;
+            $this->_session[$name] = $val;
         }
         return $val;
     }
@@ -580,7 +651,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function all_session()
     {
-        return !empty($_SESSION) ? $_SESSION : [];
+        return !empty($this->_session) ? $this->_session : [];
     }
 
     /**
@@ -589,7 +660,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function set_session($name, $data)
     {
-        $_SESSION[$name] = $data;
+        $this->_session[$name] = $data;
     }
 
     ##################  HTTP INFO ##################
@@ -600,131 +671,128 @@ abstract class StdRequest implements RequestInterface
      */
     public function raw_post_data()
     {
-        if (is_null($this->_raw_post_data)) {
-            $this->_raw_post_data = file_get_contents('php://input') ?: '';
+        if (!isset($this->_cache_map['raw_post_data'])) {
+            $raw_post_data = file_get_contents('php://input');
+            $raw_post_data = !empty($raw_post_data) ? $raw_post_data : '';
+            $this->_cache_map['raw_post_data'] = $raw_post_data;
         }
-        return $this->_raw_post_data;
+        return $this->_cache_map['raw_post_data'];
     }
 
     /**
      * 获取request 头部信息 全部使用小写名字
      * @return array
      */
-    public function getAllHeader()
+    public function request_header()
     {
-        $server = $this->all_server();
-        if (!is_null($this->_request_header)) {
-            return $this->_request_header;
-        }
-
-        if (!function_exists('apache_request_headers')) {
-            $header = [];
-            $rx_http = '/\AHTTP_/';
-            foreach ($server as $key => $val) {
-                if (preg_match($rx_http, $key)) {
-                    $arh_key = preg_replace($rx_http, '', $key);
-                    $rx_matches = explode('_', $arh_key);
-                    if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
-                        foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
-                        $arh_key = implode('-', $rx_matches);
+        if (!isset($this->_cache_map['request_header'])) {
+            $server = $this->all_server();
+            if (!function_exists('apache_request_headers')) {
+                $header = [];
+                $rx_http = '/\AHTTP_/';
+                foreach ($server as $key => $val) {
+                    if (preg_match($rx_http, $key)) {
+                        $arh_key = preg_replace($rx_http, '', $key);
+                        $rx_matches = explode('_', $arh_key);
+                        if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
+                            foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
+                            $arh_key = implode('-', $rx_matches);
+                        }
+                        $arh[$arh_key] = $val;
                     }
-                    $arh[$arh_key] = $val;
                 }
+            } else {
+                $header = apache_request_headers();
             }
-        } else {
-            $header = apache_request_headers();
-        }
 
-        if (isset($server['PHP_AUTH_DIGEST'])) {
-            $header['AUTHORIZATION'] = $server['PHP_AUTH_DIGEST'];
-        } elseif (isset($server['PHP_AUTH_USER']) && isset($server['PHP_AUTH_PW'])) {
-            $header['AUTHORIZATION'] = base64_encode($server['PHP_AUTH_USER'] . ':' . $server['PHP_AUTH_PW']);
-        }
-        if (isset($server['CONTENT_LENGTH'])) {
-            $header['CONTENT-LENGTH'] = $server['CONTENT_LENGTH'];
-        }
-        if (isset($server['CONTENT_TYPE'])) {
-            $header['CONTENT-TYPE'] = $server['CONTENT_TYPE'];
-        }
-        foreach ($header as $key => $item) {
-            $header[strtolower($key)] = $item;
-        }
+            if (isset($server['PHP_AUTH_DIGEST'])) {
+                $header['AUTHORIZATION'] = $server['PHP_AUTH_DIGEST'];
+            } elseif (isset($server['PHP_AUTH_USER']) && isset($server['PHP_AUTH_PW'])) {
+                $header['AUTHORIZATION'] = base64_encode($server['PHP_AUTH_USER'] . ':' . $server['PHP_AUTH_PW']);
+            }
+            if (isset($server['CONTENT_LENGTH'])) {
+                $header['CONTENT-LENGTH'] = $server['CONTENT_LENGTH'];
+            }
+            if (isset($server['CONTENT_TYPE'])) {
+                $header['CONTENT-TYPE'] = $server['CONTENT_TYPE'];
+            }
+            foreach ($header as $key => $item) {
+                $header[strtolower($key)] = $item;
+            }
 
-        $this->_request_header = $header;
-        return $this->_request_header;
+            $this->_cache_map['request_header'] = $header;
+        }
+        return $this->_cache_map['request_header'];
     }
 
     /**
      * 根据 HTTP_USER_AGENT 获取客户端浏览器信息
      * @return array 浏览器相关信息 ['name', 'version']
      */
-    public function agentBrowser()
+    public function agent_browser()
     {
-        if (!is_null($this->_agent_browser)) {
-            return $this->_agent_browser;
-        }
-        $browser = [];
-        $agent = $this->_server('HTTP_USER_AGENT', '');
-        if (stripos($agent, "Firefox/") > 0) {
-            preg_match("/Firefox\/([^;)]+)+/i", $agent, $b);
-            $browser[0] = "Firefox";
-            $browser[1] = $b[1];  //获取火狐浏览器的版本号
-        } elseif (stripos($agent, "Maxthon") > 0) {
-            preg_match("/Maxthon\/([\d\.]+)/", $agent, $maxthon);
-            $browser[0] = "Maxthon";
-            $browser[1] = $maxthon[1];
-        } elseif (stripos($agent, "MSIE") > 0) {
-            preg_match("/MSIE\s+([^;)]+)+/i", $agent, $ie);
-            $browser[0] = "IE";
-            $browser[1] = $ie[1];  //获取IE的版本号
-        } elseif (stripos($agent, "OPR") > 0) {
-            preg_match("/OPR\/([\d\.]+)/", $agent, $opera);
-            $browser[0] = "Opera";
-            $browser[1] = $opera[1];
-        } elseif (stripos($agent, "Edge") > 0) {
-            //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
-            preg_match("/Edge\/([\d\.]+)/", $agent, $Edge);
-            $browser[0] = "Edge";
-            $browser[1] = $Edge[1];
-        } elseif (stripos($agent, "Chrome") > 0) {
-            preg_match("/Chrome\/([\d\.]+)/", $agent, $google);
-            $browser[0] = "Chrome";
-            $browser[1] = $google[1];  //获取google chrome的版本号
-        } elseif (stripos($agent, 'rv:') > 0 && stripos($agent, 'Gecko') > 0) {
-            preg_match("/rv:([\d\.]+)/", $agent, $IE);
-            $browser[0] = "IE";
-            $browser[1] = $IE[1];
-        } else {
-            $browser[0] = "UNKNOWN";
-            $browser[1] = "";
-        }
+        if (!isset($this->_cache_map['agent_browser'])) {
+            $browser = [];
+            $agent = $this->_server('HTTP_USER_AGENT', '');
+            if (stripos($agent, "Firefox/") > 0) {
+                preg_match("/Firefox\/([^;)]+)+/i", $agent, $b);
+                $browser[0] = "Firefox";
+                $browser[1] = $b[1];  //获取火狐浏览器的版本号
+            } elseif (stripos($agent, "Maxthon") > 0) {
+                preg_match("/Maxthon\/([\d\.]+)/", $agent, $maxthon);
+                $browser[0] = "Maxthon";
+                $browser[1] = $maxthon[1];
+            } elseif (stripos($agent, "MSIE") > 0) {
+                preg_match("/MSIE\s+([^;)]+)+/i", $agent, $ie);
+                $browser[0] = "IE";
+                $browser[1] = $ie[1];  //获取IE的版本号
+            } elseif (stripos($agent, "OPR") > 0) {
+                preg_match("/OPR\/([\d\.]+)/", $agent, $opera);
+                $browser[0] = "Opera";
+                $browser[1] = $opera[1];
+            } elseif (stripos($agent, "Edge") > 0) {
+                //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
+                preg_match("/Edge\/([\d\.]+)/", $agent, $Edge);
+                $browser[0] = "Edge";
+                $browser[1] = $Edge[1];
+            } elseif (stripos($agent, "Chrome") > 0) {
+                preg_match("/Chrome\/([\d\.]+)/", $agent, $google);
+                $browser[0] = "Chrome";
+                $browser[1] = $google[1];  //获取google chrome的版本号
+            } elseif (stripos($agent, 'rv:') > 0 && stripos($agent, 'Gecko') > 0) {
+                preg_match("/rv:([\d\.]+)/", $agent, $IE);
+                $browser[0] = "IE";
+                $browser[1] = $IE[1];
+            } else {
+                $browser[0] = "UNKNOWN";
+                $browser[1] = "";
+            }
 
-        $this->_agent_browser = $browser;
-        return $this->_agent_browser;
+            $this->_cache_map['agent_browser'] = $browser;
+        }
+        return $this->_cache_map['agent_browser'];
     }
 
-    public function isMobile()
+    public function is_mobile()
     {
-        if (!is_null($this->_is_mobile)) {
-            return $this->_is_mobile;
-        }
+        if (!isset($this->_cache_map['is_mobile'])) {
+            $mobile_agents = ['xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte"];
 
-        $mobile_agents = ['xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte"];
-
-        $user_agent = $this->_server('HTTP_USER_AGENT', '');
-        if (empty($user_agent)) {
-            return false;
-        }
-        $is_mobile = false;
-        foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
-            if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
-                $is_mobile = true;
-                break;
+            $user_agent = $this->_server('HTTP_USER_AGENT', '');
+            if (empty($user_agent)) {
+                return false;
             }
-        }
+            $is_mobile = false;
+            foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
+                if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
+                    $is_mobile = true;
+                    break;
+                }
+            }
 
-        $this->_is_mobile = $is_mobile;
-        return $this->_is_mobile;
+            $this->_cache_map['is_mobile'] = $is_mobile;
+        }
+        return $this->_cache_map['is_mobile'];
     }
 
     ##################  PHP HOOK ##################

@@ -16,7 +16,7 @@ use Tiny\Interfaces\ViewInterface;
  * Class View
  * @package Tiny
  */
-class ViewSimple implements ViewInterface
+class SimpleView implements ViewInterface
 {
 
     private $_tpl_vars = [];

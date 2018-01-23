@@ -22,7 +22,7 @@ use Tiny\Util;
  *  $params = $_REQUEST;
  * @package Tiny
  */
-class RouteRegex implements RouteInterface
+class RegexRoute implements RouteInterface
 {
 
     private $_regex = '';
@@ -48,7 +48,7 @@ class RouteRegex implements RouteInterface
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [ [$module, $controller, $action], $params ]  失败 [null, null]
      */
-    public function buildRouteInfo(RequestInterface $request)
+    public function route(RequestInterface $request)
     {
         $uri = $request->fixRequestPath();
         $reg_str = Util::str_startwith($this->_regex, "^\/") ? $this->_regex : "^\/{$this->_regex}";
@@ -82,7 +82,7 @@ class RouteRegex implements RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array  $routeInfo [$module, $controller, $action]
      */
-    public function getDefaultRouteInfo()
+    public function defaultRoute()
     {
         return $this->_default_route_info;  // 默认 $routeInfo
     }

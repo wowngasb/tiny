@@ -9,17 +9,18 @@
 namespace Tiny\Controller;
 
 use Tiny\Abstracts\AbstractController;
+use Tiny\Event\ControllerEvent;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 use Tiny\Util;
-use Tiny\View\ViewFis;
+use Tiny\View\FisView;
 
-abstract class ControllerFis extends AbstractController
+abstract class FisController extends AbstractController
 {
     final public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
-        $this->setView(new ViewFis());
+        $this->setView(new FisView());
 
         $this->getView()->setPreDisplay(function ($file_path, $params) {
             false && func_get_args();
@@ -38,7 +39,24 @@ abstract class ControllerFis extends AbstractController
 
     public function setFisReleasePath($config_dir, $template_dir)
     {
-        ViewFis::setFis($config_dir, $template_dir);
+        FisView::setFis($config_dir, $template_dir);
+    }
+
+    public function widget($tpl_path, array $params = [])
+    {
+        $tpl_path = trim($tpl_path);
+        if (empty($tpl_path)) {
+            return '';
+        } else {
+            $tpl_path = Util::stri_endwith($tpl_path, '.php') ? $tpl_path : "{$tpl_path}.php";
+        }
+        $view = $this->getView();
+
+        $response = $this->getResponse();
+        $html = $view->widget($response, $tpl_path, $params);
+
+        static::fire(new ControllerEvent('preWidget', $this, $tpl_path, $params));
+        return $html;
     }
 
     /**
@@ -71,6 +89,7 @@ abstract class ControllerFis extends AbstractController
         } else {
             $html = $view->display($response, $file_path, $params);
         }
+        static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
         $this->getResponse()->appendBody($html);
     }
 

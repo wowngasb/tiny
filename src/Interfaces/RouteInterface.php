@@ -21,7 +21,7 @@ interface RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array  $routeInfo [$module, $controller, $action]
      */
-    public function getDefaultRouteInfo();
+    public function defaultRoute();
 
     /**
      * 根据请求的 $_method $_request_uri $_language 得出 路由信息 及 参数
@@ -29,7 +29,7 @@ interface RouteInterface
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [ [$module, $controller, $action], $params ]  失败 [null, null]
      */
-    public function buildRouteInfo(RequestInterface $request);
+    public function route(RequestInterface $request);
 
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url

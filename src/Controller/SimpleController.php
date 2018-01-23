@@ -11,12 +11,13 @@ namespace Tiny\Controller;
 
 use Tiny\Abstracts\AbstractController;
 use Tiny\Application;
+use Tiny\Event\ControllerEvent;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 use Tiny\Util;
-use Tiny\View\ViewSimple;
+use Tiny\View\SimpleView;
 
-abstract class ControllerSimple extends AbstractController
+abstract class SimpleController extends AbstractController
 {
 
     private $_css_tpl = '<!--[TINY_CSS_LINKS_HOOK]-->';
@@ -33,7 +34,7 @@ abstract class ControllerSimple extends AbstractController
     final public function __construct(RequestInterface $request, ResponseInterface $response)
     {
         parent::__construct($request, $response);
-        $this->setView(new ViewSimple());
+        $this->setView(new SimpleView());
 
         $this->getView()->setPreDisplay(function ($file_path, $params) {
             false && func_get_args();
@@ -66,7 +67,7 @@ abstract class ControllerSimple extends AbstractController
         $view = $this->getView();
         $params = array_merge($view->getAssign(), $params);
         $html = $view->widget($this->getResponse(), $file_path, $params);
-        static::fire('preWidget', [$this, $file_path, $params]);
+        static::fire(new ControllerEvent('preWidget', $this, $file_path, $params));
         return $html;
     }
 
@@ -101,7 +102,7 @@ abstract class ControllerSimple extends AbstractController
         } else {
             $html = $view->display($response, $file_path, $params);
         }
-        static::fire('preDisplay', [$this, $file_path, $params]);
+        static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
         $render_html = $this->_renderResponse($html);
         $this->getResponse()->appendBody($render_html);
     }

@@ -26,7 +26,7 @@ use Tiny\Util;
  * $params = $_REQUEST;
  * @package Tiny
  */
-class RouteSimple implements RouteInterface
+class SimpleRoute implements RouteInterface
 {
 
     private $module_key = '';
@@ -50,7 +50,7 @@ class RouteSimple implements RouteInterface
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [$routeInfo, $params]  失败 [null, null]
      */
-    public function buildRouteInfo(RequestInterface $request)
+    public function route(RequestInterface $request)
     {
         $module = $request->_get($this->module_key, '');
         $controller = $request->_get($this->controller_key, '');
@@ -58,7 +58,7 @@ class RouteSimple implements RouteInterface
         if (empty($controller) && empty($action) && empty($module)) {
             return [null, null];
         }
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         $module = !empty($module) ? trim($module) : $default_module;
         $controller = !empty($controller) ? trim($controller) : $default_controller;
         $action = !empty($action) ? trim($action) : $default_action;
@@ -77,7 +77,7 @@ class RouteSimple implements RouteInterface
      */
     public function buildUrl(array $routeInfo, array $params = [])
     {
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         unset($params[$this->module_key], $params[$this->controller_key], $params[$this->action_key]);
         $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
         $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
@@ -98,7 +98,7 @@ class RouteSimple implements RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array  $routeInfo [$module, $controller, $action]
      */
-    public function getDefaultRouteInfo()
+    public function defaultRoute()
     {
         return $this->_default_route_info;  // 默认 $routeInfo
     }

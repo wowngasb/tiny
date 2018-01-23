@@ -27,7 +27,7 @@ use Tiny\Util;
  *  $params = $_REQUEST;
  * @package Tiny
  */
-class RouteSupervar implements RouteInterface
+class SupervarRoute implements RouteInterface
 {
 
     private $route_key = 'r';
@@ -49,9 +49,9 @@ class RouteSupervar implements RouteInterface
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [$routeInfo, $params]  失败 [null, null]
      */
-    public function buildRouteInfo(RequestInterface $request)
+    public function route(RequestInterface $request)
     {
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         $route_value = $request->_get($this->route_key, '');
         if (empty($route_value)) {
             return [null, null];
@@ -87,7 +87,7 @@ class RouteSupervar implements RouteInterface
      */
     public function buildUrl(array $routeInfo, array $params = [])
     {
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         unset($params[$this->route_key]);
         $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
         $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
@@ -108,7 +108,7 @@ class RouteSupervar implements RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array  $routeInfo [$module, $controller, $action]
      */
-    public function getDefaultRouteInfo()
+    public function defaultRoute()
     {
         return $this->_default_route_info;  // 默认 $routeInfo
     }

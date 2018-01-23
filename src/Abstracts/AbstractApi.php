@@ -3,6 +3,8 @@
 namespace Tiny\Abstracts;
 
 
+use Tiny\Event\ApiEvent;
+
 abstract class AbstractApi extends AbstractContext
 {
 
@@ -78,12 +80,12 @@ abstract class AbstractApi extends AbstractContext
 
     public function _doneApi($action, $params, $result, $callback)
     {
-        static::fire('apiResult', [$this, $action, $params, $result, $callback]);
+        static::fire(new ApiEvent('apiResult', $this, $action, $params, $result, null, $callback));
     }
 
-    public function _exceptApi($action, $params, $ex, $callback)
+    public function _exceptApi($action, $params, $exception, $callback)
     {
-        static::fire('apiException', [$this, $action, $params, $ex, $callback]);
+        static::fire(new ApiEvent('apiException', $this, $action, $params, [], $exception, $callback));
     }
 
 }

@@ -24,7 +24,7 @@ use Tiny\Util;
  * $base_uri  不为空时  前缀不匹配的时候, RouteMap 会返回失败, 将路由权交给下一个路由协议.
  * $base_uri  为 '/' 时   RouteMap 会尽可能补全路由信息
  */
-class RouteMap implements RouteInterface
+class MapRoute implements RouteInterface
 {
 
     private $_base_uri = '';
@@ -48,14 +48,14 @@ class RouteMap implements RouteInterface
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [$routeInfo, $params]  失败 [null, null]
      */
-    public function buildRouteInfo(RequestInterface $request)
+    public function route(RequestInterface $request)
     {
         $uri_origin = $request->fixRequestPath();
         if (!Util::stri_startwith($uri_origin, $this->_base_uri)) {
             return [null, null];
         }
 
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         $uri = str_replace($this->_base_uri, '/', $uri_origin);
         $split_list = Util::splitNotEmpty('/', $uri);
         if (!empty($this->_default_module)) {
@@ -85,7 +85,7 @@ class RouteMap implements RouteInterface
      */
     public function buildUrl(array $routeInfo, array $params = [])
     {
-        list($default_module, $default_controller, $default_action) = $this->getDefaultRouteInfo();
+        list($default_module, $default_controller, $default_action) = $this->defaultRoute();
 
         $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
         $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
@@ -103,7 +103,7 @@ class RouteMap implements RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array  $routeInfo [$module, $controller, $action]
      */
-    public function getDefaultRouteInfo()
+    public function defaultRoute()
     {
         return $this->_default_route_info;  // 默认 $routeInfo
     }

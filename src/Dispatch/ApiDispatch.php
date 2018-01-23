@@ -36,8 +36,8 @@ class ApiDispatch extends AbstractDispatch
      */
     public static function initMethodParams(AbstractContext $context, $action, array $params)
     {
-        $__server = $context->getRequest()->all_server();
-        if (isset($__server['CONTENT_TYPE']) && stripos($__server['CONTENT_TYPE'], 'application/json') !== false && $__server['REQUEST_METHOD'] == "POST") {
+        $server = $context->getRequest()->all_server();
+        if (isset($server['CONTENT_TYPE']) && stripos($server['CONTENT_TYPE'], 'application/json') !== false && $server['REQUEST_METHOD'] == "POST") {
             $json_str = $context->getRequest()->raw_post_data();
             $json = !empty($json_str) ? json_decode($json_str, true) : [];
             $params = array_merge($params, $json);  //补充上$_REQUEST 中的信息

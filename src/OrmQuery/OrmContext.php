@@ -9,9 +9,10 @@
 namespace Tiny\OrmQuery;
 
 
+use Tiny\Event\OrmEvent;
 use Tiny\Traits\EventTrait;
 
-class OrmConfig
+class OrmContext
 {
     use EventTrait;
 
@@ -60,9 +61,9 @@ class OrmConfig
         return "{$this->_method}?" . join($args_list, '&');
     }
 
-    public function doneSql($sql_str, $time, $_tag)
+    public function doneSql($sql_str, array $param, $time, $_tag)
     {
-        static::fire('runSql', [$this, $sql_str, $time, $_tag]);
+        static::fire(new OrmEvent('runSql', $this, $sql_str, $param, $time, $_tag));
     }
 
     /**

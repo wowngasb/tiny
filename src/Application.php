@@ -5,6 +5,7 @@ namespace Tiny;
 use Exception;
 use Tiny\Abstracts\AbstractBootstrap;
 use Tiny\Abstracts\AbstractDispatch;
+use Tiny\Event\ApplicationEvent;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Exception\NotFoundError;
 use Tiny\Interfaces\RequestInterface;
@@ -96,6 +97,14 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         return $this->_config;
     }
 
+    /**
+     * @param array $config
+     */
+    public function setConfig(array $config)
+    {
+        $this->_config = $config;
+    }
+
     ###############################################################
     ############ 启动及运行相关函数 ################
     ###############################################################
@@ -113,20 +122,20 @@ abstract class Application extends AbstractDispatch implements RouteInterface
                 throw new AppStartUpError('call run without bootstrap completed');
             }
 
-            static::fire('routerStartup', [$this, $request, $response]);  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
+            static::fire(new ApplicationEvent('routerStartup', $this, $request, $response));  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
 
-            list($route, list($routeInfo, $params)) = $this->buildRouteInfo($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
+            list($route, list($routeInfo, $params)) = $this->route($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
             $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setParams($params)->setRouted();
 
-            static::fire('routerShutdown', [$this, $request, $response]);  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
+            static::fire(new ApplicationEvent('routerShutdown', $this, $request, $response));  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
 
             $request->bindingResponse($response);
 
-            static::fire('dispatchLoopStartup', [$this, $request, $response]);  // 分发循环开始之前被触发
+            static::fire(new ApplicationEvent('dispatchLoopStartup', $this, $request, $response));  // 分发循环开始之前被触发
 
             self::forward($request, $response, $routeInfo, $params, $route, false);
 
-            static::fire('dispatchLoopShutdown', [$this, $request, $response]);  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送  有可能提前结束处理过程 不会调用
+            static::fire(new ApplicationEvent('dispatchLoopShutdown', $this, $request, $response));  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送  有可能提前结束处理过程 不会调用
 
             $response->end();
 
@@ -168,9 +177,9 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             $context = $dispatcher::initMethodContext($request, $response, $namespace, $action);
             $params = $dispatcher::initMethodParams($context, $action, $params);
 
-            static::fire('preDispatch', [$app, $request, $response]);  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
+            static::fire(new ApplicationEvent('preDispatch', $app, $request, $response));  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
-            static::fire('postDispatch', [$app, $request, $response]);  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
+            static::fire(new ApplicationEvent('postDispatch', $app, $request, $response));  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
             if ($auto_end) {
                 $response->end();
             }
@@ -254,20 +263,20 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @return array 匹配成功 [$route, [$routeInfo, $params], ]  失败 ['', [null, null], ]
      * @throws NotFoundError
      */
-    public function buildRouteInfo(RequestInterface $request, $route = null)
+    public function route(RequestInterface $request, $route = null)
     {
         if (!is_null($route)) {
-            return $this->getRoute($route)->buildRouteInfo($request);
+            return $this->getRoute($route)->route($request);
         }
         foreach ($this->_routers as $route => $val) {
-            $tmp = $this->getRoute($route)->buildRouteInfo($request);
+            $tmp = $this->getRoute($route)->route($request);
             if (!empty($tmp[0])) {
                 return [$route, $tmp,];
             }
         }
         $uri = strtotime($request->fixRequestPath());
         if ($uri == '/' || $uri == '/index/' || $uri == '/index/index/index/') {
-            return [$this->_route_name, [$this->getDefaultRouteInfo(), $request->all_request()]];  //无匹配路由时 始终返回自己的默认路由
+            return [$this->_route_name, [$this->defaultRoute(), $request->all_request()]];  //无匹配路由时 始终返回自己的默认路由
         }
         throw new NotFoundError('page not found');
     }
@@ -287,7 +296,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * 获取路由 默认参数 用于url参数不齐全时 补全
      * @return array $routeInfo [$controller, $action, $module]
      */
-    public function getDefaultRouteInfo()
+    public function defaultRoute()
     {
         return $this->_default_route_info;
     }
@@ -378,6 +387,21 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         return self::_find_config($key, $default, $config);
     }
 
+    public static function set_config($key, $val)
+    {
+        if (strpos($key, '.') !== false) {
+            throw new AppStartUpError("cannot set config with key with dot, key: {$key}");
+        }
+        $config = static::app()->getConfig();
+        $last_val = !empty($config[$key]) ? $config[$key] : '';
+        if (is_array($last_val) && is_array($val)) {
+            $config[$key] = Util::deep_merge($last_val, $val);
+        } else {
+            $config[$key] = $val;
+        }
+        static::app()->setConfig($config);
+    }
+
     private static function _find_config($key, $default = '', array $config = [])
     {
         $tmp_list = explode('.', $key, 2);
@@ -399,7 +423,8 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ############## 常用 静态函数 放在这里方便使用 #################
     ###############################################################
 
-    public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    public
+    static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
     {
         // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
         $path = self::config('ROOT_PATH', '');
@@ -416,14 +441,16 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @return string
      * @throws AppStartUpError
      */
-    public static function url(RequestInterface $request, array $routeInfo = [], array $params = [])
+    public
+    static function url(RequestInterface $request, array $routeInfo = [], array $params = [])
     {
         $route = $request->getCurrentRoute();
         $routeInfo = Util::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
         return Application::app()->getRoute($route)->buildUrl($routeInfo, $params);
     }
 
-    public static function host()
+    public
+    static function host()
     {
         return self::config('SYSTEM_HOST', 'http://localhost/');
     }
@@ -434,7 +461,8 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @param string $url 要重定向到的URL
      * @return void
      */
-    public static function redirect(ResponseInterface $response, $url)
+    public
+    static function redirect(ResponseInterface $response, $url)
     {
         $response->resetResponse()->addHeader("Location: {$url}")->setResponseCode(302)->end();
     }

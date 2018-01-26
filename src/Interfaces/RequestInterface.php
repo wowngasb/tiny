@@ -18,11 +18,15 @@ interface RequestInterface
     ###############################################################
 
     /**
-     * 绑定
+     * 绑定 ResponseInterface
      * @param ResponseInterface $response
      */
     public function bindingResponse(ResponseInterface $response);
 
+    /**
+     * @return ResponseInterface
+     */
+    public function getBindingResponse();
 
     /**
      * @return bool
@@ -159,30 +163,9 @@ interface RequestInterface
     public function reset_route();
 
     /**
-     * @param string $method
-     * @param string $uri
-     * @param array $args
-     * @return RequestInterface
-     */
-    public function copy($method = null, $uri = null, array $args = []);
-
-    /**
      * @return string
      */
     public function fixRequestPath();
-
-    /**
-     * 模拟 http 参数 主要用于测试
-     * @param array $args
-     * @return void
-     */
-    public function hookHttpArgs(array $args = []);
-
-    /**
-     * 清除 缓存状态
-     * @return void
-     */
-    public function resetHttpArgs();
 
     ###############################################################
     ############  超全局变量 ################
@@ -194,9 +177,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _get($name, $default = '', $setBack = false);
+    public function _get($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -205,9 +189,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_get($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_get($name);
 
     ##################  $_POST ##################
 
@@ -215,9 +204,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _post($name, $default = '', $setBack = false);
+    public function _post($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -226,9 +216,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_post($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_post($name);
 
     ##################  $_ENV ##################
 
@@ -236,9 +231,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _env($name, $default = '', $setBack = false);
+    public function _env($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -247,9 +243,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_env($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_env($name);
 
     ##################  $_SERVER ##################
 
@@ -257,9 +258,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _server($name, $default = '', $setBack = false);
+    public function _server($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -268,9 +270,15 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_server($name, $data);
+
+
+    /**
+     * @param string $name
+     */
+    public function del_server($name);
 
     ##################  $_COOKIE ##################
 
@@ -278,9 +286,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _cookie($name, $default = '', $setBack = false);
+    public function _cookie($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -289,9 +298,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_cookie($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_cookie($name);
 
     ##################  $_FILES ##################
 
@@ -299,9 +313,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _files($name, $default = '', $setBack = false);
+    public function _files($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -310,9 +325,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_files($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_files($name);
 
     ##################  $_REQUEST ##################
 
@@ -320,9 +340,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _request($name, $default = '', $setBack = false);
+    public function _request($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -331,9 +352,14 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_request($name, $data);
+
+    /**
+     * @param string $name
+     */
+    public function del_request($name);
 
     ##################  $_SESSION ##################
 
@@ -341,9 +367,10 @@ interface RequestInterface
      * @param string $name
      * @param string $default
      * @param bool $setBack
-     * @return string
+     * @param bool $popKey
+     * @return string|array
      */
-    public function _session($name, $default = '', $setBack = false);
+    public function _session($name, $default = '', $setBack = false, $popKey = false);
 
     /**
      * @return array
@@ -352,11 +379,61 @@ interface RequestInterface
 
     /**
      * @param string $name
-     * @param string $data
+     * @param string|array $data
      */
     public function set_session($name, $data);
 
+    /**
+     * @param string $name
+     */
+    public function del_session($name);
+
+    ###############################################################
+    ############  测试相关 可以伪造 请求的各种参数 ################
+    ###############################################################
+
+    /**
+     * @param string $method
+     * @param string $uri
+     * @param array $args
+     * @return self
+     */
+    public function copyHttpArgs($method = null, $uri = null, array $args = []);
+
+    public function hookHttpArgs(array $args = []);
+
+    public function resetHttpArgs();
+
+    /**
+     * 获取 完整 url
+     * @return string
+     */
+    public function full();
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @return string
+     */
+    public function _header($name, $default = '');
+
     ##################  HTTP INFO ##################
+
+    public function path();
+
+    public function ajax();
+
+    public function host();
+
+    public function schema();
+
+    /**
+     * 获取客户端 ip  无法获取时 默认返回  unknown
+     * @param string $default 默认为  unknown  可以设置 其他默认值
+     * @return string
+     */
+    public function client_ip($default = null);
+
 
     /**
      * 读取原始请求数据

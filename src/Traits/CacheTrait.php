@@ -14,7 +14,8 @@ use Tiny\Plugin\EmptyMock;
 
 trait CacheTrait
 {
-    private static $_use_redis = true;
+    // 是否 优先使用 redis 进行缓存  redis 缓存 暂不支持 tags 功能
+    protected static $_use_redis = true;
 
     private static $_redis_default_expires = 300;
     private static $_redis_prefix_cache = 'BMCache';
@@ -162,13 +163,12 @@ trait CacheTrait
      */
     public static function _cacheDataManager($method, $key, callable $func, callable $filter, $timeCache = null, $is_log = false, $prefix = null, array $tags = [])
     {
-        if (self::$_use_redis) {
-            return self::_cacheDataByRedis($method, $key, $func, $filter, $timeCache, $is_log, $prefix, $tags);
+        if (static::$_use_redis) {
+            return self::_cacheDataByRedis($method, $key, $func, $filter, $timeCache, $is_log, $prefix);
         } else {
             return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $is_log, $prefix, $tags);
         }
     }
-
 
     public static function _cacheDataByFastCache($method, $key, callable $func, callable $filter, $timeCache = null, $is_log = false, $prefix = null, array $tags = [])
     {
@@ -213,13 +213,14 @@ trait CacheTrait
         return $val['data'];
     }
 
-    protected static function _cacheDataByRedis($method, $key, callable $func, callable $filter, $timeCache = null, $is_log = false, $prefix = null, array $tags = [])
+    protected static function _cacheDataByRedis($method, $key, callable $func, callable $filter, $timeCache = null, $is_log = false, $prefix = null)
     {
         $mRedis = self::_getRedisInstance();
         if (empty($key) || empty($method) || empty($mRedis)) {
             error_log(__METHOD__ . ' can not get mRedis!');
-            return $func();
+            return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $is_log, $prefix, []);
         }
+
         $_prefix = is_null($prefix) ? self::$_redis_prefix_cache : $prefix;
         $timeCache = is_null($timeCache) ? self::$_redis_prefix_cache : $timeCache;
         $method = str_replace('::', ':', $method);
@@ -228,14 +229,14 @@ trait CacheTrait
         $rKey = !empty($prefix) ? "{$_prefix}:{$method}:{$key}" : "{$method}:{$key}";
         if ($timeCache <= 0) {
             $mRedis->del($rKey);
-            $is_log && self::_redisDebug('delete', $now, $method, $key, $timeCache, $now, $tags);
+            $is_log && self::_redisDebug('delete', $now, $method, $key, $timeCache, $now);
             return $timeCache == 0 ? $func() : [];
         }
 
         $json_str = $mRedis->get($rKey);
         $val = !empty($json_str) ? json_decode($json_str, true) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            $is_log && self::_redisDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags);
+            $is_log && self::_redisDebug('hit', $now, $method, $key, $timeCache, $val['_update_']);
             return $val['data'];
         }
 
@@ -247,9 +248,9 @@ trait CacheTrait
 
         if ($use_cache) {   //需要缓存 且缓存时间大于0 保存数据并加上 tags
             $mRedis->setex($rKey, $timeCache, json_encode($val));
-            $is_log && self::_redisDebug("cache {$use_cache}", $now, $method, $key, $timeCache, $val['_update_'], $tags);
+            $is_log && self::_redisDebug("cache {$use_cache}", $now, $method, $key, $timeCache, $val['_update_']);
         } else {
-            $is_log && self::_redisDebug("skip {$use_cache}", $now, $method, $key, $timeCache, $val['_update_'], $tags);
+            $is_log && self::_redisDebug("skip {$use_cache}", $now, $method, $key, $timeCache, $val['_update_']);
         }
 
         return $val['data'];

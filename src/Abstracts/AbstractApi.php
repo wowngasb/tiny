@@ -10,6 +10,11 @@ abstract class AbstractApi extends AbstractContext
 
     protected static $_API_LIMIT_KET = 'BaseApiRateLimit';
 
+    public function _param($name, $default = '', $setBack = false, $popKey = false)
+    {
+
+    }
+
     /*
      * 不同的API会有不同的调用次数限制, 请检查返回 header 中的如下字段
      * header 字段	描述

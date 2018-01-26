@@ -10,6 +10,8 @@ namespace Tiny\Route;
 
 use FastRoute\Dispatcher;
 use Tiny\Application;
+use Tiny\Exception\AppStartUpError;
+use Tiny\Exception\MethodNotAllowedError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
 use Tiny\Util;
@@ -17,26 +19,32 @@ use Tiny\Util;
 class FastRoute implements RouteInterface
 {
 
-    private $dispatcher = null;
-    private $cache_file = '';
+    private $_dispatcher = null;
+    private $_cache_file = '';
     private $_default_route_info = ['index', 'index', 'index'];
+    private $_buildUrl = null;
+    private $_actionPre = null;
 
     /**
      * FastRoute constructor.
      * @param callable $routeDefinitionCallback
      * @param array $default_route_info
      * @param string $cache_file
+     * @param callable|null $actionPre
+     * @param callable|null $buildUrl
      */
-    public function __construct(callable $routeDefinitionCallback, array $default_route_info = [], $cache_file = '')
+    public function __construct(callable $routeDefinitionCallback, array $default_route_info = [], $cache_file = '', callable $actionPre = null, callable $buildUrl = null)
     {
+        $this->_actionPre = $actionPre;
+        $this->_buildUrl = $buildUrl;
         $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);
         if (!empty($cache_file) && !Application::dev()) {
-            $this->cache_file = $cache_file;
-            $this->dispatcher = \FastRoute\cachedDispatcher($routeDefinitionCallback, [
-                'cacheFile' => $this->cache_file
+            $this->_cache_file = $cache_file;
+            $this->_dispatcher = \FastRoute\cachedDispatcher($routeDefinitionCallback, [
+                'cacheFile' => $this->_cache_file
             ]);
         } else {
-            $this->dispatcher = \FastRoute\simpleDispatcher($routeDefinitionCallback);
+            $this->_dispatcher = \FastRoute\simpleDispatcher($routeDefinitionCallback);
         }
     }
 
@@ -54,6 +62,7 @@ class FastRoute implements RouteInterface
      * 匹配成功后 获得 路由信息 及 参数
      * @param RequestInterface $request 请求对象
      * @return array 匹配成功 [ [$module, $controller, $action], $params ]  失败 [null, null]
+     * @throws MethodNotAllowedError
      */
     public function route(RequestInterface $request)
     {
@@ -65,41 +74,61 @@ class FastRoute implements RouteInterface
         }
         $uri = rawurldecode($uri);
 
-        $routeInfo = $this->dispatcher->dispatch($httpMethod, $uri);
+        $routeInfo = $this->_dispatcher->dispatch($httpMethod, $uri);
         switch ($routeInfo[0]) {
             case Dispatcher::NOT_FOUND:
                 return [null, null];
             case Dispatcher::METHOD_NOT_ALLOWED:
-                // $allowedMethods = $routeInfo[1];
-                return [null, null];
+                $allowedMethods = $routeInfo[1];
+                throw new MethodNotAllowedError("method not allowed uri:{$uri}, method:" . $request->getMethod() . ", allowed:{$allowedMethods}");
             case Dispatcher::FOUND:
                 $handler = $routeInfo[1];
                 $vars = $routeInfo[2];
                 if (count($handler) == 3) {
-                    return [$handler, $request->all_request()];
+                    $all_request = array_merge($request->all_request(), $vars);
+                    return [$handler, $all_request];
                 } elseif (count($handler) == 2) {
-                    $handler[2] = !empty($vars['action']) ? $vars['action'] : '';
+                    $action = !empty($vars['_action']) ? $vars['_action'] : '';
+                    unset($vars['_action']);
+                    $handler[2] = $this->_fixAction($request, $handler[1], $action);
                     $handler = Util::mergeNotEmpty($this->_default_route_info, $handler);
-                    return [$handler, $request->all_request()];
+                    $all_request = array_merge($request->all_request(), $vars);
+                    return [$handler, $all_request];
                 } elseif (count($handler) == 1) {
-                    $handler[1] = !empty($vars['controller']) ? $vars['controller'] : '';
-                    $handler[2] = !empty($vars['action']) ? $vars['action'] : '';
+                    $handler[1] = !empty($vars['_controller']) ? $vars['_controller'] : '';
+                    $action = !empty($vars['_action']) ? $vars['_action'] : '';
+                    unset($vars['_action']);
+                    $handler[2] = $this->_fixAction($request, $handler[1], $action);
                     $handler = Util::mergeNotEmpty($this->_default_route_info, $handler);
-                    return [$handler, $request->all_request()];
+                    $all_request = array_merge($request->all_request(), $vars);
+                    return [$handler, $all_request];
                 }
         }
         return [null, null];
     }
 
+    private function _fixAction($request, $controller, $action){
+        if (!empty($action) && !is_null($this->_actionPre)) {
+            $action = call_user_func_array($this->_actionPre, [$request, $controller, $action]);
+        }
+        return $action;
+    }
+
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url
+     * @param string $schema uri 协议
+     * @param string $host domain
      * @param array $routeInfo 路由信息数组  [$module, $controller, $action]
      * @param array $params 参数数组
      * @return string
+     * @throws AppStartUpError
      */
-    public function buildUrl(array $routeInfo, array $params = [])
+    public function buildUrl($schema, $host, array $routeInfo, array $params = [])
     {
-        return '';
+        if (is_null($this->_buildUrl)) {
+            throw new AppStartUpError("no callable buildUrl for " . __CLASS__);
+        }
+        return call_user_func_array($this->_buildUrl, [$schema, $host, $routeInfo, $params]);
     }
 
 }

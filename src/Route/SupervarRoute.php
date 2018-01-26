@@ -8,7 +8,6 @@
 
 namespace Tiny\Route;
 
-use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
@@ -81,11 +80,13 @@ class SupervarRoute implements RouteInterface
 
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url
-     * @param array $routeInfo 路由信息数组
+     * @param string $schema uri 协议
+     * @param string $host domain
+     * @param array $routeInfo 路由信息数组  [$module, $controller, $action]
      * @param array $params 参数数组
      * @return string
      */
-    public function buildUrl(array $routeInfo, array $params = [])
+    public function buildUrl($schema, $host, array $routeInfo, array $params = [])
     {
         list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         unset($params[$this->route_key]);
@@ -93,7 +94,7 @@ class SupervarRoute implements RouteInterface
         $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
         $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : $default_module;
 
-        $url = Application::host() . 'index.php';
+        $url = "{$schema}://{$host}/index.php";
         $route_value = "{$module}/{$controller}/{$action}";
 
         $args_list = [];

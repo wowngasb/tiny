@@ -8,6 +8,7 @@
 
 namespace Tiny\Abstracts;
 
+use Tiny\Exception\AbortError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 
@@ -33,6 +34,12 @@ abstract class AbstractContext extends AbstractClass
     {
         $this->_request = $request;
         $this->_response = $response;
+    }
+
+    protected function abort($code = 500)
+    {
+        $ex = new AbortError($code);
+        throw $ex;
     }
 
     /**
@@ -71,44 +78,130 @@ abstract class AbstractContext extends AbstractClass
         return $this->_response;
     }
 
-    public function _get($name = null, $default = '')
+    public function _has($name)
     {
-        return $this->_request->_get($name, $default);
+        $tmp = $this->all_request();
+        return isset($tmp[$name]);
     }
 
-    public function _post($name = null, $default = '')
+    public function set_get($name, $val)
     {
-        return $this->_request->_post($name, $default);
+        $this->_request->set_get($name, $val);
     }
 
-    public function _env($name = null, $default = '')
+    public function set_post($name, $val)
     {
-        return $this->_request->_env($name, $default);
+        $this->_request->set_post($name, $val);
     }
 
-    public function _server($name = null, $default = '')
+    public function set_env($name, $val)
     {
-        return $this->_request->_server($name, $default);
+        $this->_request->set_env($name, $val);
     }
 
-    public function _cookie($name = null, $default = '')
+    public function set_server($name, $val)
     {
-        return $this->_request->_cookie($name, $default);
+        $this->_request->set_server($name, $val);
     }
 
-    public function _files($name = null, $default = '')
+    public function set_cookie($name, $val)
     {
-        return $this->_request->_files($name, $default);
+        $this->_request->set_cookie($name, $val);
     }
 
-    public function _request($name = null, $default = '')
+    public function set_files($name, $val)
     {
-        return $this->_request->_request($name, $default);
+        $this->_request->set_files($name, $val);
     }
 
-    public function _session($name = null, $default = '')
+    public function set_request($name, $val)
     {
-        return $this->_request->_session($name, $default);
+        $this->_request->set_request($name, $val);
+    }
+
+    public function set_session($name, $val)
+    {
+        $this->_request->set_session($name, $val);
+    }
+
+    public function del_get($name)
+    {
+        $this->_request->del_get($name);
+    }
+
+    public function del_post($name)
+    {
+        $this->_request->del_post($name);
+    }
+
+    public function del_env($name)
+    {
+        $this->_request->del_env($name);
+    }
+
+    public function del_server($name)
+    {
+        $this->_request->del_server($name);
+    }
+
+    public function del_cookie($name)
+    {
+        $this->_request->del_cookie($name);
+    }
+
+    public function del_files($name)
+    {
+        $this->_request->del_files($name);
+    }
+
+    public function del_request($name)
+    {
+        $this->_request->del_request($name);
+    }
+
+    public function del_session($name)
+    {
+        $this->_request->del_session($name);
+    }
+
+    public function _get($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_get($name, $default, $setBack, $popKey);
+    }
+
+    public function _post($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_post($name, $default, $setBack, $popKey);
+    }
+
+    public function _env($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_env($name, $default, $setBack, $popKey);
+    }
+
+    public function _server($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_server($name, $default, $setBack, $popKey);
+    }
+
+    public function _cookie($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_cookie($name, $default, $setBack, $popKey);
+    }
+
+    public function _files($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_files($name, $default, $setBack, $popKey);
+    }
+
+    public function _request($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_request($name, $default, $setBack, $popKey);
+    }
+
+    public function _session($name = null, $default = '', $setBack = false, $popKey = false)
+    {
+        return $this->_request->_session($name, $default, $setBack, $popKey);
     }
 
     public function all_get()
@@ -149,6 +242,11 @@ abstract class AbstractContext extends AbstractClass
     public function all_session()
     {
         return $this->_request->all_session();
+    }
+
+    public function path()
+    {
+        return $this->_request->path();
     }
 
 }

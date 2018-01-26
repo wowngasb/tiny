@@ -75,19 +75,23 @@ abstract class AbstractBootstrap
         Application::on('routerShutdown', function (ApplicationEvent $event) {
             list($obj, $request) = [$event->getObject(), $event->getRequest()];
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
-            $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
+            $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
             static::consoleDebug($data, $tag, 1);
         });
+
         Application::on('dispatchLoopStartup', function (ApplicationEvent $event) {
-            list($obj, $request) = [$event->getObject(), $event->getRequest()];
+            $obj = $event->getObject();
+            $request = $event->getRequest();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
             if ($request->isSessionStarted()) {
                 $data['session'] = $request->all_session();
+                $data['session_status'] = $request->session_status();
             }
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopStartup');
             static::consoleDebug($data, $tag, 1);
         });
 
+        /*
         Application::on('dispatchLoopShutdown', function (ApplicationEvent $event) {
             list($obj, $request, $response) = [$event->getObject(), $event->getRequest(), $event->getResponse()];
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'body' => $response->getBody()];
@@ -107,6 +111,7 @@ abstract class AbstractBootstrap
             $tag = $request->debugTag(get_class($obj) . ' #postDispatch');
             static::consoleDebug($data, $tag, 1);
         });
+           */
 
         AbstractController::on('preDisplay', function (ControllerEvent $event) {
             list($obj, $params, $tpl_path) = [$event->getObject(), $event->getViewArgs(), $event->getViewFile()];

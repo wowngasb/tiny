@@ -2,7 +2,9 @@
 
 namespace Tiny;
 
+use JsonSerializable;
 use Tiny\Exception\AppStartUpError;
+use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 
 /**
@@ -18,8 +20,300 @@ abstract class StdResponse implements ResponseInterface
     protected $_code = 200;  // 响应给请求端的HTTP状态码
     protected $_body = [];  // 响应给请求的body
 
+    /** @var RequestInterface */
+    protected $_request = null;
+
     public function __construct()
     {
+    }
+
+    public function bindingRequest(RequestInterface $request)
+    {
+        if (!is_null($this->_request)) {
+            throw new AppStartUpError('bindingRequest only run once');
+        }
+        $this->_request = $request;
+    }
+
+    /**
+     * Get the scheme for a raw URL.
+     *
+     * @param  bool|null $secure
+     * @return string
+     */
+    public function getScheme($secure = null)
+    {
+        if (is_null($secure)) {
+            return $this->_request->schema();
+        }
+        return $secure ? 'https' : 'http';
+    }
+
+    /**
+     * Create a new redirect response to the given path.
+     *
+     * @param  string $path
+     * @param  int $status
+     * @param  array $headers
+     * @param  bool $secure
+     * @return StdResponse
+     */
+    public function to($path, $status = 302, array $headers = [], $secure = null)
+    {
+        $path = trim($path);
+        if (Util::stri_startwith($path, 'http://') || Util::stri_startwith($path, 'https://')) {
+            $url = $path;
+        } else {
+            $schema = $this->getScheme($secure);
+            $host = $this->_request->host();
+            while (!empty($path) && Util::str_startwith($path, '/')) {
+                $path = substr($path, 1);
+            }
+            $url = "{$schema}://{$host}/{$path}";
+        }
+
+        $this->resetResponse()->setResponseCode($status)->addHeader("Location: {$url}", true);
+        foreach ($headers as $header) {
+            $this->addHeader($header);
+        }
+        return $this;
+    }
+
+    /**
+     * Create a new redirect response to the previous location.
+     *
+     * @param  int $status
+     * @param  array $headers
+     * @return StdResponse
+     */
+    public function back($status = 302, array $headers = [])
+    {
+        $back = $this->_request->getHttpReferer();
+        $back = !empty($back) ? $back : '/';
+        return $this->to($back, $status, $headers);
+    }
+
+    /**
+     * Create a new redirect response, while putting the current URL in the session.
+     *
+     * @param  string $path
+     * @param  int $status
+     * @param  array $headers
+     * @param  bool|null $secure
+     * @return StdResponse
+     */
+    public function guest($path, $status = 302, $headers = [], $secure = null)
+    {
+        $this->_request->set_session('url.intended', $this->_request->full());
+
+        return $this->to($path, $status, $headers, $secure);
+    }
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  array $input
+     * @return $this
+     */
+    public function withInput(array $input = null)
+    {
+        if (is_null($input)) {
+            $input = $this->_request->all_request();
+        }
+        $this->_request->set_session('_input', $input);
+        return $this;
+    }
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  mixed  string
+     * @return $this
+     */
+    public function onlyInput()
+    {
+        $only = func_get_args();
+        $_request = $this->_request->all_request();
+        $input = [];
+        foreach ($_request as $key => $item) {
+            if (in_array($key, $only)) {
+                $input[$key] = $item;
+            }
+        }
+        return $this->withInput($input);
+    }
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  mixed  string
+     * @return $this
+     */
+    public function exceptInput()
+    {
+        $except = func_get_args();
+        $_request = $this->_request->all_request();
+        $input = [];
+        foreach ($_request as $key => $item) {
+            if (!in_array($key, $except)) {
+                $input[$key] = $item;
+            }
+        }
+        return $this->withInput($input);
+    }
+
+    /**
+     * Flash a container of errors to the session.
+     *
+     * @param  array|string $error
+     * @param  string $key
+     * @return $this
+     */
+    public function withErrors($error, $key = 'default')
+    {
+        $errors = $this->_request->_session('_errors', []);
+        $errors = array_merge($errors, is_array($error) ? $error : [$key => $error]);
+        $this->_request->set_session('_errors', $errors);
+        return $this;
+    }
+
+    /**
+     * Add multiple cookies to the response.
+     *
+     * @param  array $cookies
+     * @return $this
+     */
+    public function withCookies(array $cookies)
+    {
+        foreach ($cookies as $key => $value) {
+            $this->_request->set_cookie($key, $value);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Flash a piece of data to the session.
+     *
+     * @param  string|array $key
+     * @param  mixed $value
+     * @return $this
+     */
+    public function with($key, $value = null)
+    {
+        $key = is_array($key) ? $key : [$key => $value];
+
+        foreach ($key as $k => $v) {
+            $this->_request->set_session($k, $v);
+        }
+
+        return $this;
+    }
+
+    public function old($name, $default = '')
+    {
+        $old_input = $this->_request->_session('_old_input', []);
+        return Util::v($old_input, $name, $default);
+    }
+
+    public function input_clear(){
+        $this->_request->del_session('_input');
+    }
+
+    public function errors_clear(){
+        $this->_request->del_session('_errors');
+    }
+
+    public function errors_has($name)
+    {
+        $name = trim($name);
+        if (empty($name)) {
+            return false;
+        }
+        $last_errors = $this->_request->_session('_errors', []);
+        return isset($last_errors[$name]);
+    }
+
+    public function errors_first($name, $format = ':message', $default = '')
+    {
+        $last_errors = $this->_request->_session('_errors', []);
+        $error_msg = Util::v($last_errors, $name, $default);
+        $format = is_string($format) ? [$format] : (array)$format;
+        foreach ($format as $item) {
+            $fv = Util::v($last_errors, substr($item, 1), '');
+            $error_msg = str_replace($item, $fv, $error_msg);
+        }
+        return $error_msg;
+    }
+
+    /**
+     * Return a new JSON response from the application.
+     *
+     * @param  string|array $data
+     * @param  int $status
+     * @param  array $headers
+     * @param  int $options
+     * @return $this
+     */
+    public function json($data = [], $status = 200, array $headers = [], $options = 0)
+    {
+        if (is_string($data)) {
+            $json_str = $data;
+        } elseif ($data instanceof JsonSerializable) {
+            $json_str = json_encode($data, $options);
+        } elseif (is_callable([$data, 'toArray'])) {
+            $_data = call_user_func_array([$data, 'toArray'], []);
+            $json_str = json_encode($_data, $options);
+        } elseif (is_callable([$data, 'toJson'])) {
+            $json_str = call_user_func_array([$data, 'toJson'], []);
+        } else {
+            $json_str = json_encode($data, $options);
+        }
+        $this->resetResponse()->setResponseCode($status);
+        if (!empty($this->_callback)) {
+            $jsonp_str = "{$this->_callback}({$json_str});";
+            $this->appendBody($jsonp_str, '_jsonp');
+        } else {
+            $this->appendBody($json_str, '_json');
+        }
+
+        foreach ($headers as $header) {
+            $this->addHeader($header);
+        }
+        return $this;
+    }
+
+    private $_callback = '';
+
+    /**
+     * Sets the JSONP callback.
+     * @param string|null $callback The JSONP callback or null to use none
+     * @return $this
+     * @throws AppStartUpError When the callback name is not valid
+     */
+    public function setCallback($callback = null)
+    {
+        if (is_null($callback)) {
+            $callback = $this->_request->_request('callback', '');
+        }
+
+        // taken from http://www.geekality.net/2011/08/03/valid-javascript-identifier/
+        $pattern = '/^[$_\p{L}][$_\p{L}\p{Mn}\p{Mc}\p{Nd}\p{Pc}\x{200C}\x{200D}]*+$/u';
+        $parts = explode('.', $callback);
+        foreach ($parts as $part) {
+            if (!preg_match($pattern, $part)) {
+                throw new AppStartUpError('The callback name is not valid.');
+            }
+        }
+
+        $this->_callback = $callback;
+        if (!empty($this->_body['_json']) && !empty($this->_callback)) {
+            $json_str = $this->_body['_json'];
+            $this->resetBody();
+            $jsonp_str = "{$this->_callback}({$json_str});";
+            $this->appendBody($jsonp_str, '_jsonp');
+        }
+        return $this;
     }
 
     /**
@@ -48,12 +342,8 @@ abstract class StdResponse implements ResponseInterface
      */
     public function resetResponse()
     {
-        if ($this->_header_sent) {
-            throw new AppStartUpError('header has been send');
-        }
-        $this->_body = [];
-        $this->_header_list = [];
-        $this->_code = 200;
+        $this->resetHeader();
+        $this->resetBody();
         return $this;
     }
 
@@ -84,6 +374,21 @@ abstract class StdResponse implements ResponseInterface
             http_response_code($this->_code);
             $this->_header_sent = true;
         }
+        return $this;
+    }
+
+    /**
+     * @return $this
+     * @throws AppStartUpError
+     */
+    public function resetHeader()
+    {
+        if ($this->_header_sent) {
+            throw new AppStartUpError('header has been send');
+        }
+
+        $this->_header_list = [];
+        $this->_code = 200;
         return $this;
     }
 
@@ -131,7 +436,7 @@ abstract class StdResponse implements ResponseInterface
      * @param string|null $name
      * @return $this
      */
-    public function clearBody($name = null)
+    public function resetBody($name = null)
     {
         if (is_null($name)) {
             $this->_body = [];
@@ -141,10 +446,22 @@ abstract class StdResponse implements ResponseInterface
     }
 
     /**
+     * @param string $msg
+     * @param bool $resetBody
+     * @param bool $resetHeader
      * @return void
      */
-    public function end()
+    public function end($msg = '', $resetBody = false, $resetHeader = false)
     {
+        if ($resetHeader) {
+            $this->resetHeader();
+        }
+        if ($resetBody) {
+            $this->resetBody();
+        }
+        if (!empty($msg)) {
+            $this->appendBody($msg);
+        }
         $this->send();
         exit();
     }
@@ -177,7 +494,6 @@ abstract class StdResponse implements ResponseInterface
             throw new AppStartUpError("requireForRender cannot find {$tpl_file}");
         }
         extract($data, EXTR_OVERWRITE);
-
 
         $this->ob_start();
         require($tpl_file);  // 动态引入文件 得到字符串 用于渲染模版

@@ -42,7 +42,7 @@ class ApiDispatch extends AbstractDispatch
             $json = !empty($json_str) ? json_decode($json_str, true) : [];
             $params = array_merge($params, $json);  //补充上$_REQUEST 中的信息
         }
-        return Application::initMethodParams($context, $action, $params);
+        return parent::initMethodParams($context, $action, $params);
     }
 
     /**
@@ -64,7 +64,7 @@ class ApiDispatch extends AbstractDispatch
     {
         $controller = !empty($routeInfo[1]) ? $routeInfo[1] : 'ApiHub';
         $module = !empty($routeInfo[0]) ? $routeInfo[0] : 'api';
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         $namespace = "\\" . Util::joinNotEmpty("\\", [$appname, $module, $controller]);
         return $namespace;
     }
@@ -126,7 +126,7 @@ class ApiDispatch extends AbstractDispatch
      */
     public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex, $get_previous = true)
     {
-        $response->clearBody();
+        $response->resetBody();
         $code = intval($ex->getCode());  // code 为0 或 无error字段 表示没有错误  code设置为0 会忽略error字段
         $error = Application::dev() ? [
             'Exception' => get_class($ex),

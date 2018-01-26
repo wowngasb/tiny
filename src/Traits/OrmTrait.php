@@ -298,7 +298,7 @@ trait OrmTrait
      * @param array $data
      * @return array 返回更新后的数据
      */
-    public static function setDataById($id, array $data)
+    public static function setOneById($id, array $data)
     {
         if (empty($id)) {
             return [];
@@ -314,7 +314,7 @@ trait OrmTrait
      * @param array $data
      * @return array
      */
-    public static function createAndGetItem(array $data)
+    public static function createAndGetOne(array $data)
     {
         if (!empty($data)) {
             $id = static::newItem($data);
@@ -370,12 +370,12 @@ trait OrmTrait
 
     /**
      * 根据主键获取某个字段的值
-     * @param string $name
      * @param int $id
+     * @param string $name
      * @param mixed $default
      * @return mixed
      */
-    public static function getFiledById($name, $id, $default = null)
+    public static function getFiledById($id, $name, $default = null)
     {
         $tmp = static::getOneById($id);
         return isset($tmp[$name]) ? $tmp[$name] : $default;

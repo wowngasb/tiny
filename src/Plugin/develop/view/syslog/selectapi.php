@@ -35,7 +35,7 @@
            href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
         <a class="button button-success array_btn" target="new"
            href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'phpInfo']) ?>">phpInfo</a>
-        <a class="button button-success array_btn" target="new" href="<?=  \Tiny\Application::host()  ?>">首页</a>
+        <a class="button button-success array_btn" target="new" href="<?=  $request->host()  ?>">首页</a>
     </div>
 </div>
 <div class="demo-content">

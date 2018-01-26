@@ -32,24 +32,13 @@ abstract class StdRequest implements RequestInterface
     protected $_session_started = false;
     protected $_request_timestamp = null;
 
-    private $_cache_map = [];
+    protected $_cache_map = [];
 
-    private $_response = null;
-
-    private $_get = [];
-    private $_post = [];
-    private $_server = [];
-    private $_env = [];
-    private $_cookie = [];
-    private $_files = [];
-    private $_request = [];
-    private $_session = [];
-
+    /** @var ResponseInterface */
+    protected $_response = null;
 
     public function __construct()
     {
-        list($this->_get, $this->_post, $this->_server, $this->_env, $this->_cookie, $this->_files, $this->_request, $this->_session) = [$_GET, $_POST, $_SERVER, $_ENV, $_COOKIE, $_FILES, $_REQUEST, $_SESSION];
-
         $this->_request_timestamp = microtime(true);
         $this->_request_uri = $this->_server('REQUEST_URI', '/');
         $this->_method = $this->_server('REQUEST_METHOD', 'GET');
@@ -68,6 +57,14 @@ abstract class StdRequest implements RequestInterface
             throw new AppStartUpError('bindingResponse only run once');
         }
         $this->_response = $response;
+    }
+
+    /**
+     * @return ResponseInterface
+     */
+    public function getBindingResponse()
+    {
+        return $this->_response;
     }
 
     ###############################################################
@@ -263,6 +260,7 @@ abstract class StdRequest implements RequestInterface
     {
         if (!$this->_session_started) {
             session_start();
+            //error_log(date('Y-m-d H:i:s') . " TEST TRY session_status:" . session_status() . ", session_id:" . session_id());
             $this->_session_started = true;
         }
         return $this;
@@ -279,7 +277,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function session_id($id = null)
     {
-        return $this->_session_started ? session_id($id) : null;
+        return $this->_session_started && !empty($id) ? session_id($id) : null;
     }
 
     /**
@@ -296,12 +294,411 @@ abstract class StdRequest implements RequestInterface
     }
 
     /**
+     * @return string
+     */
+    public function fixRequestPath()
+    {
+        $path = $this->_request_uri;
+        $idx = strpos($path, '#');
+        if ($idx > 0) {
+            $path = substr($path, 0, $idx);
+        }
+        $idx = strpos($path, '?');
+        if ($idx > 0) {
+            $path = substr($path, 0, $idx);
+        }
+        while (strpos($path, '//') !== false) {
+            $path = str_replace('//', '/', $path);
+        }
+        if (substr($path, -1, 1) != '/') {
+            $path .= '/';
+        }
+        return $path;
+    }
+
+    ###############################################################
+    ############  超全局变量 ################
+    ###############################################################
+
+    ##################  $_GET_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _get($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_GET[$name]) ? $_GET[$name] : $default;
+        if ($setBack) {
+            $this->set_get($name, $val);
+        }
+        if ($popKey) {
+            $this->del_get($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_get()
+    {
+        return !empty($_GET) ? $_GET : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_get($name, $data)
+    {
+        $_GET[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_get($name)
+    {
+        unset($_GET[$name]);
+    }
+
+    ##################  $this->__post ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _post($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_POST[$name]) ? $_POST[$name] : $default;
+        if ($setBack) {
+            $this->set_post($name, $val);
+        }
+        if ($popKey) {
+            $this->del_post($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_post()
+    {
+        return !empty($_POST) ? $_POST : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_post($name, $data)
+    {
+        $_POST[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_post($name)
+    {
+        unset($_POST[$name]);
+    }
+
+    ##################  $_ENV_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _env($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_ENV[$name]) ? $_ENV[$name] : $default;
+        if ($setBack) {
+            $this->set_env($name, $val);
+        }
+        if ($popKey) {
+            $this->del_env($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_env()
+    {
+        return !empty($_ENV) ? $_ENV : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_env($name, $data)
+    {
+        $_ENV[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_env($name)
+    {
+        unset($_ENV[$name]);
+    }
+
+    ##################  $_SERVER_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _server($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
+        if ($setBack) {
+            $this->set_server($name, $val);
+        }
+        if ($popKey) {
+            $this->del_server($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_server()
+    {
+        return !empty($_SERVER) ? $_SERVER : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_server($name, $data)
+    {
+        $_SERVER[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_server($name)
+    {
+        unset($_SERVER[$name]);
+    }
+
+    ##################  $_COOKIE_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _cookie($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
+        if ($setBack) {
+            $this->set_cookie($name, $val);
+        }
+        if ($popKey) {
+            $this->del_cookie($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_cookie()
+    {
+        return !empty($_COOKIE) ? $_COOKIE : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_cookie($name, $data)
+    {
+        $_COOKIE[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_cookie($name)
+    {
+        unset($_COOKIE[$name]);
+    }
+
+    ##################  $_FILES_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _files($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_FILES[$name]) ? $_FILES[$name] : $default;
+        if ($setBack) {
+            $this->set_files($name, $val);
+        }
+        if ($popKey) {
+            $this->del_files($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_files()
+    {
+        return !empty($_FILES) ? $_FILES : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_files($name, $data)
+    {
+        $_FILES[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_files($name)
+    {
+        unset($_FILES[$name]);
+    }
+
+    ##################  $_REQUEST_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string
+     */
+    public function _request($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_REQUEST[$name]) ? $_REQUEST[$name] : $default;
+        if ($setBack) {
+            $this->set_request($name, $val);
+        }
+        if ($popKey) {
+            $this->del_request($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_request()
+    {
+        return !empty($_REQUEST) ? $_REQUEST : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_request($name, $data)
+    {
+        $_REQUEST[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_request($name)
+    {
+        unset($_REQUEST[$name]);
+    }
+
+    ##################  $_SESSION_ ##################
+
+    /**
+     * @param string $name
+     * @param string $default
+     * @param bool $setBack
+     * @param bool $popKey
+     * @return string|array
+     */
+    public function _session($name, $default = '', $setBack = false, $popKey = false)
+    {
+        $val = isset($_SESSION[$name]) ? $_SESSION[$name] : $default;
+        if ($setBack) {
+            $this->set_session($name, $val);
+        }
+        if ($popKey) {
+            $this->del_session($name);
+        }
+        return $val;
+    }
+
+    /**
+     * @return array
+     */
+    public function all_session()
+    {
+        return !empty($_SESSION) ? $_SESSION : [];
+    }
+
+    /**
+     * @param string $name
+     * @param string|array $data
+     */
+    public function set_session($name, $data)
+    {
+        $_SESSION[$name] = $data;
+    }
+
+    /**
+     * @param string $name
+     */
+    public function del_session($name)
+    {
+        unset($_SESSION[$name]);
+    }
+
+    ###############################################################
+    ############  测试相关 可以伪造 请求的各种参数 ################
+    ###############################################################
+
+    /**
      * @param string $method
      * @param string $uri
      * @param array $args
      * @return StdRequest
      */
-    public function copy($method = null, $uri = null, array $args = [])
+    public function copyHttpArgs($method = null, $uri = null, array $args = [])
     {
         $tmp = clone $this;
         if (!is_null($method)) {
@@ -323,31 +720,52 @@ abstract class StdRequest implements RequestInterface
         }
 
         if (isset($args['GET'])) {
-            $this->_get = $args['GET'];
+            $_GET = $args['GET'];
         }
         if (isset($args['POST'])) {
-            $this->_post = $args['POST'];
+            $_POST = $args['POST'];
         }
-        $this->_request = array_merge($this->_get, $this->_post);  //  默认按照 GET POST 的顺序覆盖  不包含 COOKIE 的值
+
+        $_REQUEST = array_merge($_GET, $_POST);  //  默认按照 GET POST 的顺序覆盖  不包含 COOKIE 的值
 
         if (isset($args['SERVER'])) {
-            $this->_server = $args['SERVER'];
+            $_SERVER = $args['SERVER'];
         }
         if (isset($args['ENV'])) {
-            $this->_env = $args['ENV'];
+            $_ENV = $args['ENV'];
         }
         if (isset($args['COOKIE'])) {
-            $this->_cookie = $args['COOKIE'];
+            $_COOKIE = $args['COOKIE'];
         }
         if (isset($args['FILES'])) {
-            $this->_files = $args['FILES'];
+            $_FILES = $args['FILES'];
         }
         if (isset($args['SESSION'])) {
-            $this->_session = $args['SESSION'];
+            $_SESSION = $args['SESSION'];
         }
 
         if (isset($args['php://input'])) {
             $this->_cache_map['raw_post_data'] = $args['php://input'];
+        }
+
+        if (isset($args['path'])) {
+            $this->_cache_map['path'] = $args['path'];
+        }
+
+        if (isset($args['ajax'])) {
+            $this->_cache_map['ajax'] = $args['ajax'];
+        }
+
+        if (isset($args['host'])) {
+            $this->_cache_map['host'] = $args['host'];
+        }
+
+        if (isset($args['schema'])) {
+            $this->_cache_map['schema'] = $args['schema'];
+        }
+
+        if (isset($args['client_ip'])) {
+            $this->_cache_map['client_ip'] = $args['client_ip'];
         }
 
         if (isset($args['request_header'])) {
@@ -365,305 +783,110 @@ abstract class StdRequest implements RequestInterface
 
     public function resetHttpArgs()
     {
+        $_GET = [];
+        $_POST = [];
+        $_REQUEST = [];
+        $_COOKIE = [];
+        $_FILES = [];
+        $_SESSION = [];
         $this->_cache_map = [];
     }
 
     /**
+     * 获取 完整 url
      * @return string
      */
-    public function fixRequestPath()
+    public function full()
     {
-        $path = $this->_request_uri;
-        $idx = strpos($path, '?');
-        if ($idx > 0) {
-            $path = substr($path, 0, $idx);
-        }
-        while (strpos($path, '//') !== false) {
-            $path = str_replace('//', '/', $path);
-        }
-        if (substr($path, -1, 1) != '/') {
-            $path .= '/';
-        }
-        return $path;
+        $schema = $this->schema();
+        $host = $this->host();
+        return "{$schema}://{$host}" . $this->getRequestUri();
     }
-
-    ###############################################################
-    ############  超全局变量 ################
-    ###############################################################
-
-    ##################  $this->_get_ ##################
 
     /**
      * @param string $name
      * @param string $default
-     * @param bool $setBack
      * @return string
      */
-    public function _get($name, $default = '', $setBack = false)
+    public function _header($name, $default = '')
     {
-        $val = isset($this->_get[$name]) ? $this->_get[$name] : $default;
-        if ($setBack) {
-            $this->_get[$name] = $val;
-        }
+        $all_header = $this->request_header();
+        $name = Util::trimlower($name);
+        $val = isset($all_header[$name]) ? $all_header[$name] : $default;
         return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_get()
-    {
-        return !empty($this->_get) ? $this->_get : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_get($name, $data)
-    {
-        $this->_get[$name] = $data;
-    }
-
-    ##################  $this->__post ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _post($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_post[$name]) ? $this->_post[$name] : $default;
-        if ($setBack) {
-            $this->_post[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_post()
-    {
-        return !empty($this->_post) ? $this->_post : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_post($name, $data)
-    {
-        $this->_post[$name] = $data;
-    }
-
-    ##################  $this->_env_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _env($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_env[$name]) ? $this->_env[$name] : $default;
-        if ($setBack) {
-            $this->_env[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_env()
-    {
-        return !empty($this->_env) ? $this->_env : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_env($name, $data)
-    {
-        $this->_env[$name] = $data;
-    }
-
-    ##################  $this->_server_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _server($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_server[$name]) ? $this->_server[$name] : $default;
-        if ($setBack) {
-            $this->_server[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_server()
-    {
-        return !empty($this->_server) ? $this->_server : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_server($name, $data)
-    {
-        $this->_server[$name] = $data;
-    }
-
-    ##################  $this->_cookie_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _cookie($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_cookie[$name]) ? $this->_cookie[$name] : $default;
-        if ($setBack) {
-            $this->_cookie[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_cookie()
-    {
-        return !empty($this->_cookie) ? $this->_cookie : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_cookie($name, $data)
-    {
-        $this->_cookie[$name] = $data;
-    }
-
-    ##################  $this->_files_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _files($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_files[$name]) ? $this->_files[$name] : $default;
-        if ($setBack) {
-            $this->_files[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_files()
-    {
-        return !empty($this->_files) ? $this->_files : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_files($name, $data)
-    {
-        $this->_files[$name] = $data;
-    }
-
-    ##################  $this->_request_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _request($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_request[$name]) ? $this->_request[$name] : $default;
-        if ($setBack) {
-            $this->_request[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_request()
-    {
-        return !empty($this->_request) ? $this->_request : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_request($name, $data)
-    {
-        $this->_request[$name] = $data;
-    }
-
-    ##################  $this->_session_ ##################
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @param bool $setBack
-     * @return string
-     */
-    public function _session($name, $default = '', $setBack = false)
-    {
-        $val = isset($this->_session[$name]) ? $this->_session[$name] : $default;
-        if ($setBack) {
-            $this->_session[$name] = $val;
-        }
-        return $val;
-    }
-
-    /**
-     * @return array
-     */
-    public function all_session()
-    {
-        return !empty($this->_session) ? $this->_session : [];
-    }
-
-    /**
-     * @param string $name
-     * @param string $data
-     */
-    public function set_session($name, $data)
-    {
-        $this->_session[$name] = $data;
     }
 
     ##################  HTTP INFO ##################
+
+    public function path()
+    {
+        if (!isset($this->_cache_map['path'])) {
+            $path = substr($this->fixRequestPath(), 1);
+            $this->_cache_map['path'] = $path;
+        }
+        return $this->_cache_map['path'];
+    }
+
+    public function ajax()
+    {
+        if (!isset($this->_cache_map['ajax'])) {
+            $header = $this->request_header();
+            $key = 'X-Requested-With';
+            $val = Util::v($header, strtolower($key), '');
+            $ajax = Util::stri_cmp($val, 'XMLHttpRequest');
+            $this->_cache_map['ajax'] = $ajax;
+        }
+        return $this->_cache_map['ajax'];
+    }
+
+    public function host()
+    {
+        if (!isset($this->_cache_map['host'])) {
+            $host = $this->_server('HTTP_HOST', 'localhost');
+            $this->_cache_map['host'] = $host;
+        }
+        return $this->_cache_map['host'];
+    }
+
+    public function schema()
+    {
+        if (!isset($this->_cache_map['schema'])) {
+            $schema = $this->_server('HTTPS') == "on" ? 'https' : 'http';
+            $this->_cache_map['schema'] = $schema;
+        }
+        return $this->_cache_map['schema'];
+    }
+
+    public function client_ip($default = null)
+    {
+        if (!isset($this->_cache_map['client_ip'])) {
+            $arr_ip_header = array(
+                'HTTP_CDN_SRC_IP',
+                'HTTP_PROXY_CLIENT_IP',
+                'HTTP_WL_PROXY_CLIENT_IP',
+                'HTTP_CLIENT_IP',
+                'HTTP_X_FORWARDED_FOR',
+                'HTTP_X_REAL_IP',
+                'REMOTE_ADDR',
+            );
+            $header = $this->request_header();
+            $client_ip = Util::v($header, 'x_forwarded_for', 'unknown');
+
+            foreach ($arr_ip_header as $key) {
+                $tmp = $this->_server($key, 'unknown');
+                if (!empty($tmp) && strtolower($tmp) != 'unknown') {
+                    $client_ip = $tmp;
+                    break;
+                }
+            }
+            if ($client_ip == 'unknown' && !is_null($default)) {
+                $client_ip = $default;
+            }
+
+            $this->_cache_map['client_ip'] = $client_ip;
+        }
+        return $this->_cache_map['client_ip'];
+    }
 
     /**
      * 读取原始请求数据

@@ -122,22 +122,25 @@ abstract class Application extends AbstractDispatch implements RouteInterface
                 throw new AppStartUpError('call run without bootstrap completed');
             }
 
-            static::fire(new ApplicationEvent('routerStartup', $this, $request, $response));  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
-
-            list($route, list($routeInfo, $params)) = $this->route($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()
-            $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setParams($params)->setRouted();
-
-            static::fire(new ApplicationEvent('routerShutdown', $this, $request, $response));  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发
+            static::fire(new ApplicationEvent('routerStartup', $this, $request, $response));  // 在路由之前触发	这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成  此时 request 尚未 绑定 response
 
             $request->bindingResponse($response);
 
-            static::fire(new ApplicationEvent('dispatchLoopStartup', $this, $request, $response));  // 分发循环开始之前被触发
+            list($route, list($routeInfo, $params)) = $this->route($request);  // 必定会 匹配到一条路由  默认路由 default=>Application 始终会定向到 index/index->index()  此时 request 已经 绑定 response
+            $request->reset_route()->setCurrentRoute($route)->setRouteInfo($routeInfo)->setParams($params)->setRouted();
+
+            static::fire(new ApplicationEvent('routerShutdown', $this, $request, $response));  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发   此时 response 尚未 绑定 request  输出 还没有准备好
+
+            $response->bindingRequest($request);
+
+            static::fire(new ApplicationEvent('dispatchLoopStartup', $this, $request, $response));  // 分发循环开始之前被触发  response 已经 绑定 request  输出已经准备完毕
 
             self::forward($request, $response, $routeInfo, $params, $route, false);
 
-            static::fire(new ApplicationEvent('dispatchLoopShutdown', $this, $request, $response));  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应还没有发送  有可能提前结束处理过程 不会调用
+            static::fire(new ApplicationEvent('dispatchLoopShutdown', $this, $request, $response));  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应（有可能）还没有发送  有可能提前结束处理过程 不会调用
 
-            $response->end();
+            //error_log(date('Y-m-d H:i:s') . " TEST started:" . ($request->isSessionStarted() ? 1 : 0) . ", session_id:" . session_id() . ", status:" . $request->session_status());
+            $response->send();
 
         } catch (Exception $ex) {   // 捕获运行期间的所有异常  由默认异常处理方式进行处理
             static::traceException($request, $response, $ex);
@@ -179,8 +182,8 @@ abstract class Application extends AbstractDispatch implements RouteInterface
 
             static::fire(new ApplicationEvent('preDispatch', $app, $request, $response));  // 分发之前触发	如果在一个请求处理过程中, 发生了forward, 则这个事件会被触发多次
             $dispatcher::dispatch($context, $action, $params);  //分发
-            static::fire(new ApplicationEvent('postDispatch', $app, $request, $response));  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次
-            if ($auto_end) {
+            static::fire(new ApplicationEvent('postDispatch', $app, $request, $response));  // 分发结束之后触发	此时动作已经执行结束, 视图也已经渲染完成. 和preDispatch类似, 此事件也可能触发多次  也可能 提前结束
+            if ($auto_end) {  // 直接结束 处理过程  不再触发  dispatchLoopShutdown
                 $response->end();
             }
         } catch (Exception $ex) {   // 捕获运行期间的所有异常  交给 $dispatcher 处理
@@ -269,7 +272,31 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             return $this->getRoute($route)->route($request);
         }
         foreach ($this->_routers as $route => $val) {
-            $tmp = $this->getRoute($route)->route($request);
+            $dispatcher = $this->getDispatch($route);
+            try {
+                $tmp = $this->getRoute($route)->route($request);
+                // 在 route 处理过程中 触发的异常 由对应的 dispatcher 处理
+            } catch (NotFoundError $ex) {
+                $request->reset_route()->setCurrentRoute($route)->setRouted();
+                $response = $request->getBindingResponse();
+                static::fire(new ApplicationEvent('routerShutdown', $this, $request, $response));  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发   此时 response 尚未 绑定 request  输出 还没有准备好
+                $response->bindingRequest($request);
+                static::fire(new ApplicationEvent('dispatchLoopStartup', $this, $request, $response));  // 分发循环开始之前被触发  response 已经 绑定 request  输出已经准备完毕
+                $dispatcher::traceNotFound($request, $request->getBindingResponse(), $ex);
+                static::fire(new ApplicationEvent('dispatchLoopShutdown', $this, $request, $response));  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应（有可能）还没有发送  有可能提前结束处理过程 不会调用
+                //error_log(date('Y-m-d H:i:s') . " TEST started:" . ($request->isSessionStarted() ? 1 : 0) . ", session_id:" . session_id() . ", status:" . $request->session_status());
+                $response->end();  // 异常处理完毕   不再继续
+            } catch (Exception $ex) {
+                $request->reset_route()->setCurrentRoute($route)->setRouted();
+                $response = $request->getBindingResponse();
+                static::fire(new ApplicationEvent('routerShutdown', $this, $request, $response));  // 路由结束之后触发	此时路由一定正确完成, 否则这个事件不会触发   此时 response 尚未 绑定 request  输出 还没有准备好
+                $response->bindingRequest($request);
+                static::fire(new ApplicationEvent('dispatchLoopStartup', $this, $request, $response));  // 分发循环开始之前被触发  response 已经 绑定 request  输出已经准备完毕
+                $dispatcher::traceException($request, $request->getBindingResponse(), $ex);
+                static::fire(new ApplicationEvent('dispatchLoopShutdown', $this, $request, $response));  // 分发循环结束之后触发	此时表示所有的业务逻辑都已经运行完成, 但是响应（有可能）还没有发送  有可能提前结束处理过程 不会调用
+                //error_log(date('Y-m-d H:i:s') . " TEST started:" . ($request->isSessionStarted() ? 1 : 0) . ", session_id:" . session_id() . ", status:" . $request->session_status());
+                $response->end();  // 异常处理完毕   不再继续
+            }
             if (!empty($tmp[0])) {
                 return [$route, $tmp,];
             }
@@ -282,14 +309,16 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     }
 
     /**
-     * 根据 路由信息 和 参数 按照路由规则生成 url
-     * @param array $routeInfo
-     * @param array $params
+     * 根据 路由信息 及 参数 生成反路由 得到 url
+     * @param string $schema uri 协议
+     * @param string $host domain
+     * @param array $routeInfo 路由信息数组  [$module, $controller, $action]
+     * @param array $params 参数数组
      * @return string
      */
-    public function buildUrl(array $routeInfo, array $params = [])
+    public function buildUrl($schema, $host, array $routeInfo, array $params = [])
     {
-        return self::host();
+        return "{$schema}://{$host}/";
     }
 
     /**
@@ -341,6 +370,11 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         return self::$_instance;
     }
 
+    public static function appname()
+    {
+        return static::app()->getAppName();
+    }
+
     /**
      * @return string
      */
@@ -358,21 +392,23 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * 加密函数 使用 配置 CRYPT_KEY 作为 key
      * @param string $string 需要加密的字符串
      * @param int $expiry 加密生成的数据 的 有效期 为0表示永久有效， 单位 秒
+     * @param string $salt
      * @return string 加密结果 使用了 safe_base64_encode
      */
-    public static function encrypt($string, $expiry = 0)
+    public static function encrypt($string, $expiry = 0, $salt = '')
     {
-        return Util::encode($string, self::config('CRYPT_KEY', ''), $expiry);
+        return Util::encode($string, self::config('CRYPT_KEY', ''), $expiry, $salt);
     }
 
     /**
      * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
      * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
+     * @param string $salt
      * @return string 解密结果
      */
-    public static function decrypt($string)
+    public static function decrypt($string, $salt = '')
     {
-        return Util::decode($string, self::config('CRYPT_KEY', ''));
+        return Util::decode($string, self::config('CRYPT_KEY', ''), $salt);
     }
 
     /**
@@ -423,14 +459,30 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ############## 常用 静态函数 放在这里方便使用 #################
     ###############################################################
 
-    public
-    static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
     {
-        // if not define ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
+        // if not set config ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
         $path = self::config('ROOT_PATH', '');
         $path = !empty($path) ? $path : dirname(dirname(dirname(dirname(__DIR__))));
-        $abs_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, $paths);
-        return empty($abs_path) ? "{$path}{$seq}" : "{$path}{$seq}{$abs_path}{$seq}";
+        while (Util::str_endwith($path, $seq)) {
+            $path = substr($path, 0, -strlen($seq));
+        }
+        $add_path = Util::joinNotEmpty($seq, $paths);
+        return empty($add_path) ? "{$path}{$seq}" : "{$path}{$seq}{$add_path}{$seq}";
+    }
+
+    public static function cache_path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    {
+        // if not set config CACHE_PATH, try find cache in root/cache"
+        $path = self::config('CACHE_PATH', '');
+        if (empty($path)) {
+            $path = static::path(['cache']);
+        }
+        while (Util::str_endwith($path, $seq)) {
+            $path = substr($path, 0, -strlen($seq));
+        }
+        $add_path = Util::joinNotEmpty($seq, $paths);
+        return empty($add_path) ? "{$path}{$seq}" : "{$path}{$seq}{$add_path}{$seq}";
     }
 
     /**
@@ -441,18 +493,11 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @return string
      * @throws AppStartUpError
      */
-    public
-    static function url(RequestInterface $request, array $routeInfo = [], array $params = [])
+    public static function url(RequestInterface $request, array $routeInfo = [], array $params = [])
     {
         $route = $request->getCurrentRoute();
         $routeInfo = Util::mergeNotEmpty($request->getRouteInfo(), $routeInfo);
-        return Application::app()->getRoute($route)->buildUrl($routeInfo, $params);
-    }
-
-    public
-    static function host()
-    {
-        return self::config('SYSTEM_HOST', 'http://localhost/');
+        return Application::app()->getRoute($route)->buildUrl($request->schema(), $request->host(), $routeInfo, $params);
     }
 
     /**
@@ -461,8 +506,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @param string $url 要重定向到的URL
      * @return void
      */
-    public
-    static function redirect(ResponseInterface $response, $url)
+    public static function redirect(ResponseInterface $response, $url)
     {
         $response->resetResponse()->addHeader("Location: {$url}")->setResponseCode(302)->end();
     }

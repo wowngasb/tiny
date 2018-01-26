@@ -8,7 +8,7 @@
 
 namespace Tiny\Event;
 
-use app\Util;
+use Tiny\Util;
 use Tiny\Abstracts\AbstractEvent;
 use Tiny\Application;
 use Tiny\Interfaces\RequestInterface;

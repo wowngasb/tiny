@@ -75,7 +75,7 @@ EOT;
      */
     public function buildApiModJs()
     {
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         $html_str = '';
         $dev_debug = $this->_get('dev_debug', 0) == 1;
         $api_path = Application::path([$appname, 'api']);

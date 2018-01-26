@@ -40,6 +40,9 @@ abstract class AbstractDispatch extends AbstractClass
     {
         $params = ApiHelper::fixActionParams($context, $action, $params);
         $params = $context->beforeAction($params);
+        if ($params instanceof ResponseInterface) {  // 如果 beforeAction 返回了一个 response  直接终止请求流程
+            $params->end();
+        }
         $context->getRequest()->setParams($params);
         return $params;
     }
@@ -61,7 +64,7 @@ abstract class AbstractDispatch extends AbstractClass
     {
         $controller = !empty($routeInfo[1]) ? Util::trimlower($routeInfo[1]) : 'index';
         $module = !empty($routeInfo[0]) ? Util::trimlower($routeInfo[0]) : 'index';
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         return "\\" . Util::joinNotEmpty("\\", [$appname, $module, 'controller', $controller]);
     }
 
@@ -97,11 +100,14 @@ abstract class AbstractDispatch extends AbstractClass
     public static function dispatch(AbstractContext $context, $action, array $params)
     {
         $context->getResponse()->ob_start();
-        call_user_func_array([$context, $action], $params);
+        $rst = call_user_func_array([$context, $action], $params);
         $string_buffer = $context->getResponse()->ob_get_clean();
-
-        if (!empty($string_buffer)) {
-            $context->getResponse()->appendBody($string_buffer);
+        if ($rst instanceof ResponseInterface) {
+            // 不做任何处理
+        } else {
+            if (!empty($string_buffer)) {
+                $context->getResponse()->appendBody($string_buffer);
+            }
         }
     }
 

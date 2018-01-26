@@ -8,7 +8,6 @@
 
 namespace Tiny\Route;
 
-use Tiny\Application;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\RouteInterface;
@@ -71,11 +70,13 @@ class SimpleRoute implements RouteInterface
 
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url
-     * @param array $routeInfo 路由信息数组
+     * @param string $schema uri 协议
+     * @param string $host domain
+     * @param array $routeInfo 路由信息数组  [$module, $controller, $action]
      * @param array $params 参数数组
      * @return string
      */
-    public function buildUrl(array $routeInfo, array $params = [])
+    public function buildUrl($schema, $host, array $routeInfo, array $params = [])
     {
         list($default_module, $default_controller, $default_action) = $this->defaultRoute();
         unset($params[$this->module_key], $params[$this->controller_key], $params[$this->action_key]);
@@ -83,7 +84,7 @@ class SimpleRoute implements RouteInterface
         $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : $default_controller;
         $action = !empty($routeInfo[2]) ? trim($routeInfo[2]) : $default_action;
 
-        $url = Application::host() . 'index.php';
+        $url = "{$schema}://{$host}/index.php";
         $args_list = [];
         $args_list[] = "{$this->module_key}={$module}";
         $args_list[] = "{$this->controller_key}={$controller}";

@@ -27,6 +27,73 @@ abstract class AbstractController extends AbstractContext
         parent::__construct($request, $response);
     }
 
+    protected function view($tpl_file, array $data = [], $clearErrors = true, $clearInput = true)
+    {
+        $this->display($tpl_file, $data);
+        if ($clearErrors) {
+            $this->errors_clear();
+        }
+        if ($clearInput) {
+            $this->input_clear();
+        }
+    }
+
+    /**
+     * Get an instance of the redirector.
+     * @param  string|null $to
+     * @param  int $status
+     * @param  array $headers
+     * @param  bool $secure
+     * @return ResponseInterface
+     */
+    protected function redirect($to = null, $status = 302, $headers = [], $secure = null)
+    {
+        if (is_null($to)) {
+            return $this->getResponse()->resetResponse();
+        }
+        return $this->getResponse()->resetResponse()->to($to, $status, $headers, $secure);
+    }
+
+    /**
+     * @param  array|null $json
+     * @param  int $status
+     * @param  array $headers
+     * @param  int $options
+     * @return ResponseInterface
+     */
+    protected function response($json = null, $status = 200, $headers = [], $options = 0)
+    {
+        if (is_null($json)) {
+            return $this->getResponse()->resetResponse();
+        }
+        return $this->getResponse()->resetResponse()->json($json, $status, $headers, $options);
+    }
+
+    public function old($name, $default = '')
+    {
+        return $this->getResponse()->old($name, $default);
+    }
+
+    public function input_clear()
+    {
+        $this->getResponse()->input_clear();
+    }
+
+    public function errors_clear()
+    {
+        $this->getResponse()->errors_clear();
+    }
+
+    public function errors_has($name)
+    {
+        return $this->getResponse()->errors_has($name);
+    }
+
+    public function errors_first($name, $format = ':message', $default = '')
+    {
+        return $this->getResponse()->errors_first($name, $format, $default);
+    }
+
     final protected function setLayout($layout_tpl)
     {
         $this->_layout = $layout_tpl;
@@ -80,8 +147,9 @@ abstract class AbstractController extends AbstractContext
 
     /**
      * @param string $tpl_path
+     * @param array $params
      */
-    abstract protected function display($tpl_path = '');
+    abstract protected function display($tpl_path = '', array $params = []);
 
     /**
      *  注册回调函数  回调参数为 callback($this, $tpl_path, $params)

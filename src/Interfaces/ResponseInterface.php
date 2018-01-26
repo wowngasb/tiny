@@ -16,37 +16,168 @@ interface ResponseInterface
 {
 
     /**
+     * 绑定 RequestInterface
+     * @param RequestInterface $request
+     */
+    public function bindingRequest(RequestInterface $request);
+
+    /**
+     * Get the scheme for a raw URL.
+     *
+     * @param  bool|null $secure
+     * @return string
+     */
+    public function getScheme($secure = null);
+
+    /**
+     * Create a new redirect response to the given path.
+     *
+     * @param  string $path
+     * @param  int $status
+     * @param  array $headers
+     * @param  bool|null $secure
+     * @return self
+     */
+    public function to($path, $status = 302, array $headers = [], $secure = null);
+
+    /**
+     * Create a new redirect response to the previous location.
+     *
+     * @param  int $status
+     * @param  array $headers
+     * @return self
+     */
+    public function back($status = 302, array $headers = []);
+
+    /**
+     * Create a new redirect response, while putting the current URL in the session.
+     *
+     * @param  string $path
+     * @param  int $status
+     * @param  array $headers
+     * @param  bool|null $secure
+     * @return self
+     */
+    public function guest($path, $status = 302, $headers = [], $secure = null);
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  array $input
+     * @return $this
+     */
+    public function withInput(array $input = null);
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  mixed  string
+     * @return $this
+     */
+    public function onlyInput();
+
+    /**
+     * Flash an array of input to the session.
+     *
+     * @param  mixed  string
+     * @return $this
+     */
+    public function exceptInput();
+
+    /**
+     * Flash a container of errors to the session.
+     *
+     * @param  array|string $provider
+     * @param  string $key
+     * @return $this
+     */
+    public function withErrors($provider, $key = 'default');
+
+    /**
+     * Add multiple cookies to the response.
+     *
+     * @param  array $cookies
+     * @return $this
+     */
+    public function withCookies(array $cookies);
+
+    /**
+     * Flash a piece of data to the session.
+     *
+     * @param  string|array $key
+     * @param  mixed $value
+     * @return $this
+     */
+    public function with($key, $value = null);
+
+    public function old($name, $default = '');
+
+    public function input_clear();
+
+    public function errors_clear();
+
+    public function errors_has($name);
+
+    public function errors_first($name, $format = ':message', $default = '');
+
+    /**
+     * Return a new JSON response from the application.
+     *
+     * @param  string|array $data
+     * @param  int $status
+     * @param  array $headers
+     * @param  int $options
+     * @return $this
+     */
+    public function json($data = [], $status = 200, array $headers = [], $options = 0);
+
+    /**
+     * Sets the JSONP callback.
+     * @param string|null $callback The JSONP callback or null to use none
+     * @return $this
+     * @throws \InvalidArgumentException When the callback name is not valid
+     */
+    public function setCallback($callback = null);
+
+    /**
      * 添加响应header
      * @param string $string
      * @param bool $replace [optional]
      * @param int $http_response_code [optional]
-     * @return ResponseInterface
+     * @return self
      * @throws \Exception HeaderError
      */
     public function addHeader($string, $replace = true, $http_response_code = null);
 
     /**
-     * @return ResponseInterface
+     * @return self
      */
     public function resetResponse();
 
     /**
      * @param $code
-     * @return ResponseInterface
+     * @return self
      */
     public function setResponseCode($code);
 
     /**
      * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
-     * @return ResponseInterface
+     * @return self
      */
     public function sendHeader();
+
+    /**
+     * 重置 缓存的 header  如果 header 已经发送 抛出异常
+     * @return self
+     * @throws AppStartUpError
+     */
+    public function resetHeader();
 
     /**
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
      * @param string $name 此次发送消息体的 名称 可用于debug
-     * @return ResponseInterface
+     * @return self
      */
     public function appendBody($msg, $name = '');
 
@@ -63,14 +194,17 @@ interface ResponseInterface
 
     /**
      * @param string|null $name
-     * @return ResponseInterface
+     * @return self
      */
-    public function clearBody($name = null);
+    public function resetBody($name = null);
 
     /**
+     * @param string $msg
+     * @param bool $resetBody
+     * @param bool $resetHeader
      * @return void
      */
-    public function end();
+    public function end($msg = '', $resetBody = false, $resetHeader = false);
 
     /**
      *  执行给定模版文件和变量数组 渲染模版 动态渲染模版文件 依靠 response 完成

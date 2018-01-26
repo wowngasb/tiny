@@ -127,7 +127,7 @@ class sysLog extends DevelopController
      */
     public function selectApi()
     {
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         $api_path = Application::path([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         $tmp = [];
@@ -150,7 +150,7 @@ class sysLog extends DevelopController
 
     public function getParamList()
     {
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         $args_list = [];
         $note = '';
         $class = $this->_get('cls', '');
@@ -167,7 +167,7 @@ class sysLog extends DevelopController
 
     public function getMethodList()
     {
-        $appname = Application::app()->getAppName();
+        $appname = Application::appname();
         $tmp = [];
         $class = $this->_get('id', '');
         $method_list = [];

@@ -33,10 +33,12 @@ interface RouteInterface
 
     /**
      * 根据 路由信息 及 参数 生成反路由 得到 url
+     * @param string $schema uri 协议
+     * @param string $host domain
      * @param array $routeInfo 路由信息数组  [$module, $controller, $action]
      * @param array $params 参数数组
      * @return string
      */
-    public function buildUrl(array $routeInfo, array $params = []);
+    public function buildUrl($schema, $host, array $routeInfo, array $params = []);
 
 }

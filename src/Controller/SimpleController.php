@@ -66,8 +66,9 @@ abstract class SimpleController extends AbstractController
 
         $view = $this->getView();
         $params = array_merge($view->getAssign(), $params);
-        $html = $view->widget($this->getResponse(), $file_path, $params);
         static::fire(new ControllerEvent('preWidget', $this, $file_path, $params));
+
+        $html = $view->widget($this->getResponse(), $file_path, $params);
         return $html;
     }
 
@@ -90,9 +91,10 @@ abstract class SimpleController extends AbstractController
 
         $view = $this->getView();
         $params = array_merge($view->getAssign(), $params);
+        static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
+
         $response = $this->getResponse();
         $layout = $this->getLayout();
-
         if (!empty($layout)) {
             $layout_tpl = Util::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
             $layout_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->_view_dir, $layout_tpl]);
@@ -102,7 +104,7 @@ abstract class SimpleController extends AbstractController
         } else {
             $html = $view->display($response, $file_path, $params);
         }
-        static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
+
         $render_html = $this->_renderResponse($html);
         $this->getResponse()->appendBody($render_html);
     }

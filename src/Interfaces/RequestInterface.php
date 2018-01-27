@@ -10,6 +10,7 @@ namespace Tiny\Interfaces;
 
 
 use Tiny\Exception\AppStartUpError;
+use Tiny\Plugin\UploadedFile;
 
 interface RequestInterface
 {
@@ -91,9 +92,9 @@ interface RequestInterface
     public function getMethod();
 
     /**
-     * @return string
+     * @return array
      */
-    public function getLanguage();
+    public function getLanguages();
 
     /**
      * @return bool
@@ -387,6 +388,34 @@ interface RequestInterface
      * @param string $name
      */
     public function del_session($name);
+
+    ###############################################################
+    ######################  文件处理相关 ##########################
+    ###############################################################
+
+    /**
+     * Get an array of all of the files on the request.
+     *
+     * @return array
+     */
+    public function allFiles();
+
+    /**
+     * Retrieve a file from the request.
+     *
+     * @param  string $key
+     * @param  mixed $default
+     * @return UploadedFile|array|null
+     */
+    public function file($key = null, $default = null);
+
+    /**
+     * Determine if the uploaded data contains a file.
+     *
+     * @param  string $key
+     * @return bool
+     */
+    public function hasFile($key);
 
     ###############################################################
     ############  测试相关 可以伪造 请求的各种参数 ################

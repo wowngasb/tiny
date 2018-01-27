@@ -10,6 +10,7 @@ namespace Tiny;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model as _Model;
+use Illuminate\Database\Query\Builder;
 use stdClass;
 use Tiny\Plugin\DbHelper;
 use Tiny\Traits\CacheTrait;
@@ -31,16 +32,554 @@ class Model extends _Model
     }
 
     /**
+     * Set the columns to be selected.
+     *
+     * @param  array|mixed $columns
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function select($columns = ['*'])
+    {
+        return self::_s_call('select', [$columns]);
+    }
+
+    /**
+     * Add a new "raw" select expression to the query.
+     *
+     * @param  string $expression
+     * @param  array $bindings
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function selectRaw($expression, array $bindings = [])
+    {
+        return self::_s_call('selectRaw', [$expression, $bindings]);
+    }
+
+    /**
+     * Add a subselect expression to the query.
+     *
+     * @param  \Closure|\Illuminate\Database\Query\Builder|string $query
+     * @param  string $as
+     * @return \Illuminate\Database\Query\Builder|static
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function selectSub($query, $as)
+    {
+        return self::_s_call('selectSub', [$query, $as]);
+    }
+
+    /**
+     * Add a new select column to the query.
+     *
+     * @param  array|mixed $column
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function addSelect($column)
+    {
+        return self::_s_call('addSelect', [$column]);
+    }
+
+    /**
+     * Force the query to only return distinct results.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function distinct()
+    {
+        return self::_s_call('distinct', []);
+    }
+
+    /**
+     * Apply the callback's query changes if the given "value" is true.
+     *
+     * @param  bool $value
+     * @param  \Closure $callback
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function when($value, $callback)
+    {
+        return self::_s_call('when', [$value, $callback]);
+    }
+
+    /**
+     * Add a basic where clause to the query.
+     *
+     * @param  string|array|\Closure $column
+     * @param  string $operator
+     * @param  mixed $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function where($column, $operator = null, $value = null, $boolean = 'and')
+    {
+        return self::_s_call('where', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Add an "or where" clause to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  mixed $value
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhere($column, $operator = null, $value = null)
+    {
+        return self::_s_call('orWhere', [$column, $operator, $value]);
+    }
+
+    /**
+     * Add a "where" clause comparing two columns to the query.
+     *
+     * @param  string|array $first
+     * @param  string|null $operator
+     * @param  string|null $second
+     * @param  string|null $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereColumn($first, $operator = null, $second = null, $boolean = 'and')
+    {
+        return self::_s_call('whereColumn', [$first, $operator, $second, $boolean]);
+    }
+
+    /**
+     * Add an "or where" clause comparing two columns to the query.
+     *
+     * @param  string|array $first
+     * @param  string|null $operator
+     * @param  string|null $second
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereColumn($first, $operator = null, $second = null)
+    {
+        return self::_s_call('orWhereColumn', [$first, $operator, $second]);
+    }
+
+    /**
+     * Add a raw where clause to the query.
+     *
+     * @param  string $sql
+     * @param  array $bindings
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function whereRaw($sql, array $bindings = [], $boolean = 'and')
+    {
+        return self::_s_call('whereRaw', [$sql, $bindings, $boolean]);
+    }
+
+    /**
+     * Add a raw or where clause to the query.
+     *
+     * @param  string $sql
+     * @param  array $bindings
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereRaw($sql, array $bindings = [])
+    {
+        return self::_s_call('orWhereRaw', [$sql, $bindings]);
+    }
+
+    /**
+     * Add a where between statement to the query.
+     *
+     * @param  string $column
+     * @param  array $values
+     * @param  string $boolean
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function whereBetween($column, array $values, $boolean = 'and', $not = false)
+    {
+        return self::_s_call('whereBetween', [$column, $values, $boolean, $not]);
+    }
+
+    /**
+     * Add an or where between statement to the query.
+     *
+     * @param  string $column
+     * @param  array $values
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereBetween($column, array $values)
+    {
+        return self::_s_call('orWhereBetween', [$column, $values]);
+    }
+
+    /**
+     * Add a where not between statement to the query.
+     *
+     * @param  string $column
+     * @param  array $values
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereNotBetween($column, array $values, $boolean = 'and')
+    {
+        return self::_s_call('whereNotBetween', [$column, $values, $boolean]);
+    }
+
+    /**
+     * Add an or where not between statement to the query.
+     *
+     * @param  string $column
+     * @param  array $values
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereNotBetween($column, array $values)
+    {
+        return self::_s_call('orderBy', [$column, $values]);
+    }
+
+    /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure $callback
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereNested(Closure $callback, $boolean = 'and')
+    {
+        return self::_s_call('orWhereNotBetween', [$callback, $boolean]);
+    }
+
+    /**
+     * Create a new query instance for nested where condition.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function forNestedWhere()
+    {
+        return self::_s_call('forNestedWhere', []);
+    }
+
+    /**
+     * Add another query builder as a nested where to the query builder.
+     *
+     * @param  \Illuminate\Database\Query\Builder|static $query
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function addNestedWhereQuery($query, $boolean = 'and')
+    {
+        return self::_s_call('addNestedWhereQuery', [$query, $boolean]);
+    }
+
+    /**
+     * Add an exists clause to the query.
+     *
+     * @param  \Closure $callback
+     * @param  string $boolean
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function whereExists(Closure $callback, $boolean = 'and', $not = false)
+    {
+        return self::_s_call('whereExists', [$callback, $boolean, $not]);
+    }
+
+    /**
+     * Add an or exists clause to the query.
+     *
+     * @param  \Closure $callback
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereExists(Closure $callback, $not = false)
+    {
+        return self::_s_call('orWhereExists', [$callback, $not]);
+    }
+
+    /**
+     * Add a where not exists clause to the query.
+     *
+     * @param  \Closure $callback
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereNotExists(Closure $callback, $boolean = 'and')
+    {
+        return self::_s_call('whereNotExists', [$callback, $boolean]);
+    }
+
+    /**
+     * Add a where not exists clause to the query.
+     *
+     * @param  \Closure $callback
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereNotExists(Closure $callback)
+    {
+        return self::_s_call('orWhereNotExists', [$callback]);
+    }
+
+    /**
+     * Add an exists clause to the query.
+     *
+     * @param  \Illuminate\Database\Query\Builder $query
+     * @param  string $boolean
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function addWhereExistsQuery(Builder $query, $boolean = 'and', $not = false)
+    {
+        return self::_s_call('addWhereExistsQuery', [$query, $boolean, $not]);
+    }
+
+    /**
+     * Add a "where in" clause to the query.
+     *
+     * @param  string $column
+     * @param  mixed $values
+     * @param  string $boolean
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function whereIn($column, $values, $boolean = 'and', $not = false)
+    {
+        return self::_s_call('whereIn', [$column, $values, $boolean, $not]);
+    }
+
+    /**
+     * Add an "or where in" clause to the query.
+     *
+     * @param  string $column
+     * @param  mixed $values
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereIn($column, $values)
+    {
+        return self::_s_call('orWhereIn', [$column, $values]);
+    }
+
+    /**
+     * Add a "where not in" clause to the query.
+     *
+     * @param  string $column
+     * @param  mixed $values
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereNotIn($column, $values, $boolean = 'and')
+    {
+        return self::_s_call('whereNotIn', [$column, $values, $boolean]);
+    }
+
+    /**
+     * Add an "or where not in" clause to the query.
+     *
+     * @param  string $column
+     * @param  mixed $values
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereNotIn($column, $values)
+    {
+        return self::_s_call('orWhereNotIn', [$column, $values]);
+    }
+
+    /**
+     * Add a "where null" clause to the query.
+     *
+     * @param  string $column
+     * @param  string $boolean
+     * @param  bool $not
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function whereNull($column, $boolean = 'and', $not = false)
+    {
+        return self::_s_call('whereNull', [$column, $boolean, $not]);
+    }
+
+    /**
+     * Add an "or where null" clause to the query.
+     *
+     * @param  string $column
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereNull($column)
+    {
+        return self::_s_call('orWhereNull', [$column]);
+    }
+
+    /**
+     * Add a "where not null" clause to the query.
+     *
+     * @param  string $column
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereNotNull($column, $boolean = 'and')
+    {
+        return self::_s_call('ordwhereNotNullerBy', [$column, $boolean]);
+    }
+
+    /**
+     * Add an "or where not null" clause to the query.
+     *
+     * @param  string $column
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereNotNull($column)
+    {
+        return self::_s_call('orWhereNotNull', [$column]);
+    }
+
+    /**
+     * Add a "where date" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereDate($column, $operator, $value, $boolean = 'and')
+    {
+        return self::_s_call('whereDate', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Add an "or where date" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereDate($column, $operator, $value)
+    {
+        return self::_s_call('orWhereDate', [$column, $operator, $value]);
+    }
+
+    /**
+     * Add a "where time" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereTime($column, $operator, $value, $boolean = 'and')
+    {
+        return self::_s_call('whereTime', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Add an "or where time" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function orWhereTime($column, $operator, $value)
+    {
+        return self::_s_call('orWhereTime', [$column, $operator, $value]);
+    }
+
+    /**
+     * Add a "where day" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereDay($column, $operator, $value, $boolean = 'and')
+    {
+        return self::_s_call('whereDay', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Add a "where month" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereMonth($column, $operator, $value, $boolean = 'and')
+    {
+        return self::_s_call('whereMonth', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Add a "where year" statement to the query.
+     *
+     * @param  string $column
+     * @param  string $operator
+     * @param  int $value
+     * @param  string $boolean
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function whereYear($column, $operator, $value, $boolean = 'and')
+    {
+        return self::_s_call('whereYear', [$column, $operator, $value, $boolean]);
+    }
+
+    /**
+     * Handles dynamic "where" clauses to the query.
+     *
+     * @param  string $method
+     * @param  string $parameters
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function dynamicWhere($method, $parameters)
+    {
+        return self::_s_call('dynamicWhere', [$method, $parameters]);
+    }
+
+
+    /**
      * Add an "order by" clause to the query.
      *
      * @param  string $column
      * @param  string $direction
-     * @return $this
+     * @return \Illuminate\Database\Query\Builder
      */
     public static function orderBy($column, $direction = 'asc')
     {
         return self::_s_call('orderBy', [$column, $direction]);
     }
+
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     *
+     * @param  string $column
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function latest($column = 'created_at')
+    {
+        return self::_s_call('latest', [$column]);
+    }
+
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     *
+     * @param  string $column
+     * @return \Illuminate\Database\Query\Builder|static
+     */
+    public static function oldest($column = 'created_at')
+    {
+        return self::_s_call('oldest', [$column]);
+    }
+
+    /**
+     * Put the query's results in random order.
+     *
+     * @param  string $seed
+     * @return \Illuminate\Database\Query\Builder
+     */
+    public static function inRandomOrder($seed = '')
+    {
+        return self::_s_call('inRandomOrder', [$seed]);
+    }
+
 
     /**
      * Find a model by its primary key.
@@ -279,46 +818,6 @@ class Model extends _Model
 
 
     /**
-     * Apply the callback's query changes if the given "value" is true.
-     *
-     * @param  bool $value
-     * @param  \Closure $callback
-     * @return $this
-     */
-    public static function when($value, $callback)
-    {
-        return self::_s_call('when', [$value, $callback]);
-    }
-
-    /**
-     * Add a basic where clause to the query.
-     *
-     * @param  string $column
-     * @param  string $operator
-     * @param  mixed $value
-     * @param  string $boolean
-     * @return $this
-     */
-    public static function where($column, $operator = null, $value = null, $boolean = 'and')
-    {
-        return self::_s_call('where', [$column, $operator, $value, $boolean]);
-
-    }
-
-    /**
-     * Add an "or where" clause to the query.
-     *
-     * @param  string $column
-     * @param  string $operator
-     * @param  mixed $value
-     * @return \Illuminate\Database\Eloquent\Builder|static
-     */
-    public static function orWhere($column, $operator = null, $value = null)
-    {
-        return self::_s_call('orWhere', [$column, $operator, $value]);
-    }
-
-    /**
      * Add a relationship count / exists condition to the query.
      *
      * @param  string $relation
@@ -403,7 +902,7 @@ class Model extends _Model
      * Prevent the specified relations from being eager loaded.
      *
      * @param  mixed $relations
-     * @return $this
+     * @return \Illuminate\Database\Query\Builder
      */
     public static function without($relations)
     {
@@ -414,7 +913,7 @@ class Model extends _Model
      * Add subselect queries to count the relations.
      *
      * @param  mixed $relations
-     * @return $this
+     * @return \Illuminate\Database\Query\Builder
      */
     public static function withCount($relations)
     {

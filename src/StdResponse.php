@@ -3,6 +3,7 @@
 namespace Tiny;
 
 use JsonSerializable;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
@@ -12,7 +13,7 @@ use Tiny\Interfaces\ResponseInterface;
  * 默认 StdResponse 设置 header 输出响应 使用默认 header 函数
  * @package Tiny
  */
-abstract class StdResponse implements ResponseInterface
+class StdResponse extends SymfonyResponse implements ResponseInterface
 {
 
     protected $_header_list = [];  // 响应给请求的Header
@@ -23,8 +24,9 @@ abstract class StdResponse implements ResponseInterface
     /** @var RequestInterface */
     protected $_request = null;
 
-    public function __construct()
+    public function __construct($content = '', $status = 200, array $headers = [])
     {
+        parent::__construct($content, $status, $headers);
     }
 
     public function bindingRequest(RequestInterface $request)
@@ -216,11 +218,13 @@ abstract class StdResponse implements ResponseInterface
         return Util::v($old_input, $name, $default);
     }
 
-    public function input_clear(){
+    public function input_clear()
+    {
         $this->_request->del_session('_input');
     }
 
-    public function errors_clear(){
+    public function errors_clear()
+    {
         $this->_request->del_session('_errors');
     }
 

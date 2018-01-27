@@ -8,23 +8,21 @@
 
 namespace Tiny;
 
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 use Tiny\Exception\AppStartUpError;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
+use Tiny\Plugin\UploadedFile;
 
 /**
  * Class StdRequest
  * 默认 StdRequest 请求参数来源 使用默认 php 的 超全局变量
  * @package Tiny
  */
-abstract class StdRequest implements RequestInterface
+class StdRequest extends SymfonyRequest implements RequestInterface
 {
-    protected $_request_uri = '/';  // 当前请求的Request URI
-    protected $_method = 'GET';  // 当前请求的Method, 对于命令行来说, Method为"CLI"
-    protected $_language = ''; // 当前请求的希望接受的语言, 对于Http请求来说, 这个值来自分析请求头Accept-Language. 对于不能鉴别的情况, 这个值为空.
-    protected $_routed = false; // 表示当前请求是否已经完成路由 完成后 不可修改路由和参数信息
-    protected $_http_referer = '';
 
+    protected $_routed = false; // 表示当前请求是否已经完成路由 完成后 不可修改路由和参数信息
     protected $_current_route = '';  // 当前使用的 路由名称 在注册路由时给出的
     protected $_route_info = [];  // 当前 路由信息 [$controller, $action, $module]
     protected $_params = [];  // 匹配到的参数 用于调用 action
@@ -37,13 +35,24 @@ abstract class StdRequest implements RequestInterface
     /** @var ResponseInterface */
     protected $_response = null;
 
-    public function __construct()
+    public function __construct(array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null)
     {
         $this->_request_timestamp = microtime(true);
-        $this->_request_uri = $this->_server('REQUEST_URI', '/');
-        $this->_method = $this->_server('REQUEST_METHOD', 'GET');
-        $this->_language = $this->_server('HTTP_ACCEPT_LANGUAGE', '');
-        $this->_http_referer = $this->_server('HTTP_REFERER', '');
+        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
+    }
+
+    /**
+     * @param bool $enableHttpMethodParameterOverride
+     * @return RequestInterface
+     */
+    public static function createFromGlobals($enableHttpMethodParameterOverride = false)
+    {
+        if ($enableHttpMethodParameterOverride) {
+            static::enableHttpMethodParameterOverride();
+        }
+        /** @var RequestInterface $request */
+        $request = parent::createFromGlobals();
+        return $request;
     }
 
     /**
@@ -92,7 +101,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function getHttpReferer()
     {
-        return $this->_http_referer;
+        return $this->_server('HTTP_REFERER', '');
     }
 
     /**
@@ -172,22 +181,6 @@ abstract class StdRequest implements RequestInterface
     }
 
     /**
-     * @return string
-     */
-    public function getMethod()
-    {
-        return $this->_method;
-    }
-
-    /**
-     * @return string
-     */
-    public function getLanguage()
-    {
-        return $this->_language;
-    }
-
-    /**
      * @return bool
      */
     public function isRouted()
@@ -203,14 +196,6 @@ abstract class StdRequest implements RequestInterface
     {
         $this->_routed = $is_routed;
         return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getRequestUri()
-    {
-        return $this->_request_uri;
     }
 
     ###############################################################
@@ -298,7 +283,7 @@ abstract class StdRequest implements RequestInterface
      */
     public function fixRequestPath()
     {
-        $path = $this->_request_uri;
+        $path = $this->getRequestUri();
         $idx = strpos($path, '#');
         if ($idx > 0) {
             $path = substr($path, 0, $idx);
@@ -687,6 +672,96 @@ abstract class StdRequest implements RequestInterface
     }
 
     ###############################################################
+    ######################  文件处理相关 ##########################
+    ###############################################################
+
+    /**
+     * All of the converted files for the request.
+     *
+     * @var array
+     */
+    protected $convertedFiles = [];
+
+    /**
+     * Get an array of all of the files on the request.
+     *
+     * @return array
+     */
+    public function allFiles()
+    {
+        if(!empty($this->convertedFiles)){
+            return $this->convertedFiles;
+        }
+        $files = $this->files->all();
+        $this->convertedFiles = self::convertUploadedFiles($files);
+        return $this->convertedFiles;
+    }
+
+    /**
+     * Convert the given array of Symfony UploadedFiles to custom Laravel UploadedFiles.
+     *
+     * @param  array  $files
+     * @return array
+     */
+    protected static function convertUploadedFiles(array $files)
+    {
+        return array_map(function ($file) {
+            /** @var mixed $file */
+            if (is_null($file) || (is_array($file) && empty(array_filter($file)))) {
+                return $file;
+            }
+
+            return is_array($file)
+                ? self::convertUploadedFiles($file)
+                : UploadedFile::createFromBase($file);
+        }, $files);
+    }
+
+    /**
+     * Retrieve a file from the request.
+     *
+     * @param  string  $key
+     * @param  mixed  $default
+     * @return UploadedFile|array|null
+     */
+    public function file($key = null, $default = null)
+    {
+        return Util::v($this->allFiles(), $key, $default);
+    }
+
+    /**
+     * Determine if the uploaded data contains a file.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasFile($key)
+    {
+        if (! is_array($files = $this->file($key))) {
+            $files = [$files];
+        }
+
+        foreach ($files as $file) {
+            if ($this->isValidFile($file)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check that the given file is a valid file instance.
+     *
+     * @param  mixed  $file
+     * @return bool
+     */
+    protected function isValidFile($file)
+    {
+        return $file instanceof \SplFileInfo && $file->getPath() != '';
+    }
+
+    ###############################################################
     ############  测试相关 可以伪造 请求的各种参数 ################
     ###############################################################
 
@@ -700,10 +775,10 @@ abstract class StdRequest implements RequestInterface
     {
         $tmp = clone $this;
         if (!is_null($method)) {
-            $tmp->_method = $method;
+            $tmp->method = $method;
         }
         if (!is_null($uri)) {
-            $tmp->_request_uri = $uri;
+            $tmp->requestUri = $uri;
         }
         $tmp->resetHttpArgs();
         $tmp->hookHttpArgs($args);

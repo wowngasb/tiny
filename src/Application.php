@@ -459,7 +459,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ############## 常用 静态函数 放在这里方便使用 #################
     ###############################################################
 
-    public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR, $add_last = true)
+    public static function path(array $paths = [], $add_last = true, $seq = DIRECTORY_SEPARATOR)
     {
         // if not set config ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
         $path = self::config('ROOT_PATH', '');
@@ -475,12 +475,12 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         return empty($add_path) ? "{$path}{$last_seq}" : "{$path}{$seq}{$add_path}{$last_seq}";
     }
 
-    public static function cache_path(array $paths = [], $seq = DIRECTORY_SEPARATOR, $add_last = true)
+    public static function cache_path(array $paths = [], $add_last = true, $seq = DIRECTORY_SEPARATOR)
     {
         // if not set config CACHE_PATH, try find cache in root/cache"
         $path = self::config('CACHE_PATH', '');
         if (empty($path)) {
-            $path = static::path(['cache']);
+            $path = static::path(['cache'], true, $seq);
         }
         while (Util::str_endwith($path, $seq)) {
             $path = substr($path, 0, -strlen($seq));

@@ -27,8 +27,20 @@ trait CacheTrait
     private static $_redis_instance_monk = null;
 
     private static $_preFixResolver = null;
+    private static $_methodResolver = null;
     private static $_encodeResolver = null;
     private static $_decodeResolver = null;
+
+    /**
+     * Set the current page resolver callback.
+     *
+     * @param  \Closure $resolver
+     * @return void
+     */
+    public static function methodResolver(Closure $resolver)
+    {
+        static::$_methodResolver = $resolver;
+    }
 
     /**
      * Set the current page resolver callback.
@@ -128,10 +140,10 @@ trait CacheTrait
     /**
      * 使用redis缓存函数调用的结果 优先使用缓存中的数据
      * @param string $method 所在方法 方便检索
-     * @param string $key redis 缓存tag 表示分类
+     * @param string $key 缓存 keys
      * @param callable $func 获取结果的调用 没有任何参数  需要有返回结果
      * @param callable $filter 判断结果是否可以缓存的调用 参数为 $func 的返回结果 返回值为bool
-     * @param int $timeCache 允许的数据缓存时间 0表示返回函数结果并清空缓存  负数表示不执行调用只清空缓存  默认为300
+     * @param int | null $timeCache 允许的数据缓存时间 0表示返回函数结果并清空缓存  负数表示不执行调用只清空缓存  默认为300
      * @param string $prefix 缓存键 的 前缀
      * @param array | Closure $tags 标记数组
      * @param bool $is_log 是否显示日志
@@ -150,12 +162,12 @@ trait CacheTrait
     /**
      * 使用redis缓存函数调用的结果 优先使用缓存中的数据
      * @param string $method 所在方法 方便检索
-     * @param string $key redis 缓存tag 表示分类
+     * @param string $key 缓存 keys
      * @param string $prefix 缓存键 的 前缀
      * @param array | Closure $tags 标记数组
      * @param bool $is_log 是否显示日志
      */
-    public static function _clearDataManager($method, $key, $prefix = null, $tags = [], $is_log = false)
+    public static function _clearDataManager($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
     {
         if (static::$_cache_use_redis) {
             self::_clearDataByRedis($method, $key, $prefix, $tags, $is_log);
@@ -164,21 +176,81 @@ trait CacheTrait
         }
     }
 
+    /**
+     * 使用redis缓存函数调用的结果 优先使用缓存中的数据
+     * @param string $method 所在方法 方便检索
+     * @param array $keys 缓存 keys
+     * @param int | null $timeCache 允许的数据缓存时间 0表示返回函数结果并清空缓存  负数表示不执行调用只清空缓存  默认为300
+     * @param string $prefix 缓存键 的 前缀
+     * @param bool $is_log 是否显示日志
+     * @return array
+     */
+    public static function _mgetDataManager($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
+    {
+        if (static::$_cache_use_redis) {
+            return self::_mgetDataByRedis($method, $keys, $timeCache, $prefix, $is_log);
+        } else {
+            return self::_mgetDataByFastCache($method, $keys, $timeCache, $prefix, $is_log);
+        }
+    }
+
     #################################################
     ###################  私有方法 ###################
     #################################################
+
+    public static function _mgetDataByFastCache($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
+    {
+        if (empty($keys) || empty($method)) {
+            error_log("call _mgetDataByFastCache with empty method or keys " . __METHOD__);
+            return [];
+        }
+        $mCache = self::_getCacheInstance();
+        if (empty($mCache)) {
+            error_log(__METHOD__ . ' can not get mCache by _getCacheInstance ' . __METHOD__);
+            return [];
+        }
+
+        $now = time();
+        $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
+        $timeCache = intval($timeCache);
+
+        $rKeysMap = [];
+        foreach ($keys as $d_key => $r_key) {
+            $rKeysMap[$d_key] = self::_buildCacheKey($method, $r_key, $prefix);
+        }
+
+        if ($timeCache <= 0) {
+            $mCache->deleteItems(array_values($rKeysMap));
+            $is_log && self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now);
+            return [];
+        }
+        $list = $mCache->getItems(array_values($rKeysMap));
+        $ret_map = [];
+        $idx = 0;
+        foreach ($keys as $d_key => $r_key) {
+            $val_str = !empty($list[$idx]) ? ($list[$idx])->get() : '';
+            $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内
+            $data = null;
+            if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+                $is_log && self::_cacheDebug('mhit', $now, $method, $r_key, $timeCache, $val['_update_']);
+                $data = $val['data'];
+            }
+            $ret_map[$d_key] = $data;
+            $idx += 1;
+        }
+        return $ret_map;
+    }
 
     private static function _clearDataByFastCache($method = '', $key = '', $prefix = null, array $tags = [], $is_log = false)
     {
         $mCache = self::_getCacheInstance();
         if (empty($mCache)) {
-            error_log(__METHOD__ . ' can not get mCache by _getCacheInstance!');
+            error_log(__METHOD__ . ' can not get mCache by _getCacheInstance ' . __METHOD__);
             return;
         }
         $now = time();
         if (!empty($method) || !empty($key)) {
-            $method = str_replace('::', ':', $method);
-            $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
+            $rKey = self::_buildCacheKey($method, $key, $prefix);
             $mCache->deleteItem($rKey);
             $is_log && self::_cacheDebug('delete by key', $now, $method, $key, -1, $now, $tags);
         }
@@ -190,7 +262,7 @@ trait CacheTrait
         }
     }
 
-    private static function _cacheDataByFastCache($_method, $key, callable $func, callable $filter, $timeCache = null, $_prefix = null, $tags = [], $is_log = false)
+    private static function _cacheDataByFastCache($method, $key, callable $func, callable $filter, $timeCache = null, $prefix = null, $tags = [], $is_log = false)
     {
         if (empty($key) || empty($_method)) {
             error_log("call _cacheDataByFastCache with empty method or key");
@@ -204,14 +276,13 @@ trait CacheTrait
         }
 
         $now = time();
-        $timeCache = intval($timeCache);
-        $prefix = self::_buildPreFix($_prefix);
         $timeCache = is_null($timeCache) ? self::$_cache_default_expires : $timeCache;
-        $method = str_replace('::', '.', $_method);
-        $rKey = !empty($prefix) ? "{$prefix}:{$method}?{$key}" : "{$method}?{$key}";
+        $timeCache = intval($timeCache);
+        $rKey = self::_buildCacheKey($method, $key, $prefix);
+
         if ($timeCache <= 0) {
             $data = $timeCache == 0 ? $func() : [];
-            self::_clearDataByFastCache($_method, $key, $_prefix, self::_buildTagsByData($tags, $data), $is_log);
+            self::_clearDataByFastCache($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
             return $data;
         }
 
@@ -242,18 +313,61 @@ trait CacheTrait
         return $val['data'];
     }
 
+
+    public static function _mgetDataByRedis($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
+    {
+        if (empty($keys) || empty($method)) {
+            error_log("call _mgetDataByRedis with empty method or keys " . __METHOD__);
+            return [];
+        }
+        $mRedis = self::_getRedisInstance();
+        if (empty($mRedis) || $mRedis instanceof EmptyMock) {
+            error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance ' . __METHOD__);
+            return self::_mgetDataByFastCache($mRedis, $keys, $timeCache, $prefix, $is_log);
+        }
+
+        $now = time();
+        $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
+        $timeCache = intval($timeCache);
+
+        $rKeysMap = [];
+        foreach ($keys as $idx => $key) {
+            $rKeysMap[$idx] = self::_buildCacheKey($method, $key, $prefix);
+        }
+
+        if ($timeCache <= 0) {
+            $mRedis->del(array_values($rKeysMap));
+            $is_log && self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now);
+            return [];
+        }
+        $list = $mRedis->mget(array_values($rKeysMap));
+        $ret_map = [];
+        $idx = 0;
+        foreach ($keys as $jdx => $jkey) {
+            $val_str = !empty($list[$idx]) ? $list[$idx] : '';
+            $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内
+            $data = null;
+            if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+                $is_log && self::_cacheDebug('mhit', $now, $method, $jkey, $timeCache, $val['_update_']);
+                $data = $val['data'];
+            }
+            $ret_map[$jdx] = $data;
+            $idx += 1;
+        }
+        return $ret_map;
+    }
+
     private static function _clearDataByRedis($method = '', $key = '', $prefix = null, array $tags = [], $is_log = false)
     {
         $mRedis = self::_getRedisInstance();
-        if (empty($mRedis)) {
-            error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance!');
+        if (empty($mRedis) || $mRedis instanceof EmptyMock) {
+            error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
             self::_clearDataByFastCache($method . $key, $prefix, $tags, $is_log);
             return;
         }
         $now = time();
         if (!empty($method) || !empty($key)) {
-            $method = str_replace('::', ':', $method);
-            $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
+            $rKey = self::_buildCacheKey($method, $key, $prefix);
             $mRedis->del($rKey);
             $is_log && self::_cacheDebug('delete by key', $now, $method, $key, -1, $now, $tags);
         }
@@ -269,27 +383,25 @@ trait CacheTrait
         }
     }
 
-    private static function _cacheDataByRedis($_method, $key, callable $func, callable $filter, $timeCache = null, $_prefix = null, $tags = [], $is_log = false)
+    private static function _cacheDataByRedis($method, $key, callable $func, callable $filter, $timeCache = null, $prefix = null, $tags = [], $is_log = false)
     {
-        if (empty($key) || empty($_method)) {
-            error_log("call _cacheDataByRedis with empty method or key");
+        if (empty($key) || empty($method)) {
+            error_log("call _cacheDataByRedis with empty method or key " . __METHOD__);
             return [];
         }
         $mRedis = self::_getRedisInstance();
-        if (empty($mRedis)) {
-            error_log(__METHOD__ . ' can not get mRedis by _cacheDataByRedis!');
-            return self::_cacheDataByFastCache($_method, $key, $func, $filter, $timeCache, $is_log, $_prefix, $tags);
+        if (empty($mRedis) || $mRedis instanceof EmptyMock) {
+            error_log(__METHOD__ . ' can not get mRedis by _cacheDataByRedis' . __METHOD__);
+            return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $is_log, $prefix, $tags);
         }
 
         $now = time();
-        $timeCache = intval($timeCache);
-        $prefix = self::_buildPreFix($_prefix);
         $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
-        $method = str_replace('::', ':', $_method);
-        $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
+        $timeCache = intval($timeCache);
+        $rKey = self::_buildCacheKey($method, $key, $prefix);
         if ($timeCache <= 0) {
             $data = $timeCache == 0 ? $func() : [];
-            self::_clearDataByRedis($_method, $key, $_prefix, self::_buildTagsByData($tags, $data), $is_log);
+            self::_clearDataByRedis($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
             return $data;
         }
 
@@ -321,6 +433,17 @@ trait CacheTrait
         }
 
         return $val['data'];
+    }
+
+    private static function _buildCacheKey($method, $key, $prefix = null)
+    {
+        $prefix = self::_buildPreFix($prefix);
+        if (!is_null(static::$_methodResolver)) {
+            $method = call_user_func_array(static::$_methodResolver, [$method]);
+        }
+        $method = str_replace('::', '.', $method);
+        $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
+        return $rKey;
     }
 
     private static function _buildEncodeValue($val)

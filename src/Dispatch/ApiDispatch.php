@@ -62,8 +62,8 @@ class ApiDispatch extends AbstractDispatch
      */
     public static function initMethodNamespace(array $routeInfo)
     {
-        $controller = !empty($routeInfo[1]) ? $routeInfo[1] : 'ApiHub';
-        $module = !empty($routeInfo[0]) ? $routeInfo[0] : 'api';
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : 'ApiHub';
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : 'hello';
         $appname = Application::appname();
         $namespace = "\\" . Util::joinNotEmpty("\\", [$appname, $module, $controller]);
         return $namespace;

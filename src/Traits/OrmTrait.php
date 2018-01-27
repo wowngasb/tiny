@@ -229,7 +229,7 @@ trait OrmTrait
             return $tmp;
         }, function ($data) {
             return !empty($data);
-        }, $timeCache, false, self::$_REDIS_PREFIX_DB, ["{$table}?$tag",]);
+        }, $timeCache, self::$_REDIS_PREFIX_DB, ["{$table}?$tag",], false);
 
         if (!empty($data)) {
             self::$_cache_dict[$table][$tag] = $data;

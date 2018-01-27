@@ -53,7 +53,7 @@ abstract class AbstractDispatch extends AbstractClass
      */
     public static function initMethodName(array $routeInfo)
     {
-        return Util::trimlower($routeInfo[2]);
+        return trim($routeInfo[2]);
     }
 
     /**
@@ -62,8 +62,8 @@ abstract class AbstractDispatch extends AbstractClass
      */
     public static function initMethodNamespace(array $routeInfo)
     {
-        $controller = !empty($routeInfo[1]) ? Util::trimlower($routeInfo[1]) : 'index';
-        $module = !empty($routeInfo[0]) ? Util::trimlower($routeInfo[0]) : 'index';
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : 'index';
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : 'index';
         $appname = Application::appname();
         return "\\" . Util::joinNotEmpty("\\", [$appname, $module, 'controller', $controller]);
     }

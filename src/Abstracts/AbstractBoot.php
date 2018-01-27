@@ -17,7 +17,7 @@ use Tiny\Event\ControllerEvent;
 use Tiny\Event\OrmEvent;
 use Tiny\OrmQuery\OrmContext;
 
-abstract class AbstractBootstrap
+abstract class AbstractBoot
 {
 
     /** 在app run 之前, 设置app 并注册路由
@@ -29,7 +29,7 @@ abstract class AbstractBootstrap
     public static function bootstrap(Application $app)
     {
         if (Application::dev()) {
-            self::debugStrap();
+            static::debugStrap();
         }
         $app->setBootstrapCompleted(true);
         return $app;
@@ -56,7 +56,7 @@ abstract class AbstractBootstrap
         }
     }
 
-    private static function debugStrap()
+    protected static function debugStrap($routerStartup = false, $routerShutdown = false, $dispatchLoopStartup = false, $dispatchLoopShutdown = false, $preDispatch = false, $postDispatch = false, $preDisplay = false, $preWidget = false, $apiResult = false, $apiException = false, $runSql = false)
     {
         if (!Application::dev()) {  // 非调试模式下  直接返回
             return;
@@ -65,21 +65,21 @@ abstract class AbstractBootstrap
         //开启 辅助调试模式 注册对应事件
         Connector::getInstance()->setPassword(Application::config('ENV_DEVELOP_KEY'), true);
 
-        Application::on('routerStartup', function (ApplicationEvent $event) {
+        $routerStartup && Application::on('routerStartup', function (ApplicationEvent $event) {
             list($obj, $request) = [$event->getObject(), $event->getRequest()];
             $data = ['_request' => $request, 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
             static::consoleDebug($data, $tag, 1);
         });
 
-        Application::on('routerShutdown', function (ApplicationEvent $event) {
+        $routerShutdown && Application::on('routerShutdown', function (ApplicationEvent $event) {
             list($obj, $request) = [$event->getObject(), $event->getRequest()];
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
             static::consoleDebug($data, $tag, 1);
         });
 
-        Application::on('dispatchLoopStartup', function (ApplicationEvent $event) {
+        $dispatchLoopStartup && Application::on('dispatchLoopStartup', function (ApplicationEvent $event) {
             $obj = $event->getObject();
             $request = $event->getRequest();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
@@ -91,29 +91,31 @@ abstract class AbstractBootstrap
             static::consoleDebug($data, $tag, 1);
         });
 
-        /*
-        Application::on('dispatchLoopShutdown', function (ApplicationEvent $event) {
+        $dispatchLoopShutdown && Application::on('dispatchLoopShutdown', function (ApplicationEvent $event) {
             list($obj, $request, $response) = [$event->getObject(), $event->getRequest(), $event->getResponse()];
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'body' => $response->getBody()];
+            $body = $response->getBody();
+            $total = strlen($body);
+            $body_msg = $total > 500 ? substr($body, 0, 500) . "...total<{$total}>chars..." : $body;
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'body' => $body_msg];
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopShutdown');
             static::consoleDebug($data, $tag, 1);
         });
-        Application::on('preDispatch', function (ApplicationEvent $event) {
+
+        $preDispatch && Application::on('preDispatch', function (ApplicationEvent $event) {
             list($obj, $request) = [$event->getObject(), $event->getRequest()];
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->all_request(), 'session' => $request->all_session(), 'cookie' => $request->all_cookie()];
             $tag = $request->debugTag(get_class($obj) . ' #preDispatch');
             static::consoleDebug($data, $tag, 1);
         });
 
-        Application::on('postDispatch', function (ApplicationEvent $event) {
+        $postDispatch && Application::on('postDispatch', function (ApplicationEvent $event) {
             list($obj, $request) = [$event->getObject(), $event->getRequest()];
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri()];
             $tag = $request->debugTag(get_class($obj) . ' #postDispatch');
             static::consoleDebug($data, $tag, 1);
         });
-           */
 
-        AbstractController::on('preDisplay', function (ControllerEvent $event) {
+        $preDisplay && AbstractController::on('preDisplay', function (ControllerEvent $event) {
             list($obj, $params, $tpl_path) = [$event->getObject(), $event->getViewArgs(), $event->getViewFile()];
             $layout = $obj->getLayout();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
@@ -122,7 +124,8 @@ abstract class AbstractBootstrap
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #preDisplay' . (!empty($layout) ? "[{$file_name} #{$layout}]" : ''));
             static::consoleDebug($data, $tag, 1);
         });  // 注册 模版渲染 打印模版变量  用于调试
-        AbstractController::on('preWidget', function (ControllerEvent $event) {
+
+        $preWidget && AbstractController::on('preWidget', function (ControllerEvent $event) {
             list($obj, $params, $tpl_path) = [$event->getObject(), $event->getViewArgs(), $event->getViewFile()];
 
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
@@ -131,7 +134,7 @@ abstract class AbstractBootstrap
             static::consoleDebug($data, $tag, 1);
         });  // 注册 组件渲染 打印组件变量  用于调试
 
-        AbstractApi::on('apiResult', function (ApiEvent $event) {
+        $apiResult && AbstractApi::on('apiResult', function (ApiEvent $event) {
             $obj = $event->getObject();
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #apiResult');
             static::consoleDebug([
@@ -142,7 +145,7 @@ abstract class AbstractBootstrap
             ], $tag);
         });
 
-        AbstractApi::on('apiException', function (ApiEvent $event) {
+        $apiException && AbstractApi::on('apiException', function (ApiEvent $event) {
             $obj = $event->getObject();
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #apiException');
             static::consoleDebug([
@@ -154,7 +157,7 @@ abstract class AbstractBootstrap
             static::consoleException($event->getException());
         });
 
-        OrmContext::on('runSql', function (OrmEvent $event) {
+        $runSql && OrmContext::on('runSql', function (OrmEvent $event) {
             list($sql_str, $args, $time, $_tag) = [$event->getSql(), $event->getArgs(), $event->getTime(), $event->getTag()];
             $time_str = round($time, 3) * 1000;
             static::consoleDebug([$sql_str, $args], "[SQL] {$_tag} <{$time_str}ms>", 1);

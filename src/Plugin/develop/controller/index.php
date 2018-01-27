@@ -3,7 +3,7 @@
 namespace Tiny\Plugin\develop\controller;
 
 
-use Tiny\Abstracts\AbstractBootstrap;
+use Tiny\Abstracts\AbstractBoot;
 use Tiny\Application;
 use Tiny\Plugin\develop\DevelopController;
 

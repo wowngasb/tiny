@@ -3,7 +3,7 @@
 namespace Tiny;
 
 use Exception;
-use Tiny\Abstracts\AbstractBootstrap;
+use Tiny\Abstracts\AbstractBoot;
 use Tiny\Abstracts\AbstractDispatch;
 use Tiny\Event\ApplicationEvent;
 use Tiny\Exception\AppStartUpError;
@@ -56,7 +56,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      */
     public static function _D($data, $tags = null, $ignoreTraceCalls = 0)
     {
-        AbstractBootstrap::consoleDebug($data, $tags, $ignoreTraceCalls);
+        AbstractBoot::consoleDebug($data, $tags, $ignoreTraceCalls);
     }
 
     ###############################################################

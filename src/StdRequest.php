@@ -310,9 +310,7 @@ abstract class StdRequest implements RequestInterface
         while (strpos($path, '//') !== false) {
             $path = str_replace('//', '/', $path);
         }
-        if (substr($path, -1, 1) != '/') {
-            $path .= '/';
-        }
+
         return $path;
     }
 

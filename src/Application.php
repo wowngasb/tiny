@@ -459,7 +459,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ############## 常用 静态函数 放在这里方便使用 #################
     ###############################################################
 
-    public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    public static function path(array $paths = [], $seq = DIRECTORY_SEPARATOR, $add_last = true)
     {
         // if not set config ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
         $path = self::config('ROOT_PATH', '');
@@ -468,10 +468,14 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             $path = substr($path, 0, -strlen($seq));
         }
         $add_path = Util::joinNotEmpty($seq, $paths);
-        return empty($add_path) ? "{$path}{$seq}" : "{$path}{$seq}{$add_path}{$seq}";
+        while (Util::str_endwith($add_path, $seq)) {
+            $add_path = substr($add_path, 0, -strlen($seq));
+        }
+        $last_seq = $add_last ? $seq : '';
+        return empty($add_path) ? "{$path}{$last_seq}" : "{$path}{$seq}{$add_path}{$last_seq}";
     }
 
-    public static function cache_path(array $paths = [], $seq = DIRECTORY_SEPARATOR)
+    public static function cache_path(array $paths = [], $seq = DIRECTORY_SEPARATOR, $add_last = true)
     {
         // if not set config CACHE_PATH, try find cache in root/cache"
         $path = self::config('CACHE_PATH', '');
@@ -482,7 +486,11 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             $path = substr($path, 0, -strlen($seq));
         }
         $add_path = Util::joinNotEmpty($seq, $paths);
-        return empty($add_path) ? "{$path}{$seq}" : "{$path}{$seq}{$add_path}{$seq}";
+        while (Util::str_endwith($add_path, $seq)) {
+            $add_path = substr($add_path, 0, -strlen($seq));
+        }
+        $last_seq = $add_last ? $seq : '';
+        return empty($add_path) ? "{$path}{$last_seq}" : "{$path}{$seq}{$add_path}{$last_seq}";
     }
 
     /**

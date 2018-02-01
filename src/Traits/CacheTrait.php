@@ -26,54 +26,10 @@ trait CacheTrait
     private static $_redis_instance = null;
     private static $_redis_instance_monk = null;
 
-    private static $_preFixResolver = null;
-    private static $_methodResolver = null;
-    private static $_encodeResolver = null;
-    private static $_decodeResolver = null;
 
-    /**
-     * Set the current page resolver callback.
-     *
-     * @param  \Closure $resolver
-     * @return void
-     */
-    public static function methodResolver(Closure $resolver)
-    {
-        static::$_methodResolver = $resolver;
-    }
-
-    /**
-     * Set the current page resolver callback.
-     *
-     * @param  \Closure $resolver
-     * @return void
-     */
-    public static function preFixResolver(Closure $resolver)
-    {
-        static::$_preFixResolver = $resolver;
-    }
-
-    /**
-     * Set the current page resolver callback.
-     *
-     * @param  \Closure $resolver
-     * @return void
-     */
-    public static function encodeResolver(Closure $resolver)
-    {
-        static::$_encodeResolver = $resolver;
-    }
-
-    /**
-     * Set the current page resolver callback.
-     *
-     * @param  \Closure $resolver
-     * @return void
-     */
-    public static function decodeResolver(Closure $resolver)
-    {
-        static::$_decodeResolver = $resolver;
-    }
+    ############################################################
+    ########################## 对外方法 #######################
+    ############################################################
 
     public static function _hashKey($args_input, $tag = "no_args")
     {
@@ -106,7 +62,6 @@ trait CacheTrait
         }
         return self::$_mCacheManager;
     }
-
 
     /**
      * @return \Redis
@@ -152,7 +107,7 @@ trait CacheTrait
      */
     public static function _cacheDataManager($method, $key, callable $func, callable $filter, $timeCache = null, $prefix = null, $tags = [], $is_log = false)
     {
-        if (static::$_cache_use_redis) {
+        if (self::$_cache_use_redis) {
             return self::_cacheDataByRedis($method, $key, $func, $filter, $timeCache, $prefix, $tags, $is_log);
         } else {
             return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $prefix, $tags, $is_log);
@@ -169,7 +124,7 @@ trait CacheTrait
      */
     public static function _clearDataManager($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
     {
-        if (static::$_cache_use_redis) {
+        if (self::$_cache_use_redis) {
             self::_clearDataByRedis($method, $key, $prefix, $tags, $is_log);
         } else {
             self::_clearDataByFastCache($method, $key, $prefix, $tags, $is_log);
@@ -187,7 +142,7 @@ trait CacheTrait
      */
     public static function _mgetDataManager($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
     {
-        if (static::$_cache_use_redis) {
+        if (self::$_cache_use_redis) {
             return self::_mgetDataByRedis($method, $keys, $timeCache, $prefix, $is_log);
         } else {
             return self::_mgetDataByFastCache($method, $keys, $timeCache, $prefix, $is_log);
@@ -198,7 +153,7 @@ trait CacheTrait
     ###################  私有方法 ###################
     #################################################
 
-    public static function _mgetDataByFastCache($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
+    private static function _mgetDataByFastCache($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
     {
         if (empty($keys) || empty($method)) {
             error_log("call _mgetDataByFastCache with empty method or keys " . __METHOD__);
@@ -228,8 +183,9 @@ trait CacheTrait
         $ret_map = [];
         $idx = 0;
         foreach ($keys as $d_key => $r_key) {
-            $val_str = !empty($list[$idx]) ? ($list[$idx])->get() : '';
-            $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内
+            $tmp_item = !empty($list[$idx]) ? $list[$idx] : null;
+            $val_str = !empty($tmp_item) ? $tmp_item->get() : '';
+            $val = !empty($val_str) ? static::_decodeResolver($val_str) : [];  //判断缓存有效期是否在要求之内
             $data = null;
             if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 $is_log && self::_cacheDebug('mhit', $now, $method, $r_key, $timeCache, $val['_update_']);
@@ -287,7 +243,7 @@ trait CacheTrait
         }
 
         $val_str = $mCache->getItem($rKey)->get();
-        $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
+        $val = !empty($val_str) ? static::_decodeResolver($val_str) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             $is_log && self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags);
             return $val['data'];
@@ -301,7 +257,7 @@ trait CacheTrait
         }
 
         if ($use_cache) {   //需要缓存 且缓存世间大于0 保存数据并加上 tags
-            $itemObj = $mCache->getItem($rKey)->set(self::_buildEncodeValue($val))->expiresAfter($timeCache);
+            $itemObj = $mCache->getItem($rKey)->set(static::_encodeResolver($val))->expiresAfter($timeCache);
             $tags = self::_buildTagsByData($tags, $data);
             !empty($tags) && $itemObj->setTags($tags);
             $mCache->save($itemObj);
@@ -312,7 +268,6 @@ trait CacheTrait
 
         return $val['data'];
     }
-
 
     public static function _mgetDataByRedis($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
     {
@@ -345,7 +300,7 @@ trait CacheTrait
         $idx = 0;
         foreach ($keys as $jdx => $jkey) {
             $val_str = !empty($list[$idx]) ? $list[$idx] : '';
-            $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内
+            $val = !empty($val_str) ? static::_decodeResolver($val_str) : [];  //判断缓存有效期是否在要求之内
             $data = null;
             if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 $is_log && self::_cacheDebug('mhit', $now, $method, $jkey, $timeCache, $val['_update_']);
@@ -374,9 +329,13 @@ trait CacheTrait
         if (!empty($tags)) {
             $prefix = self::_buildPreFix($prefix);
             foreach ($tags as $tag) {
-                $rKeyList = $mRedis->sMembers("{$prefix}_tags:{$tag}");
+                $tagKey = "{$prefix}_tags:{$tag}";
+                $rKeyList = $mRedis->sMembers($tagKey);
                 if (!empty($rKeyList)) {
-                    $mRedis->del($rKeyList);
+                    foreach ($rKeyList as $rKey) {
+                        $mRedis->del($rKey);
+                        $mRedis->sRem($tagKey, $rKey);
+                    }
                 }
             }
             $is_log && self::_cacheDebug('delete by tag', $now, $method, $key, -1, $now, $tags);
@@ -406,7 +365,7 @@ trait CacheTrait
         }
 
         $val_str = $mRedis->get($rKey);
-        $val = !empty($val_str) ? self::_buildDecodeValue($val_str) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
+        $val = !empty($val_str) ? static::_decodeResolver($val_str) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         if (isset($val['data']) && isset($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             $is_log && self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags);
             return $val['data'];
@@ -420,7 +379,7 @@ trait CacheTrait
         }
 
         if ($use_cache) {   //需要缓存 且缓存时间大于0 保存数据并加上 tags
-            $mRedis->setex($rKey, $timeCache, self::_buildEncodeValue($val));
+            $mRedis->setex($rKey, $timeCache, static::_encodeResolver($val));
             $tags = self::_buildTagsByData($tags, $data);
             if (!empty($tags)) {
                 foreach ($tags as $tag) {
@@ -435,31 +394,41 @@ trait CacheTrait
         return $val['data'];
     }
 
-    private static function _buildCacheKey($method, $key, $prefix = null)
-    {
-        $prefix = self::_buildPreFix($prefix);
-        if (!is_null(static::$_methodResolver)) {
-            $method = call_user_func_array(static::$_methodResolver, [$method]);
-        }
-        $method = str_replace('::', '.', $method);
-        $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
-        return $rKey;
-    }
 
-    private static function _buildEncodeValue($val)
+    ################################################
+    ################## 可重写方法 #################
+    ################################################
+
+    protected static function _encodeResolver($val)
     {
-        if (!is_null(static::$_encodeResolver)) {
-            return call_user_func_array(static::$_encodeResolver, [$val]);
-        }
         return json_encode($val);
     }
 
-    private static function _buildDecodeValue($string)
+    protected static function _decodeResolver($str)
     {
-        if (!is_null(static::$_decodeResolver)) {
-            return call_user_func_array(static::$_decodeResolver, [$string]);
-        }
-        return json_decode($string, true);
+        return json_decode($str, true);
+    }
+
+    protected static function _methodResolver($method)
+    {
+        return $method;
+    }
+
+    protected static function _preFixResolver($prefix)
+    {
+        return $prefix;
+    }
+
+    ####################################################
+    ##################### 辅助方法 ####################
+    ####################################################
+
+    private static function _buildCacheKey($method, $key, $prefix = null)
+    {
+        $prefix = self::_buildPreFix($prefix);
+        $method = self::_buildMethod($method);
+        $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
+        return $rKey;
     }
 
     private static function _buildTagsByData($tags = [], $data = null)
@@ -470,12 +439,17 @@ trait CacheTrait
         return $tags;
     }
 
+    private static function _buildMethod($method)
+    {
+        $method = static::_methodResolver($method);
+        $method = str_replace('::', '.', $method);
+        return trim($method);
+    }
+
     private static function _buildPreFix($prefix = null)
     {
         if (is_null($prefix)) {
-            if (!is_null(static::$_preFixResolver)) {
-                $prefix = call_user_func_array(static::$_preFixResolver, []);
-            }
+            static::_preFixResolver($prefix);
         }
         if (is_null($prefix)) {
             $prefix = self::$_cache_prefix_key;

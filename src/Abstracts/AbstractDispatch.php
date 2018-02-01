@@ -125,7 +125,7 @@ abstract class AbstractDispatch extends AbstractClass
         }
         $code = $ex->getCode();
         $http_code = $code >= 500 && $code < 600 ? $code : 500;
-        $msg = Application::dev() ? "<p>Exception:</p>" . get_class($ex) . "<p>Message:</p>" . $ex->getMessage() . "<p>Request:</p><pre>" . print_r($request, true) . "</pre><p>Trace:</p><pre>" . $ex->getTraceAsString() . "</pre>" : 'Exception';
+        $msg = Application::dev() ? "<p>Exception:</p>" . get_class($ex) . "<p>Message:</p>" . $ex->getMessage() . "<p>Request:</p><pre>" . json_encode($request) . "</pre><p>Trace:</p><pre>" . $ex->getTraceAsString() . "</pre>" : 'Exception';
         $response->resetResponse()->setResponseCode($http_code)->appendBody($msg)->end();
     }
 

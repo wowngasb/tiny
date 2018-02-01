@@ -51,7 +51,7 @@ interface RequestInterface
 
     /**
      * @param array $routeInfo
-     * @return $this
+     * @return RequestInterface
      * @throws AppStartUpError
      */
     public function setRouteInfo(array $routeInfo);
@@ -69,14 +69,14 @@ interface RequestInterface
     /**
      * 设置本次请求入口方法的参数
      * @param array $params
-     * @return $this
+     * @return RequestInterface
      * @throws AppStartUpError
      */
     public function setParams(array $params);
 
     /**
      * @param string $current_route
-     * @return $this
+     * @return RequestInterface
      * @throws AppStartUpError
      */
     public function setCurrentRoute($current_route);
@@ -103,7 +103,7 @@ interface RequestInterface
 
     /**
      * @param bool $is_routed
-     * @return $this
+     * @return RequestInterface
      */
     public function setRouted($is_routed = true);
 
@@ -111,6 +111,16 @@ interface RequestInterface
      * @return string
      */
     public function getRequestUri();
+
+    /**
+     * Generates the normalized query string for the Request.
+     *
+     * It builds a normalized query string, where keys/value pairs are alphabetized
+     * and have consistent escaping.
+     *
+     * @return string|null A normalized query string for the Request
+     */
+    public function getQueryString();
 
     ###############################################################
     ############  启动及运行相关函数 ################
@@ -141,7 +151,7 @@ interface RequestInterface
 
     /**
      * 启用 session
-     * @return $this
+     * @return RequestInterface
      */
     public function session_start();
 
@@ -158,7 +168,7 @@ interface RequestInterface
     public function session_status();
 
     /**
-     * @return $this
+     * @return RequestInterface
      * @throws AppStartUpError
      */
     public function reset_route();
@@ -425,7 +435,7 @@ interface RequestInterface
      * @param string $method
      * @param string $uri
      * @param array $args
-     * @return self
+     * @return ResponseInterface
      */
     public function copyHttpArgs($method = null, $uri = null, array $args = []);
 

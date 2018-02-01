@@ -36,6 +36,7 @@ abstract class AbstractController extends AbstractContext
         if ($clearInput) {
             $this->input_clear();
         }
+        return ;
     }
 
     /**
@@ -94,12 +95,12 @@ abstract class AbstractController extends AbstractContext
         return $this->getResponse()->errors_first($name, $format, $default);
     }
 
-    final protected function setLayout($layout_tpl)
+    final protected function _setLayout($layout_tpl)
     {
         $this->_layout = $layout_tpl;
     }
 
-    final public function getLayout()
+    final public function _getLayout()
     {
         return $this->_layout;
     }
@@ -117,7 +118,7 @@ abstract class AbstractController extends AbstractContext
     /**
      * 为 Controller 绑定模板引擎
      * @param ViewInterface $view 实现视图接口的模板引擎
-     * @return $this
+     * @return AbstractController
      */
     final protected function setView(ViewInterface $view)
     {
@@ -137,7 +138,7 @@ abstract class AbstractController extends AbstractContext
      * 添加 模板变量
      * @param mixed $name 字符串或者关联数组, 如果为字符串, 则$value不能为空, 此字符串代表要分配的变量名. 如果为数组, 则$value须为空, 此参数为变量名和值的关联数组.
      * @param mixed $value 分配的模板变量值
-     * @return $this
+     * @return AbstractController
      */
     final protected function assign($name, $value = null)
     {

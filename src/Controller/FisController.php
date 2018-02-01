@@ -80,7 +80,7 @@ abstract class FisController extends AbstractController
         static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
 
         $response = $this->getResponse();
-        $layout = $this->getLayout();
+        $layout = $this->_getLayout();
         $html = '';
         if (!empty($layout)) {
             $layout_tpl = Util::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";

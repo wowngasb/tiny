@@ -186,6 +186,8 @@ abstract class Application extends AbstractDispatch implements RouteInterface
             if ($auto_end) {  // 直接结束 处理过程  不再触发  dispatchLoopShutdown
                 $response->end();
             }
+        } catch (NotFoundError $ex) {
+            $dispatcher::traceNotFound($request, $response, $ex);
         } catch (Exception $ex) {   // 捕获运行期间的所有异常  交给 $dispatcher 处理
             $dispatcher::traceException($request, $response, $ex);
         }
@@ -196,7 +198,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * @param string $route
      * @param RouteInterface $router
      * @param AbstractDispatch $dispatcher 处理分发接口
-     * @return $this
+     * @return Application
      * @throws AppStartUpError
      */
     public function addRoute($route, RouteInterface $router, AbstractDispatch $dispatcher = null)
@@ -512,11 +514,10 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      * 重定向请求到新的路径  HTTP 302
      * @param ResponseInterface $response
      * @param string $url 要重定向到的URL
-     * @return void
      */
     public static function redirect(ResponseInterface $response, $url)
     {
-        $response->resetResponse()->addHeader("Location: {$url}")->setResponseCode(302)->end();
+        return $response->resetResponse()->addHeader("Location:{$url}")->setResponseCode(302)->end();
     }
 
 }

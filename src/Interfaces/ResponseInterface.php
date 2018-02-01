@@ -36,7 +36,7 @@ interface ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  bool|null $secure
-     * @return self
+     * @return ResponseInterface
      */
     public function to($path, $status = 302, array $headers = [], $secure = null);
 
@@ -45,7 +45,7 @@ interface ResponseInterface
      *
      * @param  int $status
      * @param  array $headers
-     * @return self
+     * @return ResponseInterface
      */
     public function back($status = 302, array $headers = []);
 
@@ -56,7 +56,7 @@ interface ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  bool|null $secure
-     * @return self
+     * @return ResponseInterface
      */
     public function guest($path, $status = 302, $headers = [], $secure = null);
 
@@ -64,7 +64,7 @@ interface ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  array $input
-     * @return $this
+     * @return ResponseInterface
      */
     public function withInput(array $input = null);
 
@@ -72,7 +72,7 @@ interface ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  mixed  string
-     * @return $this
+     * @return ResponseInterface
      */
     public function onlyInput();
 
@@ -80,7 +80,7 @@ interface ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  mixed  string
-     * @return $this
+     * @return ResponseInterface
      */
     public function exceptInput();
 
@@ -89,7 +89,7 @@ interface ResponseInterface
      *
      * @param  array|string $provider
      * @param  string $key
-     * @return $this
+     * @return ResponseInterface
      */
     public function withErrors($provider, $key = 'default');
 
@@ -97,16 +97,31 @@ interface ResponseInterface
      * Add multiple cookies to the response.
      *
      * @param  array $cookies
-     * @return $this
+     * @return ResponseInterface
      */
     public function withCookies(array $cookies);
+
+    /**
+     * Add a cookie to the response.
+     *
+     * @param $name
+     * @param $value
+     * @param int $expire
+     * @param string $path
+     * @param string $domain
+     * @param bool $secure
+     * @param bool $httponly
+     * @return ResponseInterface
+     * @internal param mixed|\Symfony\Component\HttpFoundation\Cookie $cookie
+     */
+    public function withCookie($name, $value, $expire = 0, $path = "", $domain = "", $secure = false, $httponly = false);
 
     /**
      * Flash a piece of data to the session.
      *
      * @param  string|array $key
      * @param  mixed $value
-     * @return $this
+     * @return ResponseInterface
      */
     public function with($key, $value = null);
 
@@ -127,14 +142,14 @@ interface ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  int $options
-     * @return $this
+     * @return ResponseInterface
      */
     public function json($data = [], $status = 200, array $headers = [], $options = 0);
 
     /**
      * Sets the JSONP callback.
      * @param string|null $callback The JSONP callback or null to use none
-     * @return $this
+     * @return ResponseInterface
      * @throws \InvalidArgumentException When the callback name is not valid
      */
     public function setCallback($callback = null);
@@ -144,31 +159,31 @@ interface ResponseInterface
      * @param string $string
      * @param bool $replace [optional]
      * @param int $http_response_code [optional]
-     * @return self
+     * @return ResponseInterface
      * @throws \Exception HeaderError
      */
     public function addHeader($string, $replace = true, $http_response_code = null);
 
     /**
-     * @return self
+     * @return ResponseInterface
      */
     public function resetResponse();
 
     /**
      * @param $code
-     * @return self
+     * @return ResponseInterface
      */
     public function setResponseCode($code);
 
     /**
      * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
-     * @return self
+     * @return ResponseInterface
      */
     public function sendHeader();
 
     /**
      * 重置 缓存的 header  如果 header 已经发送 抛出异常
-     * @return self
+     * @return ResponseInterface
      * @throws AppStartUpError
      */
     public function resetHeader();
@@ -177,7 +192,7 @@ interface ResponseInterface
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
      * @param string $name 此次发送消息体的 名称 可用于debug
-     * @return self
+     * @return ResponseInterface
      */
     public function appendBody($msg, $name = '');
 
@@ -194,7 +209,7 @@ interface ResponseInterface
 
     /**
      * @param string|null $name
-     * @return self
+     * @return ResponseInterface
      */
     public function resetBody($name = null);
 
@@ -202,7 +217,6 @@ interface ResponseInterface
      * @param string $msg
      * @param bool $resetBody
      * @param bool $resetHeader
-     * @return void
      */
     public function end($msg = '', $resetBody = false, $resetHeader = false);
 

@@ -115,7 +115,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  array $input
-     * @return $this
+     * @return StdResponse
      */
     public function withInput(array $input = null)
     {
@@ -130,7 +130,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  mixed  string
-     * @return $this
+     * @return StdResponse
      */
     public function onlyInput()
     {
@@ -149,7 +149,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * Flash an array of input to the session.
      *
      * @param  mixed  string
-     * @return $this
+     * @return StdResponse
      */
     public function exceptInput()
     {
@@ -169,7 +169,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      *
      * @param  array|string $error
      * @param  string $key
-     * @return $this
+     * @return StdResponse
      */
     public function withErrors($error, $key = 'default')
     {
@@ -183,14 +183,35 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * Add multiple cookies to the response.
      *
      * @param  array $cookies
-     * @return $this
+     * @return StdResponse
      */
     public function withCookies(array $cookies)
     {
         foreach ($cookies as $key => $value) {
             $this->_request->set_cookie($key, $value);
+            $this->_request->setcookie($key, $value);
         }
 
+        return $this;
+    }
+
+    /**
+     * Add a cookie to the response.
+     *
+     * @param $name
+     * @param $value
+     * @param int $expire
+     * @param string $path
+     * @param string $domain
+     * @param bool $secure
+     * @param bool $httponly
+     * @return StdResponse
+     * @internal param mixed|\Symfony\Component\HttpFoundation\Cookie $cookie
+     */
+    public function withCookie($name, $value, $expire = 0, $path = "", $domain = "", $secure = false, $httponly = false)
+    {
+        $this->_request->set_cookie($name, $value);
+        $this->_request->setcookie($name, $value, $expire, $path, $domain, $secure, $httponly);
         return $this;
     }
 
@@ -199,7 +220,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      *
      * @param  string|array $key
      * @param  mixed $value
-     * @return $this
+     * @return StdResponse
      */
     public function with($key, $value = null)
     {
@@ -257,7 +278,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  int $options
-     * @return $this
+     * @return StdResponse
      */
     public function json($data = [], $status = 200, array $headers = [], $options = 0)
     {
@@ -292,7 +313,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
     /**
      * Sets the JSONP callback.
      * @param string|null $callback The JSONP callback or null to use none
-     * @return $this
+     * @return StdResponse
      * @throws AppStartUpError When the callback name is not valid
      */
     public function setCallback($callback = null)
@@ -325,7 +346,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * @param string $string
      * @param bool $replace [optional]
      * @param int $http_response_code [optional]
-     * @return $this
+     * @return StdResponse
      * @throws \Exception HeaderError
      */
     public function addHeader($string, $replace = true, $http_response_code = null)
@@ -341,7 +362,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
     }
 
     /**
-     * @return $this
+     * @return StdResponse
      * @throws AppStartUpError
      */
     public function resetResponse()
@@ -353,7 +374,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
 
     /**
      * @param $code
-     * @return $this
+     * @return StdResponse
      * @throws AppStartUpError
      */
     public function setResponseCode($code)
@@ -367,7 +388,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
 
     /**
      * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
-     * @return $this
+     * @return StdResponse
      */
     public function sendHeader()
     {
@@ -382,7 +403,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
     }
 
     /**
-     * @return $this
+     * @return StdResponse
      * @throws AppStartUpError
      */
     public function resetHeader()
@@ -400,7 +421,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
      * @param string $name 此次发送消息体的 名称 可用于debug 或者 调整输出顺序
-     * @return $this
+     * @return StdResponse
      */
     public function appendBody($msg, $name = 'main')
     {
@@ -438,7 +459,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
 
     /**
      * @param string|null $name
-     * @return $this
+     * @return StdResponse
      */
     public function resetBody($name = null)
     {

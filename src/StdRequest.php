@@ -114,7 +114,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     /**
      * @param array $routeInfo
-     * @return $this
+     * @return StdRequest
      * @throws AppStartUpError
      */
     public function setRouteInfo(array $routeInfo)
@@ -149,7 +149,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * 设置本次请求入口方法的参数
      * @param array $params
-     * @return $this
+     * @return StdRequest
      * @throws AppStartUpError
      */
     public function setParams(array $params)
@@ -160,7 +160,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     /**
      * @param string $current_route
-     * @return $this
+     * @return StdRequest
      * @throws AppStartUpError
      */
     public function setCurrentRoute($current_route)
@@ -190,7 +190,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     /**
      * @param bool $is_routed
-     * @return $this
+     * @return StdRequest
      */
     public function setRouted($is_routed = true)
     {
@@ -239,7 +239,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     /**
      * 启用 session
-     * @return $this
+     * @return StdRequest
      */
     public function session_start()
     {
@@ -266,7 +266,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     }
 
     /**
-     * @return $this
+     * @return StdRequest
      * @throws AppStartUpError
      */
     public function reset_route()
@@ -689,7 +689,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function allFiles()
     {
-        if(!empty($this->convertedFiles)){
+        if (!empty($this->convertedFiles)) {
             return $this->convertedFiles;
         }
         $files = $this->files->all();
@@ -700,7 +700,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Convert the given array of Symfony UploadedFiles to custom Laravel UploadedFiles.
      *
-     * @param  array  $files
+     * @param  array $files
      * @return array
      */
     protected static function convertUploadedFiles(array $files)
@@ -720,24 +720,24 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Retrieve a file from the request.
      *
-     * @param  string  $key
-     * @param  mixed  $default
+     * @param  string $key
+     * @param  mixed $default
      * @return UploadedFile|array|null
      */
     public function file($key = null, $default = null)
     {
-        return Util::v($this->allFiles(), $key, $default);
+        return is_null($key) ? $this->allFiles() : Util::v($this->allFiles(), $key, $default);
     }
 
     /**
      * Determine if the uploaded data contains a file.
      *
-     * @param  string  $key
+     * @param  string $key
      * @return bool
      */
     public function hasFile($key)
     {
-        if (! is_array($files = $this->file($key))) {
+        if (!is_array($files = $this->file($key))) {
             $files = [$files];
         }
 
@@ -753,7 +753,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Check that the given file is a valid file instance.
      *
-     * @param  mixed  $file
+     * @param  mixed $file
      * @return bool
      */
     protected function isValidFile($file)

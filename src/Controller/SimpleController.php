@@ -94,7 +94,7 @@ abstract class SimpleController extends AbstractController
         static::fire(new ControllerEvent('preDisplay', $this, $file_path, $params));
 
         $response = $this->getResponse();
-        $layout = $this->getLayout();
+        $layout = $this->_getLayout();
         if (!empty($layout)) {
             $layout_tpl = Util::stri_endwith($layout, '.php') ? $layout : "{$layout}.php";
             $layout_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->_view_dir, $layout_tpl]);

@@ -43,6 +43,8 @@ use Tiny\Util;
  */
 trait OrmTrait
 {
+    use CacheTrait;
+
     private static $_db_map = [];
     private static $_cache_dict = [];
     private static $_REDIS_PREFIX_DB = 'DbCache';
@@ -52,6 +54,22 @@ trait OrmTrait
     ####################################
     ############ 获取配置 ##############
     ####################################
+
+    /**
+     * 修复 更新 或 创建 数组  选出可填充的 key
+     * @param array $data
+     * @return array
+     */
+    private static function _fixFillAbleData(array $data)
+    {
+        $ret = [];
+        foreach ($data as $key => $item) {
+            if (static::_fillAble($key)) {
+                $ret[$key] = $item;
+            }
+        }
+        return $ret;
+    }
 
     private static function _fixFiledKey($filed)
     {
@@ -224,7 +242,7 @@ trait OrmTrait
         if ($timeCache > 0 && isset(self::$_cache_dict[$table][$tag])) {
             return self::$_cache_dict[$table][$tag];
         }
-        $data = CacheTrait::_cacheDataManager($table, $tag, function () use ($id) {
+        $data = static::_cacheDataManager($table, $tag, function () use ($id) {
             $tmp = static::getItem($id);
             return $tmp;
         }, function ($data) {
@@ -236,6 +254,24 @@ trait OrmTrait
         }
         return $data;
     }
+
+    /**
+     * 根据主键 获取单个条目的 某个字段   自动使用缓存
+     * @param int $id 条目 主键 id
+     * @param string $key 需要的字段  键名
+     * @param string $default 无对应条目时的默认值
+     * @param null $timeCache
+     * @return mixed
+     */
+    public static function valueOneById($id, $key, $default = '', $timeCache = null)
+    {
+        $tmp = static::getOneById($id, $timeCache);
+        if (empty($tmp)) {
+            return $default;
+        }
+        return $tmp[$key];
+    }
+
 
     /**
      * 根据主键获取多个数据 自动使用缓存
@@ -310,6 +346,31 @@ trait OrmTrait
     }
 
     /**
+     * 创建数据 自动更新缓存
+     * @param $data
+     * @return int
+     */
+    public static function createOne(array $data)
+    {
+        $id = static::newItem($data);
+        !empty($id) && static::getOneById($id, -1);
+        return $id;
+    }
+
+    /**
+     * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
+     * @param array $where 检索条件数组 具体格式参见文档
+     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @return int 返回数据 主键 自增id
+     */
+    public static function upsertOne(array $where, array $value)
+    {
+        $id = static::upsertItem($where, $value);
+        !empty($id) && static::getOneById($id, -1);
+        return $id;
+    }
+
+    /**
      * 添加新数据 自动更新缓存
      * @param array $data
      * @return array
@@ -318,7 +379,7 @@ trait OrmTrait
     {
         if (!empty($data)) {
             $id = static::newItem($data);
-            return static::getOneById($id, 0);
+            return !empty($id) ? static::getOneById($id, 0) : [];
         } else {
             return [];
         }
@@ -331,6 +392,17 @@ trait OrmTrait
     protected static function _fixItem($val)
     {
         return (array)$val;
+    }
+
+    /**
+     * 判断 新增或修改的数据  键名 是否允许填充  默认全部允许
+     * @param $key
+     * @return bool
+     */
+    protected static function _fillAble($key)
+    {
+        false && func_get_args();
+        return true;
     }
 
     ####################################
@@ -361,7 +433,7 @@ trait OrmTrait
 
         $prefix = !is_null($prefix) ? $prefix : self::$_REDIS_PREFIX_DB;
 
-        return CacheTrait::_cacheDataManager($select->method, $select->key, $select->func, $select->filter, $select->timeCache, $is_log, $prefix, $select->tags);
+        return static::_cacheDataManager($select->method, $select->key, $select->func, $select->filter, $select->timeCache, $is_log, $prefix, $select->tags);
     }
 
     ####################################
@@ -715,13 +787,14 @@ trait OrmTrait
      * Update a record in the database.
      *
      * @param Builder $table
-     * @param  array $values
+     * @param  array $data
      * @return int
      */
-    public static function _update(Builder $table, array $values)
+    public static function _update(Builder $table, array $data)
     {
+        $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
-        $result = $table->update($values);
+        $result = $table->update($data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;
     }
@@ -731,13 +804,14 @@ trait OrmTrait
      *
      * @param Builder $table
      * @param  array $attributes
-     * @param  array $values
+     * @param  array $data
      * @return bool
      */
-    public static function _updateOrInsert(Builder $table, array $attributes, array $values = [])
+    public static function _updateOrInsert(Builder $table, array $attributes, array $data = [])
     {
+        $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
-        $result = $table->updateOrInsert($attributes, $values);
+        $result = $table->updateOrInsert($attributes, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;
     }
@@ -753,8 +827,9 @@ trait OrmTrait
      */
     public static function _increment(Builder $table, $column, $amount = 1, array $extra = [])
     {
+        $data = self::_fixFillAbleData($extra);
         $start_time = microtime(true);
-        $result = $table->increment($column, $amount, $extra);
+        $result = $table->increment($column, $amount, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;
     }
@@ -770,8 +845,9 @@ trait OrmTrait
      */
     public static function _decrement(Builder $table, $column, $amount = 1, array $extra = [])
     {
+        $data = self::_fixFillAbleData($extra);
         $start_time = microtime(true);
-        $result = $table->decrement($column, $amount, $extra);
+        $result = $table->decrement($column, $amount, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;
     }
@@ -901,11 +977,12 @@ trait OrmTrait
     /**
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据
      * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $data 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
      * @return int 返回数据 主键 自增id
      */
-    public static function upsertItem(array $where, array $data)
+    public static function upsertItem(array $where, array $value)
     {
+        $data = self::_fixFillAbleData($value);
         $primary_key = static::primaryKey();
         $tmp = static::firstItem($where);
         if (empty($tmp)) {
@@ -920,6 +997,40 @@ trait OrmTrait
     ####################################
     ########### 单条记录操作 ############
     ####################################
+
+    /**
+     * 根据主键 获取单个条目的 某个字段
+     * @param int $id 条目 主键 id
+     * @param string $key 需要的字段  键名
+     * @param string $default 无对应条目时的默认值
+     * @return mixed
+     */
+    public static function valueItem($id, $key, $default = '')
+    {
+        $tmp = static::getItem($id);
+        if (empty($tmp)) {
+            return $default;
+        }
+        return $tmp[$key];
+    }
+
+    /**
+     * 检查 某条记录是否存在 存在 返回条目 id 不存在 返回 0
+     * @param mixed $value 需匹配的字段的值
+     * @param string $filed 字段名 默认为 null 表示使用主键
+     * @return int
+     */
+    public static function checkItem($value, $filed = null)
+    {
+        $primary_key = static::primaryKey();
+        $filed = $filed ?: $primary_key;
+        $tmp = static::firstItem([strtolower($filed) => $value], [], [$primary_key]);
+        if (!empty($tmp) && !empty($tmp[$primary_key])) {
+            return $tmp[$primary_key];
+        } else {
+            return 0;
+        }
+    }
 
     /**
      * 根据某个字段的值 获取第一条记录
@@ -942,6 +1053,7 @@ trait OrmTrait
      */
     public static function newItem(array $data)
     {
+        $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
         $primary_key = self::primaryKey();
 
@@ -964,6 +1076,7 @@ trait OrmTrait
      */
     public static function setItem($id, array $data)
     {
+        $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         unset($data[$primary_key]);

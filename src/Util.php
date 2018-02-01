@@ -9,7 +9,9 @@
 namespace Tiny;
 
 
-abstract class Util
+use Tiny\Abstracts\AbstractClass;
+
+abstract class Util extends  AbstractClass
 {
 
     public static function assoc_array(array $var)

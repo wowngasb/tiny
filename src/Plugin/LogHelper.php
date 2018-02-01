@@ -45,7 +45,7 @@ class LogHelper
     /**
      * 单实例模式
      * @param string $module
-     * @return $this
+     * @return LogHelper
      */
     public static function create($module = 'sys_log')
     {

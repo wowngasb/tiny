@@ -116,8 +116,10 @@ abstract class AbstractBoot
         });
 
         $preDisplay && AbstractController::on('preDisplay', function (ControllerEvent $event) {
-            list($obj, $params, $tpl_path) = [$event->getObject(), $event->getViewArgs(), $event->getViewFile()];
-            $layout = $obj->getLayout();
+            $obj = $event->getObject();
+            $params = $event->getViewArgs();
+            $tpl_path = $event->getViewFile();
+            $layout = $obj->_getLayout();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
             unset($params['action_content']);
             $data = ['params' => $params, 'tpl_path' => $tpl_path];
@@ -126,8 +128,9 @@ abstract class AbstractBoot
         });  // 注册 模版渲染 打印模版变量  用于调试
 
         $preWidget && AbstractController::on('preWidget', function (ControllerEvent $event) {
-            list($obj, $params, $tpl_path) = [$event->getObject(), $event->getViewArgs(), $event->getViewFile()];
-
+            $obj = $event->getObject();
+            $params = $event->getViewArgs();
+            $tpl_path = $event->getViewFile();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
             $data = ['params' => $params, 'tpl_path' => $tpl_path];
             $tag = $obj->getRequest()->debugTag(get_class($obj) . " #preWidget [{$file_name}]");

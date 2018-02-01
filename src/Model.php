@@ -13,13 +13,12 @@ use Illuminate\Database\Eloquent\Model as _Model;
 use Illuminate\Database\Query\Builder;
 use stdClass;
 use Tiny\Plugin\DbHelper;
-use Tiny\Traits\CacheTrait;
 use Tiny\Traits\OrmTrait;
 
 class Model extends _Model
 {
 
-    use OrmTrait, CacheTrait;
+    use OrmTrait;
 
     /**
      * Get the database connection for the model.
@@ -39,6 +38,7 @@ class Model extends _Model
      */
     public static function select($columns = ['*'])
     {
+        $columns = is_array($columns) ? $columns : func_get_args();
         return self::_s_call('select', [$columns]);
     }
 
@@ -108,7 +108,7 @@ class Model extends _Model
      * @param  string $operator
      * @param  mixed $value
      * @param  string $boolean
-     * @return \Illuminate\Database\Query\Builder
+     * @return \Illuminate\Database\Query\Builder | \Illuminate\Database\Eloquent\Builder
      *
      * @throws \InvalidArgumentException
      */
@@ -534,13 +534,12 @@ class Model extends _Model
         return self::_s_call('dynamicWhere', [$method, $parameters]);
     }
 
-
     /**
      * Add an "order by" clause to the query.
      *
      * @param  string $column
      * @param  string $direction
-     * @return \Illuminate\Database\Query\Builder
+     * @return \Illuminate\Database\Query\Builder | \Illuminate\Database\Eloquent\Builder
      */
     public static function orderBy($column, $direction = 'asc')
     {
@@ -579,7 +578,6 @@ class Model extends _Model
     {
         return self::_s_call('inRandomOrder', [$seed]);
     }
-
 
     /**
      * Find a model by its primary key.
@@ -776,6 +774,118 @@ class Model extends _Model
     }
 
     /**
+     * Concatenate values of a given column as a string.
+     *
+     * @param  string  $column
+     * @param  string  $glue
+     * @return string
+     */
+    public static  function implode($column, $glue = '')
+    {
+        return self::_s_call('implode', [$column, $glue]);
+    }
+
+    /**
+     * Determine if any rows exist for the current query.
+     *
+     * @return bool
+     */
+    public static  function exists()
+    {
+        return self::_s_call('paginate', []);
+    }
+
+    /**
+     * Retrieve the "count" result of the query.
+     *
+     * @param  string  $columns
+     * @return int
+     */
+    public  static function count($columns = '*')
+    {
+        return self::_s_call('paginate', [$columns]);
+    }
+
+    /**
+     * Retrieve the minimum value of a given column.
+     *
+     * @param  string  $column
+     * @return mixed
+     */
+    public static  function min($column)
+    {
+        return self::_s_call('paginate', [$column]);
+    }
+
+    /**
+     * Retrieve the maximum value of a given column.
+     *
+     * @param  string  $column
+     * @return mixed
+     */
+    public  static function max($column)
+    {
+        return self::_s_call('paginate', [$column]);
+    }
+
+    /**
+     * Retrieve the sum of the values of a given column.
+     *
+     * @param  string  $column
+     * @return mixed
+     */
+    public static  function sum($column)
+    {
+        return self::_s_call('paginate', [$column]);
+    }
+
+    /**
+     * Retrieve the average of the values of a given column.
+     *
+     * @param  string  $column
+     * @return mixed
+     */
+    public  static function avg($column)
+    {
+        return self::_s_call('paginate', [$column]);
+    }
+
+    /**
+     * Alias for the "avg" method.
+     *
+     * @param  string  $column
+     * @return mixed
+     */
+    public static  function average($column)
+    {
+        return self::_s_call('paginate', [$column]);
+    }
+
+    /**
+     * Execute an aggregate function on the database.
+     *
+     * @param  string  $function
+     * @param  array   $columns
+     * @return mixed
+     */
+    public  static function aggregate($function, $columns = ['*'])
+    {
+        return self::_s_call('paginate', [$function, $columns]);
+    }
+
+    /**
+     * Execute a numeric aggregate function on the database.
+     *
+     * @param  string  $function
+     * @param  array   $columns
+     * @return float|int
+     */
+    public static  function numericAggregate($function, $columns = ['*'])
+    {
+        return self::_s_call('paginate', [$function, $columns]);
+    }
+
+    /**
      * Paginate the given query.
      *
      * @param  int $perPage
@@ -816,7 +926,6 @@ class Model extends _Model
         self::_s_call('onDelete', [$callback]);
     }
 
-
     /**
      * Add a relationship count / exists condition to the query.
      *
@@ -825,7 +934,7 @@ class Model extends _Model
      * @param  int $count
      * @param  string $boolean
      * @param  \Closure|null $callback
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function has($relation, $operator = '>=', $count = 1, $boolean = 'and', Closure $callback = null)
     {
@@ -838,7 +947,7 @@ class Model extends _Model
      * @param  string $relation
      * @param  string $boolean
      * @param  \Closure|null $callback
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function doesntHave($relation, $boolean = 'and', Closure $callback = null)
     {
@@ -852,7 +961,7 @@ class Model extends _Model
      * @param  \Closure $callback
      * @param  string $operator
      * @param  int $count
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function whereHas($relation, Closure $callback, $operator = '>=', $count = 1)
     {
@@ -864,7 +973,7 @@ class Model extends _Model
      *
      * @param  string $relation
      * @param  \Closure|null $callback
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function whereDoesntHave($relation, Closure $callback = null)
     {
@@ -877,7 +986,7 @@ class Model extends _Model
      * @param  string $relation
      * @param  string $operator
      * @param  int $count
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function orHas($relation, $operator = '>=', $count = 1)
     {
@@ -891,7 +1000,7 @@ class Model extends _Model
      * @param  \Closure $callback
      * @param  string $operator
      * @param  int $count
-     * @return \Illuminate\Database\Eloquent\Builder|static
+     * @return \Illuminate\Database\Query\Builder|static
      */
     public static function orWhereHas($relation, Closure $callback, $operator = '>=', $count = 1)
     {

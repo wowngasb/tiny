@@ -8,6 +8,7 @@
 
 namespace Tiny\Dispatch;
 
+use app\App;
 use Exception;
 use Tiny\Abstracts\AbstractApi;
 use Tiny\Abstracts\AbstractContext;
@@ -156,6 +157,7 @@ class ApiDispatch extends AbstractDispatch
     protected static function _fixTraceInfo(array $traces, $_file, $_line)
     {
         $ret = [];
+        $base_path = App::path();
         foreach ($traces as $trace) {
             list($args, $class, $file, $function, $line, $type) = Util::vl($trace, [
                 'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
@@ -165,7 +167,9 @@ class ApiDispatch extends AbstractDispatch
                 $arg_list[] = self::_dumpVal($arg);
             }
             $args_str = join(',', $arg_list);
-            $ret[] = (!empty($class) ? "{$class}{$type}" : '') . "{$function}({$args_str}) at {$file}:{$line}";
+            $file_str = str_replace($base_path, '', $file);
+            $class_str = !empty($class) ? "{$class}{$type}" : '';
+            $ret[] = "{$file_str}:{$line} - {$class_str}{$function}({$args_str})";
         }
         return $ret;
     }

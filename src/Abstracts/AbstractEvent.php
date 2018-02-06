@@ -51,9 +51,4 @@ abstract class AbstractEvent implements EventInterface
         return $this->_params;
     }
 
-    public function getClass()
-    {
-        return get_class($this);
-    }
-
 }

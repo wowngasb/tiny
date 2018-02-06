@@ -38,8 +38,8 @@ abstract class AbstractDispatch extends AbstractClass
      */
     public static function initMethodParams(AbstractContext $context, $action, array $params)
     {
-        $params = ApiHelper::fixActionParams($context, $action, $params);
         $params = $context->beforeAction($params);
+        $params = ApiHelper::fixActionParams($context, $action, $params);
         if ($params instanceof ResponseInterface) {  // 如果 beforeAction 返回了一个 response  直接终止请求流程
             $params->end();
         }

@@ -8,10 +8,8 @@
 
 namespace Tiny\Traits;
 
-use Illuminate\Database\Query\Builder;
 use Tiny\Exception\OrmStartUpError;
 use Tiny\OrmQuery\AbstractQuery;
-use Tiny\OrmQuery\OrmContext;
 use Tiny\OrmQuery\SelectRunner;
 use Tiny\Plugin\DbHelper;
 use Tiny\Util;
@@ -43,13 +41,10 @@ use Tiny\Util;
  */
 trait OrmTrait
 {
-    use CacheTrait;
+    use CacheTrait, MapInstanceTraits;
 
     private static $_db_map = [];
-    private static $_cache_dict = [];
-    private static $_REDIS_PREFIX_DB = 'DbCache';
-
-    protected static $_orm_config_map = [];
+    protected static $_redis_prefix_db = 'DbCache';
 
     ####################################
     ############ 获取配置 ##############
@@ -78,16 +73,22 @@ trait OrmTrait
         return trim($filed);
     }
 
+    public static function getBuilder()
+    {
+        $table_name = static::tableName();
+        $table = static::_getDb()->table($table_name);
+        return $table;
+    }
+
     /**
      * 直接获取 ORM table 不推荐直接使用该接口  推荐使用模块预设方法
      * @param array $where 检索条件数组 具体格式参见文档
-     * @return Builder
+     * @return \Illuminate\Database\Query\Builder | \Illuminate\Database\Eloquent\Builder
      * @throws OrmStartUpError
      */
     public static function tableBuilder(array $where = [])
     {
-        $table_name = static::tableName();
-        $table = static::_getDb()->table($table_name);
+        $table = static::getBuilder();
         if (empty($where)) {
             return $table;
         }
@@ -171,17 +172,12 @@ trait OrmTrait
 
     /**
      * 使用这个特性的子类必须 实现这个方法 返回特定格式的数组 表示数据表的配置
-     * @return OrmContext
+     * @return OrmConfig
      * @throws OrmStartUpError
      */
     protected static function getOrmConfig()
     {
-        $class_name = get_called_class();
-        if (!isset(static::$_orm_config_map[$class_name])) {
-            throw new OrmStartUpError("cannot call OrmTrait::getOrmConfig() must overwrite it");
-            // static::$_orm_config_map[$class_name] = new OrmConfig('', '');
-        }
-        return static::$_orm_config_map[$class_name];
+        throw new OrmStartUpError("cannot call OrmTrait::getOrmConfig() must overwrite it");
     }
 
     public static function maxSelect()
@@ -222,7 +218,7 @@ trait OrmTrait
      * 根据主键获取数据 自动使用缓存
      * @param $id
      * @param null $timeCache
-     * @return array|null
+     * @return mixed|null
      */
     public static function getOneById($id, $timeCache = null)
     {
@@ -238,21 +234,22 @@ trait OrmTrait
 
         $tag = "{$primary_key}={$id}";
         $table = "{$db_name}.{$table_name}";
-        self::$_cache_dict[$table] = !empty(self::$_cache_dict[$table]) ? self::$_cache_dict[$table] : [];
-        if ($timeCache > 0 && isset(self::$_cache_dict[$table][$tag])) {
-            return self::$_cache_dict[$table][$tag];
-        }
+
         $data = static::_cacheDataManager($table, $tag, function () use ($id) {
             $tmp = static::getItem($id);
             return $tmp;
         }, function ($data) {
             return !empty($data);
-        }, $timeCache, self::$_REDIS_PREFIX_DB, ["{$table}?$tag",], false);
+        }, $timeCache, static::$_redis_prefix_db, [], self::sqlDebug());
 
-        if (!empty($data)) {
-            self::$_cache_dict[$table][$tag] = $data;
-        }
         return $data;
+    }
+
+    public static function delOneById($id)
+    {
+        $ret = static::delItem($id);
+        static::getOneById($id, -1);
+        return $ret;
     }
 
     /**
@@ -272,7 +269,6 @@ trait OrmTrait
         return $tmp[$key];
     }
 
-
     /**
      * 根据主键获取多个数据 自动使用缓存
      * @param array $id_list
@@ -281,51 +277,83 @@ trait OrmTrait
      */
     public static function getManyById(array $id_list, $timeCache = null)
     {
-        if (empty($id_list)) {
-            return [];
-        }
-        if (count($id_list) == 1) {
-            return [static::getOneById($id_list[0], $timeCache)];
-        }
-
-        $cache_time = static::cacheTime();
-        $db_name = static::dbName();
-        $table_name = static::tableName();
-        $primary_key = static::primaryKey();
-        $table = "{$db_name}.{$table_name}";
-        $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
-
-        $no_cache_list = [];
-        $cache_dict = [];
-        if ($timeCache > 0) {
-            self::$_cache_dict[$table] = !empty(self::$_cache_dict[$table]) ? self::$_cache_dict[$table] : [];
-            foreach ($id_list as $id) {
-                $tag = "{$primary_key}={$id}";
-                if (!empty(self::$_cache_dict[$table][$tag])) {
-                    $cache_dict[$id] = self::$_cache_dict[$table][$tag];
-                } else {
-                    $no_cache_list[] = $id;
-                }
-            }
-        } else {
-            $no_cache_list = $id_list;
-        }
-
-        if (!empty($no_cache_list)) {
-            $tmp_dict = static::dictItem([$primary_key => $no_cache_list]);
-            $cache_dict = $tmp_dict + $cache_dict;
-        }
+        $ret_dict = static::getDictById($id_list, $timeCache);
         $ret_list = [];
         foreach ($id_list as $id) {
-            if (!empty($cache_dict[$id])) {
-                $ret_list[] = $cache_dict[$id];
-                $tag = "{$primary_key}={$id}";
-                self::$_cache_dict[$table][$tag] = $cache_dict[$id];
+            if (!empty($ret_dict[$id])) {
+                $ret_list[] = $ret_dict[$id];
             } else {
                 $ret_list[] = null;
             }
         }
         return $ret_list;
+    }
+
+    /**
+     * 根据主键获取多个数据 自动使用缓存
+     * @param array $id_list
+     * @param null $timeCache
+     * @return array
+     */
+    public static function getDictById(array $id_list, $timeCache = null)
+    {
+        if (empty($id_list)) {
+            return [];
+        }
+        if (count($id_list) == 1) {
+            return [$id_list[0] => static::getOneById($id_list[0], $timeCache)];
+        }
+        $cache_time = static::cacheTime();
+        $primary_key = static::primaryKey();
+        $db_name = static::dbName();
+        $table_name = static::tableName();
+
+        $tag_list = [];
+        foreach ($id_list as $id) {
+            $tag_list["{$id}"] = "{$primary_key}={$id}";
+        }
+        $id_set = array_keys($tag_list);
+
+        $table = "{$db_name}.{$table_name}";
+        $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
+
+        $no_cache_list = [];
+        $cache_dict = [];
+        $db_dict = [];
+        if ($timeCache > 0) {
+            $cache_dict = self::_mgetDataManager($table, $tag_list, $timeCache, static::$_redis_prefix_db, self::sqlDebug());
+            foreach ($cache_dict as $cid => $item) {
+                if (empty($item)) {
+                    $no_cache_list[] = $cid;
+                }
+            }
+        } else {
+            $no_cache_list = $id_set;
+        }
+
+        if (!empty($no_cache_list)) {
+            $db_dict = static::dictItem([$primary_key => $no_cache_list]);
+            if ($timeCache > 0) {
+                foreach ($db_dict as $cid => $item) {
+                    self::_cacheDataManager($table, $tag_list[$cid], function () use ($item) {
+                        return $item;
+                    }, function ($data) {
+                        return !empty($data);
+                    }, $timeCache, static::$_redis_prefix_db, [], self::sqlDebug());
+                }
+            }
+        }
+        $ret_dict = [];
+        foreach ($id_list as $id) {
+            if (!empty(!empty($db_dict[$id]))) {
+                $ret_dict[$id] = $db_dict[$id];
+            } elseif (!empty($cache_dict[$id])) {
+                $ret_dict[$id] = $cache_dict[$id];
+            } else {
+                $ret_dict[$id] = null;
+            }
+        }
+        return $ret_dict;
     }
 
     /**
@@ -391,7 +419,7 @@ trait OrmTrait
      */
     protected static function _fixItem($val)
     {
-        return (array)$val;
+        return $val;
     }
 
     /**
@@ -431,7 +459,7 @@ trait OrmTrait
             throw new OrmStartUpError("runQuery with empty func but timeCache gte 0");  //timeCache 为负数时 可以允许空的 func
         }
 
-        $prefix = !is_null($prefix) ? $prefix : self::$_REDIS_PREFIX_DB;
+        $prefix = !is_null($prefix) ? $prefix : static::$_redis_prefix_db;
 
         return static::_cacheDataManager($select->method, $select->key, $select->func, $select->filter, $select->timeCache, $is_log, $prefix, $select->tags);
     }
@@ -479,31 +507,9 @@ trait OrmTrait
         $db_name = static::dbName();
         $table_name = static::tableName();
 
-        $sql_str = static::showQuery($sql, $param);
+        $sql_str = Util::prepare_query($sql, $param);
         $_tag = str_replace(__TRAIT__, "{$db_name}.{$table_name}", $tag);
         static::getOrmConfig()->doneSql($sql_str, $param, $time, $_tag);
-    }
-
-    protected static function showQuery($query, $params)
-    {
-        $keys = [];
-        $values = [];
-
-        # build a regular expression for each parameter
-        foreach ($params as $key => $value) {
-            if (is_string($key)) {
-                $keys[] = '/:' . $key . '/';
-            } else {
-                $keys[] = '/[?]/';
-            }
-            if (is_numeric($value)) {
-                $values[] = intval($value);
-            } else {
-                $values[] = '"' . $value . '"';
-            }
-        }
-        $query = preg_replace($keys, $values, $query, 1, $count);
-        return $query;
     }
 
     ####################################
@@ -513,11 +519,11 @@ trait OrmTrait
     /**
      * Get a single column's value from the first result of a query.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _value(Builder $table, $column)
+    public static function _value($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->value($column);
@@ -528,26 +534,33 @@ trait OrmTrait
     /**
      * Execute the query and get the first result.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  array $columns
+     * @param  array $sort_option
      * @return mixed|static
      */
-    public static function _first(Builder $table, $columns = ['*'])
+    public static function _first($table, $columns = ['*'], array $sort_option = [])
     {
         $start_time = microtime(true);
+        if (!empty($sort_option[0])) {
+            $field = trim($sort_option[0]);
+            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
+            $direction = $direction == 'desc' ? 'desc' : 'asc';
+            $table->orderBy($field, $direction);
+        }
         $result = $table->first($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        return (array)$result;
+        return $result;
     }
 
     /**
      * Execute the query as a "select" statement.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  array $columns
      * @return array|static[]
      */
-    public static function _get(Builder $table, $columns = ['*'])
+    public static function _get($table, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->get($columns);
@@ -555,7 +568,7 @@ trait OrmTrait
 
         $rst = [];
         foreach ($result as $key => $val) {
-            $rst[] = (array)$val;
+            $rst[] = $val;
         }
         return $rst;
     }
@@ -564,12 +577,12 @@ trait OrmTrait
     /**
      * Chunk the results of the query.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  int $count
      * @param  callable $callback
      * @return bool
      */
-    public static function _chunk(Builder $table, $count, callable $callback)
+    public static function _chunk($table, $count, callable $callback)
     {
         $start_time = microtime(true);
         $result = $table->chunk($count, $callback);
@@ -580,14 +593,14 @@ trait OrmTrait
     /**
      * Chunk the results of a query by comparing numeric IDs.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  int $count
      * @param  callable $callback
      * @param  string $column
      * @param  string $alias
      * @return bool
      */
-    public static function _chunkById(Builder $table, $count, callable $callback, $column = 'id', $alias = null)
+    public static function _chunkById($table, $count, callable $callback, $column = 'id', $alias = null)
     {
         $start_time = microtime(true);
         $result = $table->chunkById($count, $callback, $column, $alias);
@@ -598,12 +611,12 @@ trait OrmTrait
     /**
      * Execute a callback over each item while chunking.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  callable $callback
      * @param  int $count
      * @return bool
      */
-    public static function _each(Builder $table, callable $callback, $count = 1000)
+    public static function _each($table, callable $callback, $count = 1000)
     {
         $start_time = microtime(true);
         $result = $table->each($callback, $count);
@@ -614,19 +627,19 @@ trait OrmTrait
     /**
      * Get an array with the values of a given column.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @param  string|null $key
      * @return array
      */
-    public static function _pluck(Builder $table, $column, $key = null)
+    public static function _pluck($table, $column, $key = null)
     {
         $start_time = microtime(true);
         $result = $table->pluck($column, $key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         $rst = [];
         foreach ($result as $key => $val) {
-            $rst[] = (array)$val;
+            $rst[] = $val;
         }
         return $rst;
     }
@@ -634,12 +647,12 @@ trait OrmTrait
     /**
      * Concatenate values of a given column as a string.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @param  string $glue
      * @return string
      */
-    public static function _implode(Builder $table, $column, $glue = '')
+    public static function _implode($table, $column, $glue = '')
     {
         $start_time = microtime(true);
         $result = $table->implode($column, $glue);
@@ -650,10 +663,10 @@ trait OrmTrait
     /**
      * Determine if any rows exist for the current query.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @return bool
      */
-    public static function _exists(Builder $table)
+    public static function _exists($table)
     {
         $start_time = microtime(true);
         $result = $table->exists();
@@ -664,11 +677,11 @@ trait OrmTrait
     /**
      * Retrieve the "count" result of the query.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $columns
      * @return int
      */
-    public static function _count(Builder $table, $columns = '*')
+    public static function _count($table, $columns = '*')
     {
         $start_time = microtime(true);
         $result = $table->count($columns);
@@ -679,11 +692,11 @@ trait OrmTrait
     /**
      * Retrieve the minimum value of a given column.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _min(Builder $table, $column)
+    public static function _min($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->min($column);
@@ -694,11 +707,11 @@ trait OrmTrait
     /**
      * Retrieve the maximum value of a given column.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _max(Builder $table, $column)
+    public static function _max($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->max($column);
@@ -709,11 +722,11 @@ trait OrmTrait
     /**
      * Retrieve the sum of the values of a given column.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _sum(Builder $table, $column)
+    public static function _sum($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->sum($column);
@@ -724,11 +737,11 @@ trait OrmTrait
     /**
      * Retrieve the average of the values of a given column.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _avg(Builder $table, $column)
+    public static function _avg($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->avg($column);
@@ -739,11 +752,11 @@ trait OrmTrait
     /**
      * Alias for the "avg" method.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @return mixed
      */
-    public static function _average(Builder $table, $column)
+    public static function _average($table, $column)
     {
         $start_time = microtime(true);
         $result = $table->average($column);
@@ -754,12 +767,12 @@ trait OrmTrait
     /**
      * Execute an aggregate function on the database.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $function
      * @param  array $columns
      * @return mixed
      */
-    public static function _aggregate(Builder $table, $function, $columns = ['*'])
+    public static function _aggregate($table, $function, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->aggregate($function, $columns);
@@ -770,12 +783,12 @@ trait OrmTrait
     /**
      * Execute a numeric aggregate function on the database.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $function
      * @param  array $columns
      * @return float|int
      */
-    public static function _numericAggregate(Builder $table, $function, $columns = ['*'])
+    public static function _numericAggregate($table, $function, $columns = ['*'])
     {
         $start_time = microtime(true);
         $result = $table->numericAggregate($function, $columns);
@@ -786,11 +799,11 @@ trait OrmTrait
     /**
      * Update a record in the database.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  array $data
      * @return int
      */
-    public static function _update(Builder $table, array $data)
+    public static function _update($table, array $data)
     {
         $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
@@ -802,12 +815,12 @@ trait OrmTrait
     /**
      * Insert or update a record matching the attributes, and fill it with values.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  array $attributes
      * @param  array $data
      * @return bool
      */
-    public static function _updateOrInsert(Builder $table, array $attributes, array $data = [])
+    public static function _updateOrInsert($table, array $attributes, array $data = [])
     {
         $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
@@ -819,13 +832,13 @@ trait OrmTrait
     /**
      * Increment a column's value by a given amount.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @param  int $amount
      * @param  array $extra
      * @return int
      */
-    public static function _increment(Builder $table, $column, $amount = 1, array $extra = [])
+    public static function _increment($table, $column, $amount = 1, array $extra = [])
     {
         $data = self::_fixFillAbleData($extra);
         $start_time = microtime(true);
@@ -837,13 +850,13 @@ trait OrmTrait
     /**
      * Decrement a column's value by a given amount.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @param  string $column
      * @param  int $amount
      * @param  array $extra
      * @return int
      */
-    public static function _decrement(Builder $table, $column, $amount = 1, array $extra = [])
+    public static function _decrement($table, $column, $amount = 1, array $extra = [])
     {
         $data = self::_fixFillAbleData($extra);
         $start_time = microtime(true);
@@ -855,11 +868,11 @@ trait OrmTrait
     /**
      * Delete a record from the database.
      *
-     * @param Builder $table
+     * @param \Illuminate\Database\Query\Builder $table
      * @return int
      * @internal param mixed $id
      */
-    public static function _delete(Builder $table)
+    public static function _delete($table)
     {
         $start_time = microtime(true);
         $result = $table->delete();
@@ -893,13 +906,24 @@ trait OrmTrait
      * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
+     * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
+     * @param array | string $with
      * @return array 数据 list 格式为 [`item`, ]
      */
-    public static function selectItem($start = 0, $limit = 0, array $sort_option = [], array $where = [], array $columns = ['*'])
+    public static function selectItem($start = 0, $limit = 0, array $sort_option = [], array $where = [], array $columns = ['*'], $with = '')
     {
         $start_time = microtime(true);
         $max_select = static::maxSelect();
         $table = static::tableBuilder($where);
+        if (!empty($with)) {
+            if (is_array($with)) {
+                foreach ($with as $with_item) {
+                    $table->with($with_item);
+                }
+            } else {
+                $table->with($with);
+            }
+        }
         $start = $start <= 0 ? 0 : $start;
         $limit = $limit > $max_select ? $max_select : $limit;
         if ($start > 0) {
@@ -921,7 +945,6 @@ trait OrmTrait
 
         $rst = [];
         foreach ($data as $key => $val) {
-            $val = (array)$val;
             $rst[$key] = static::_fixItem($val);
         }
         return $rst;
@@ -945,7 +968,6 @@ trait OrmTrait
 
         $rst = [];
         foreach ($data as $key => $val) {
-            $val = (array)$val;
             $id = $val[$primary_key];
             $rst[$id] = static::_fixItem($val);
         }
@@ -971,7 +993,7 @@ trait OrmTrait
         }
         $item = $table->first($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        return static::_fixItem((array)$item);
+        return static::_fixItem($item);
     }
 
     /**

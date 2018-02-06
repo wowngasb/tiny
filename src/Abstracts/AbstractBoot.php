@@ -15,7 +15,7 @@ use Tiny\Event\ApiEvent;
 use Tiny\Event\ApplicationEvent;
 use Tiny\Event\ControllerEvent;
 use Tiny\Event\OrmEvent;
-use Tiny\OrmQuery\OrmContext;
+use Tiny\Traits\OrmConfig;
 
 abstract class AbstractBoot
 {
@@ -160,7 +160,7 @@ abstract class AbstractBoot
             static::consoleException($event->getException());
         });
 
-        $runSql && OrmContext::on('runSql', function (OrmEvent $event) {
+        $runSql && OrmConfig::on('runSql', function (OrmEvent $event) {
             list($sql_str, $args, $time, $_tag) = [$event->getSql(), $event->getArgs(), $event->getTime(), $event->getTag()];
             $time_str = round($time, 3) * 1000;
             static::consoleDebug([$sql_str, $args], "[SQL] {$_tag} <{$time_str}ms>", 1);

@@ -36,7 +36,7 @@ interface ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  bool|null $secure
-     * @return ResponseInterface
+     * @return self
      */
     public function to($path, $status = 302, array $headers = [], $secure = null);
 
@@ -45,7 +45,7 @@ interface ResponseInterface
      *
      * @param  int $status
      * @param  array $headers
-     * @return ResponseInterface
+     * @return self
      */
     public function back($status = 302, array $headers = []);
 
@@ -56,7 +56,7 @@ interface ResponseInterface
      * @param  int $status
      * @param  array $headers
      * @param  bool|null $secure
-     * @return ResponseInterface
+     * @return self
      */
     public function guest($path, $status = 302, $headers = [], $secure = null);
 
@@ -159,31 +159,31 @@ interface ResponseInterface
      * @param string $string
      * @param bool $replace [optional]
      * @param int $http_response_code [optional]
-     * @return ResponseInterface
+     * @return self
      * @throws \Exception HeaderError
      */
     public function addHeader($string, $replace = true, $http_response_code = null);
 
     /**
-     * @return ResponseInterface
+     * @return self
      */
     public function resetResponse();
 
     /**
      * @param $code
-     * @return ResponseInterface
+     * @return self
      */
     public function setResponseCode($code);
 
     /**
      * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
-     * @return ResponseInterface
+     * @return self
      */
     public function sendHeader();
 
     /**
      * 重置 缓存的 header  如果 header 已经发送 抛出异常
-     * @return ResponseInterface
+     * @return self
      * @throws AppStartUpError
      */
     public function resetHeader();
@@ -192,7 +192,7 @@ interface ResponseInterface
      * 向请求回应 添加消息体
      * @param string $msg 要发送的字符串
      * @param string $name 此次发送消息体的 名称 可用于debug
-     * @return ResponseInterface
+     * @return self
      */
     public function appendBody($msg, $name = '');
 

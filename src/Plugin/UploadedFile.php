@@ -65,7 +65,7 @@ class UploadedFile extends SymfonyUploadedFile
      *
      * @param  \Symfony\Component\HttpFoundation\File\UploadedFile  $file
      * @param  bool $test
-     * @return UploadedFile
+     * @return static
      */
     public static function createFromBase(SymfonyUploadedFile $file, $test = false)
     {

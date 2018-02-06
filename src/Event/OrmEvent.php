@@ -10,7 +10,7 @@ namespace Tiny\Event;
 
 
 use Tiny\Abstracts\AbstractEvent;
-use Tiny\OrmQuery\OrmContext;
+use Tiny\Traits\OrmConfig;
 use Tiny\Util;
 
 class OrmEvent extends AbstractEvent
@@ -19,13 +19,13 @@ class OrmEvent extends AbstractEvent
     /**
      * OrmEvent constructor.
      * @param string $type
-     * @param OrmContext $object
+     * @param OrmConfig $object
      * @param string $sql
      * @param array $view_args
      * @param int $time
      * @param string $tag
      */
-    public function __construct($type, OrmContext $object, $sql, array $view_args = [], $time = 0, $tag = '')
+    public function __construct($type, OrmConfig $object, $sql, array $view_args = [], $time = 0, $tag = '')
     {
         parent::__construct($type, $object, [
             'sql' => $sql,
@@ -36,7 +36,7 @@ class OrmEvent extends AbstractEvent
     }
 
     /**
-     * @return OrmContext
+     * @return OrmConfig
      */
     public function getObject()
     {

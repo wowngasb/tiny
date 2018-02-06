@@ -152,8 +152,12 @@ abstract class AbstractController extends AbstractContext
      */
     abstract protected function display($tpl_path = '', array $params = []);
 
+    ###############################################################
+    ############## 重写 EventTrait::isAllowedEvent ################
+    ###############################################################
+
     /**
-     *  注册回调函数  回调参数为 callback($this, $tpl_path, $params)
+     *  注册回调函数  回调参数为 callback(\Tiny\Event\ControllerEvent $event)
      *  1、preDisplay    在模板渲染之前触发
      *  2、preWidget    在组件渲染之前触发
      * @param string $event

@@ -4,15 +4,17 @@ namespace Tiny\Abstracts;
 
 
 use Tiny\Event\ApiEvent;
+use Tiny\Util;
 
 abstract class AbstractApi extends AbstractContext
 {
 
     protected static $_API_LIMIT_KET = 'BaseApiRateLimit';
 
-    public function _param($name, $default = '', $setBack = false, $popKey = false)
+    public function _param($name, $default = '')
     {
-
+        $params = $this->getRequest()->getParams();
+        return Util::v($params, $name, $default);
     }
 
     /*
@@ -70,8 +72,12 @@ abstract class AbstractApi extends AbstractContext
         ];
     }
 
+    ###############################################################
+    ############## 重写 EventTrait::isAllowedEvent ################
+    ###############################################################
+
     /**
-     *  注册回调函数  回调参数为 callback($this, $action, $params, $result or $ex, $callback)
+     *  注册回调函数  回调参数为 callback(\Tiny\Event\ApiEvent $event)
      *  1、apiResult    api执行完毕返回结果时触发
      *  2、apiException    api执行发生异常时触发
      * @param string $event

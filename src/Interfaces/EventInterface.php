@@ -11,7 +11,6 @@ namespace Tiny\Interfaces;
 
 interface EventInterface
 {
-    public function getClass();
 
     public function getType();
 

@@ -435,7 +435,7 @@ interface RequestInterface
      * @param string $method
      * @param string $uri
      * @param array $args
-     * @return ResponseInterface
+     * @return self
      */
     public function copyHttpArgs($method = null, $uri = null, array $args = []);
 

@@ -392,6 +392,12 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function sendHeader()
     {
+        if( !empty($this->_body['_json']) ){
+            $this->addHeader('Content-Type:application/json');
+        }
+        if( !empty($this->_body['_jsonp']) ){
+            $this->addHeader('Content-Type:application/javascript');
+        }
         if (!$this->_header_sent) {
             foreach ($this->_header_list as $idx => $val) {
                 header($val[0], $val[1], $val[2]);

@@ -337,7 +337,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ###############################################################
 
     /**
-     *  注册回调函数  回调参数为 callback(Application $app, Request $request, Response $response)
+     *  注册回调函数  回调参数为 callback(\Tiny\Event\ApplicationEvent $event)
      *  1、routerStartup    在路由之前触发    这个是7个事件中, 最早的一个. 但是一些全局自定的工作, 还是应该放在Bootstrap中去完成
      *  2、routerShutdown    路由结束之后触发    此时路由一定正确完成, 否则这个事件不会触发
      *  3、dispatchLoopStartup    分发循环开始之前被触发

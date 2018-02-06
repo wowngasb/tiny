@@ -3,13 +3,17 @@
 namespace Tiny\Traits;
 
 
+use app\App;
 use Tiny\Plugin\LogHelper;
 
 trait LogTrait
 {
-
     public static function log($type, $msg, $method = '', $class = 'sys_log', $line_no = 0)
     {
+        if (App::dev()) {
+            LogConfig::doneLogAction($type, $msg, $method, $class, $line_no);
+        }
+
         $log = LogHelper::create(str_replace('\\', '_', $class));
         if ($line_no > 0) {
             $log_msg = !empty($method) ? "{$method}[{$line_no}] {$msg}" : $msg;

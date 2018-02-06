@@ -249,4 +249,8 @@ abstract class AbstractContext extends AbstractClass
         return $this->_request->path();
     }
 
+    public function fullUrl(){
+        return $this->_request->full();
+    }
+
 }

@@ -18,11 +18,11 @@ trait EventTrait
     protected static $_event_map = [];  // 注册事件列表
 
     /**
-     * 判断一个事件是否允许注册
-     * @param string $event
+     * 判断一个事件是否允许注册 默认 不允许任何类型
+     * @param string $type
      * @return bool
      */
-    protected static function isAllowedEvent($event)
+    protected static function isAllowedEvent($type)
     {
         false && func_get_args();
         return false;

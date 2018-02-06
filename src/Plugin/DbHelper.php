@@ -2,6 +2,7 @@
 
 namespace Tiny\Plugin;
 
+use Closure;
 use Illuminate\Database\Capsule\Manager;
 use Tiny\Application;
 use Tiny\Exception\OrmStartUpError;
@@ -41,6 +42,8 @@ class DbHelper extends Manager
         return $db_config;
     }
 
+    private static $_connection_map = [];
+
     /**
      * @param string|array $config
      * @return \Illuminate\Database\Connection
@@ -64,8 +67,55 @@ class DbHelper extends Manager
         } else {
             throw new OrmStartUpError('getConnection with error config type');
         }
+        if (!empty(self::$_connection_map[$name])) {
+            return self::$_connection_map[$name];
+        }
+
         parent::addConnection($db_config, $name);
-        return $this->manager->connection($name);
+        $connection = $this->manager->connection($name);
+        if (!empty($connection)) {
+            $dispatcher = new DbDispatcher();
+            $dispatcher->listen(['*'], function ($payload) {
+                if (!empty(self::$_event_callback)) {
+                    $type = self::_getTypeOfEvent($payload);
+                    call_user_func_array(self::$_event_callback, [$type, $payload]);
+                }
+            });
+            $connection->setEventDispatcher($dispatcher);
+            self::$_connection_map[$name] = $connection;
+        }
+        return $connection;
+    }
+
+    private static function _getTypeOfEvent($event)
+    {
+        if (!is_object($event)) {
+            return 'unknown';
+        }
+        $type = get_class($event);
+        switch ($type) {
+            case 'Illuminate\\Database\\Events\\QueryExecuted':
+                return 'QueryExecuted';
+            case 'Illuminate\\Database\\Events\\TransactionBeginning':
+                return 'TransactionBeginning';
+            case 'Illuminate\\Database\\Events\\TransactionCommitted':
+                return 'TransactionCommitted';
+            case 'Illuminate\\Database\\Events\\TransactionRolledBack':
+                return 'TransactionRolledBack';
+            default:
+                return 'unknown';
+        }
+    }
+
+    private static $_event_callback = null;
+
+    /**
+     * 回调函数 参数  callback($type, $event)
+     * @param Closure $closure
+     */
+    public static function setOrmEventCallback(Closure $closure)
+    {
+        self::$_event_callback = $closure;
     }
 
 }

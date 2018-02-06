@@ -8,7 +8,6 @@
 
 namespace Tiny\Dispatch;
 
-use app\App;
 use Exception;
 use Tiny\Abstracts\AbstractApi;
 use Tiny\Abstracts\AbstractContext;
@@ -134,7 +133,7 @@ class ApiDispatch extends AbstractDispatch
             'code' => $ex->getCode(),
             'message' => $ex->getMessage(),
             'file' => $ex->getFile() . ' [' . $ex->getLine() . ']',
-            'trace' => self::_fixTraceInfo($ex->getTrace(), $ex->getFile(), $ex->getLine()),
+            'trace' => self::_fixTraceInfo($ex),
         ] : [
             'code' => $code,
             'message' => 'traceException',
@@ -154,72 +153,17 @@ class ApiDispatch extends AbstractDispatch
         $response->addHeader('Content-Type: application/json;charset=utf-8', false)->appendBody($json_str);
     }
 
-    protected static function _fixTraceInfo(array $traces, $_file, $_line)
+    protected static function _fixTraceInfo(Exception $ex)
     {
+        $base_path = Application::path();
         $ret = [];
-        $base_path = App::path();
-        foreach ($traces as $trace) {
-            list($args, $class, $file, $function, $line, $type) = Util::vl($trace, [
-                'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
-            ]);
-            $arg_list = [];
-            foreach ($args as $arg) {
-                $arg_list[] = self::_dumpVal($arg);
-            }
-            $args_str = join(',', $arg_list);
-            $file_str = str_replace($base_path, '', $file);
-            $class_str = !empty($class) ? "{$class}{$type}" : '';
+        $trace_list = Util::trace_exception($ex, $base_path);
+        foreach ($trace_list as $r) {
+            list($file_str, $line, $class_str, $function, $args_str) = [Util::v($r, 'file_str', ''), Util::v($r, 'line', ''), Util::v($r, 'class_str', ''), Util::v($r, 'function', ''), Util::v($r, 'args_str', '')];
             $ret[] = "{$file_str}:{$line} - {$class_str}{$function}({$args_str})";
         }
         return $ret;
     }
 
-    protected static function _dumpVal($data, $is_short = false)
-    {
-        $type = gettype($data);
-        switch ($type) {
-            case 'NULL':
-                return 'null';
-            case 'boolean':
-                return ($data ? 'true' : 'false');
-            case 'integer':
-            case 'double':
-            case 'float':
-                return $data;
-            case 'string':
-                return '"' . addslashes($data) . '"';
-            case 'object':
-                $class = get_class($data);
-                return "{$class}";
-            case 'array':
-                if ($is_short) {
-                    return "<Array>";
-                }
-                $output_index_count = 0;
-                $output_indexed = array();
-                $output_associative = array();
-                $idx = 0;
-                foreach ($data as $key => $value) {
-                    if ($idx >= 5) {
-                        $output_indexed[] = '...';
-                        $output_associative[] = '...';
-                        break;
-                    }
-                    $output_indexed[] = self::_dumpVal($value, true);
-                    $output_associative[] = self::_dumpVal($key, true) . ':' . self::_dumpVal($value, true);
-                    if ($output_index_count !== NULL && $output_index_count++ !== $key) {
-                        $output_index_count = NULL;
-                    }
-                    $idx += 1;
-                }
-                if ($output_index_count !== NULL) {
-                    return '[' . implode(',', $output_indexed) . ']';
-                } else {
-                    return '{' . implode(',', $output_associative) . '}';
-                }
-            default:
-                return '<object>'; // Not supported
-        }
-    }
 
 }

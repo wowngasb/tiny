@@ -20,7 +20,7 @@ class SelectRunner
     public $timeCache = 0;
     public $tags = [];
 
-    public function __construct(OrmContext $orm_config, $key, callable $func = null, callable $filter = null, array $tags = [], $timeCache = null)
+    public function __construct(OrmConfig $orm_config, $key, callable $func = null, callable $filter = null, array $tags = [], $timeCache = null)
     {
         $db_name = $orm_config->getDbName();
         $table_name = $orm_config->getTableName();

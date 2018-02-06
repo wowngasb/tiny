@@ -10,7 +10,6 @@ namespace Tiny;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model as _Model;
-use Illuminate\Database\Query\Builder;
 use stdClass;
 use Tiny\Plugin\DbHelper;
 use Tiny\Traits\OrmTrait;
@@ -318,12 +317,12 @@ class Model extends _Model
     /**
      * Add an exists clause to the query.
      *
-     * @param  \Illuminate\Database\Query\Builder $query
+     * @param  mixed $query
      * @param  string $boolean
      * @param  bool $not
-     * @return \Illuminate\Database\Query\Builder
+     * @return \Illuminate\Database\Query\Builder | \Illuminate\Database\Eloquent\Builder
      */
-    public static function addWhereExistsQuery(Builder $query, $boolean = 'and', $not = false)
+    public static function addWhereExistsQuery($query, $boolean = 'and', $not = false)
     {
         return self::_s_call('addWhereExistsQuery', [$query, $boolean, $not]);
     }
@@ -792,7 +791,7 @@ class Model extends _Model
      */
     public static  function exists()
     {
-        return self::_s_call('paginate', []);
+        return self::_s_call('exists', []);
     }
 
     /**
@@ -803,7 +802,7 @@ class Model extends _Model
      */
     public  static function count($columns = '*')
     {
-        return self::_s_call('paginate', [$columns]);
+        return self::_s_call('count', [$columns]);
     }
 
     /**
@@ -814,7 +813,7 @@ class Model extends _Model
      */
     public static  function min($column)
     {
-        return self::_s_call('paginate', [$column]);
+        return self::_s_call('min', [$column]);
     }
 
     /**
@@ -825,7 +824,7 @@ class Model extends _Model
      */
     public  static function max($column)
     {
-        return self::_s_call('paginate', [$column]);
+        return self::_s_call('max', [$column]);
     }
 
     /**
@@ -836,7 +835,7 @@ class Model extends _Model
      */
     public static  function sum($column)
     {
-        return self::_s_call('paginate', [$column]);
+        return self::_s_call('sum', [$column]);
     }
 
     /**
@@ -847,7 +846,7 @@ class Model extends _Model
      */
     public  static function avg($column)
     {
-        return self::_s_call('paginate', [$column]);
+        return self::_s_call('avg', [$column]);
     }
 
     /**
@@ -858,7 +857,7 @@ class Model extends _Model
      */
     public static  function average($column)
     {
-        return self::_s_call('paginate', [$column]);
+        return self::_s_call('average', [$column]);
     }
 
     /**
@@ -870,7 +869,7 @@ class Model extends _Model
      */
     public  static function aggregate($function, $columns = ['*'])
     {
-        return self::_s_call('paginate', [$function, $columns]);
+        return self::_s_call('aggregate', [$function, $columns]);
     }
 
     /**
@@ -882,7 +881,7 @@ class Model extends _Model
      */
     public static  function numericAggregate($function, $columns = ['*'])
     {
-        return self::_s_call('paginate', [$function, $columns]);
+        return self::_s_call('numericAggregate', [$function, $columns]);
     }
 
     /**

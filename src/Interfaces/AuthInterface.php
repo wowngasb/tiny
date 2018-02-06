@@ -67,6 +67,13 @@ interface AuthInterface
     public function loginUsingId($id, $remember = false);
 
     /**
+     * Get the last user we attempted to authenticate.
+     *
+     * @return mixed
+     */
+    public function getLastAttempted();
+
+    /**
      * Log the given user ID into the application without sessions or cookies.
      *
      * @param  mixed $id

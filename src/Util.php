@@ -8,11 +8,118 @@
 
 namespace Tiny;
 
-
 use Tiny\Abstracts\AbstractClass;
 
-abstract class Util extends  AbstractClass
+abstract class Util extends AbstractClass
 {
+
+    public static function prepare_query($query, $params)
+    {
+        $keys = [];
+        $values = [];
+
+        # build a regular expression for each parameter
+        foreach ($params as $key => $value) {
+            if (is_string($key)) {
+                $keys[] = '/:' . $key . '/';
+            } else {
+                $keys[] = '/[?]/';
+            }
+            if (is_numeric($value)) {
+                $values[] = intval($value);
+            } else {
+                $values[] = '"' . $value . '"';
+            }
+        }
+        $query = preg_replace($keys, $values, $query, 1, $count);
+        return $query;
+    }
+
+    /**
+     * @param mixed $ex
+     * @param string $base_path
+     * @return array
+     */
+    public static function trace_exception($ex, $base_path = '')
+    {
+        if (empty($ex) || !$ex instanceof \Exception) {
+            return [];
+        }
+        $traces = $ex->getTrace();
+        $_file = $ex->getFile();
+        $_line = $ex->getLine();
+
+        $ret = [];
+        foreach ($traces as $trace) {
+            list($args, $class, $file, $function, $line, $type) = Util::vl($trace, [
+                'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
+            ]);
+            $arg_list = [];
+            foreach ($args as $arg) {
+                $arg_list[] = static::dump_val($arg);
+            }
+            $args_str = join(',', $arg_list);
+            $file_str = !empty($base_path) ? str_replace($base_path, '', $file) : $file;
+            $class_str = !empty($class) ? "{$class}{$type}" : '';
+            $ret[] = [
+                'file_str' => $file_str,
+                'line' => $line,
+                'class_str' => $class_str,
+                'function' => $function,
+                'args_str' => $args_str,
+            ];
+        }
+        return $ret;
+    }
+
+
+    public static function dump_val($data, $is_short = false)
+    {
+        $type = gettype($data);
+        switch ($type) {
+            case 'NULL':
+                return 'null';
+            case 'boolean':
+                return ($data ? 'true' : 'false');
+            case 'integer':
+            case 'double':
+            case 'float':
+                return $data;
+            case 'string':
+                return '"' . addslashes($data) . '"';
+            case 'object':
+                $class = get_class($data);
+                return "{$class}";
+            case 'array':
+                if ($is_short) {
+                    return "<Array>";
+                }
+                $output_index_count = 0;
+                $output_indexed = array();
+                $output_associative = array();
+                $idx = 0;
+                foreach ($data as $key => $value) {
+                    if ($idx >= 5) {
+                        $output_indexed[] = '...';
+                        $output_associative[] = '...';
+                        break;
+                    }
+                    $output_indexed[] = static::dump_val($value, true);
+                    $output_associative[] = static::dump_val($key, true) . ':' . static::dump_val($value, true);
+                    if ($output_index_count !== NULL && $output_index_count++ !== $key) {
+                        $output_index_count = NULL;
+                    }
+                    $idx += 1;
+                }
+                if ($output_index_count !== NULL) {
+                    return '[' . implode(',', $output_indexed) . ']';
+                } else {
+                    return '{' . implode(',', $output_associative) . '}';
+                }
+            default:
+                return '<object>'; // Not supported
+        }
+    }
 
     public static function assoc_array(array $var)
     {

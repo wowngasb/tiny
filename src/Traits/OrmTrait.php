@@ -34,7 +34,7 @@ use Tiny\Util;
  * 例如 [   'id' => whereIn([1, 2, 3])  ]   对应  ->whereIn('id', [1, 2, 3])
  * 例如 [   'updated_at' => whereNull() ],  ]   对应  ->whereNull('updated_at')
  * 注意：
- * $_REDIS_PREFIX_DB 下级数据缓存 建议只用数据表级缓存
+ * $_redis_prefix_db 下级数据缓存 建议只用数据表级缓存
  * 同一分类下的缓存数据必须来源于同一张表  不可缓存连表数据 防止无法分析依赖
  * 缓存的key 需要自己生成有意义的字符串 及 匹配清除缓存的 匹配字符串
  * @package Tiny\Traits
@@ -214,6 +214,15 @@ trait OrmTrait
     ############ 可重写方法 #############
     ####################################
 
+    protected static function getCachePreFix()
+    {
+        $prefix = static::$_redis_prefix_db;
+        if (empty($prefix)) {
+            $prefix = static::$_cache_prefix_key;
+        }
+        return trim($prefix);
+    }
+
     /**
      * 根据主键获取数据 自动使用缓存
      * @param $id
@@ -240,7 +249,7 @@ trait OrmTrait
             return $tmp;
         }, function ($data) {
             return !empty($data);
-        }, $timeCache, static::$_redis_prefix_db, [], self::sqlDebug());
+        }, $timeCache, static::getCachePreFix(), [], self::sqlDebug());
 
         return $data;
     }
@@ -321,7 +330,7 @@ trait OrmTrait
         $cache_dict = [];
         $db_dict = [];
         if ($timeCache > 0) {
-            $cache_dict = self::_mgetDataManager($table, $tag_list, $timeCache, static::$_redis_prefix_db, self::sqlDebug());
+            $cache_dict = self::_mgetDataManager($table, $tag_list, $timeCache, static::getCachePreFix(), self::sqlDebug());
             foreach ($cache_dict as $cid => $item) {
                 if (empty($item)) {
                     $no_cache_list[] = $cid;
@@ -339,7 +348,7 @@ trait OrmTrait
                         return $item;
                     }, function ($data) {
                         return !empty($data);
-                    }, $timeCache, static::$_redis_prefix_db, [], self::sqlDebug());
+                    }, $timeCache, static::getCachePreFix(), [], self::sqlDebug());
                 }
             }
         }
@@ -459,7 +468,7 @@ trait OrmTrait
             throw new OrmStartUpError("runQuery with empty func but timeCache gte 0");  //timeCache 为负数时 可以允许空的 func
         }
 
-        $prefix = !is_null($prefix) ? $prefix : static::$_redis_prefix_db;
+        $prefix = !is_null($prefix) ? $prefix : static::getCachePreFix();
 
         return static::_cacheDataManager($select->method, $select->key, $select->func, $select->filter, $select->timeCache, $is_log, $prefix, $select->tags);
     }

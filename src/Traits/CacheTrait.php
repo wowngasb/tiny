@@ -265,7 +265,7 @@ trait CacheTrait
 
     private static function _cacheDataByFastCache($method, $key, callable $func, callable $filter, $timeCache = null, $prefix = null, $tags = [], $is_log = false)
     {
-        if (empty($key) || empty($_method)) {
+        if (empty($key) || empty($method)) {
             error_log("call _cacheDataByFastCache with empty method or key");
             return [];
         }
@@ -614,6 +614,9 @@ trait CacheTrait
     {
         if (!empty($tags) && is_callable($tags)) {
             return !empty($data) ? call_user_func_array($tags, [$data]) : [];
+        }
+        if (!empty($tags) && !is_array($tags)) {
+            $tags = [$tags];
         }
         return $tags;
     }

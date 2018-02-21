@@ -34,7 +34,7 @@ class MapRoute implements RouteInterface
     {
         $base_uri = trim($base_uri);
         $base_uri = Util::str_startwith($base_uri, '/') ? $base_uri : "/{$base_uri}";
-        $base_uri = Util::str_endwith($base_uri, '/') ? $base_uri : "{$base_uri}/";
+        // $base_uri = Util::str_endwith($base_uri, '/') ? $base_uri : "{$base_uri}/";
         $this->_base_uri = $base_uri;
         $this->_default_module = trim($default_module);
         $this->_default_route_info = Util::mergeNotEmpty($this->_default_route_info, $default_route_info);

@@ -35,24 +35,38 @@ abstract class AbstractBoot
         return $app;
     }
 
+    protected static $_consoleInstance = null;
+
+    /**
+     * @return Connector
+     */
+    protected static function getConsoleInstance()
+    {
+        //开启 辅助调试模式 注册对应事件
+        if (empty(static::$_consoleInstance)) {
+            static::$_consoleInstance = Connector::getInstance();
+        }
+        return static::$_consoleInstance;
+    }
+
     public static function consoleDebug($data, $tag = null, $ignoreTraceCalls = 0)
     {
         if (Application::dev()) {
-            Connector::getInstance()->getDebugDispatcher()->dispatchDebug($data, $tag, $ignoreTraceCalls);
+            static::getConsoleInstance()->getDebugDispatcher()->dispatchDebug($data, $tag, $ignoreTraceCalls);
         }
     }
 
     public static function consoleException($exception)
     {
         if (Application::dev()) {
-            Connector::getInstance()->getErrorsDispatcher()->dispatchException($exception);
+            static::getConsoleInstance()->getErrorsDispatcher()->dispatchException($exception);
         }
     }
 
     public static function consoleError($code = null, $text = null, $file = null, $line = null, $ignoreTraceCalls = 0)
     {
         if (Application::dev()) {
-            Connector::getInstance()->getErrorsDispatcher()->dispatchError($code, $text, $file, $line, $ignoreTraceCalls);
+            static::getConsoleInstance()->getErrorsDispatcher()->dispatchError($code, $text, $file, $line, $ignoreTraceCalls);
         }
     }
 
@@ -62,18 +76,17 @@ abstract class AbstractBoot
             return;
         }
 
-        //开启 辅助调试模式 注册对应事件
-        Connector::getInstance()->setPassword(Application::config('ENV_DEVELOP_KEY'), true);
-
         $routerStartup && Application::on('routerStartup', function (ApplicationEvent $event) {
-            list($obj, $request) = [$event->getObject(), $event->getRequest()];
-            $data = ['_request' => $request, 'request' => $request->all_request()];
+            $obj = $event->getObject();
+            $request = $event->getRequest();
+            $data = ['_request' => $request->getRequestUri(), 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
             static::consoleDebug($data, $tag, 1);
         });
 
         $routerShutdown && Application::on('routerShutdown', function (ApplicationEvent $event) {
-            list($obj, $request) = [$event->getObject(), $event->getRequest()];
+            $obj = $event->getObject();
+            $request = $event->getRequest();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
             $tag = $request->debugTag(get_class($obj) . ' #routerShutdown');
             static::consoleDebug($data, $tag, 1);
@@ -82,9 +95,10 @@ abstract class AbstractBoot
         $dispatchLoopStartup && Application::on('dispatchLoopStartup', function (ApplicationEvent $event) {
             $obj = $event->getObject();
             $request = $event->getRequest();
+            $all_session = $request->all_session();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'request' => $request->all_request()];
             if ($request->isSessionStarted()) {
-                $data['session'] = $request->all_session();
+                $data['session'] = $all_session;
                 $data['session_status'] = $request->session_status();
             }
             $tag = $request->debugTag(get_class($obj) . ' #dispatchLoopStartup');
@@ -92,8 +106,14 @@ abstract class AbstractBoot
         });
 
         $dispatchLoopShutdown && Application::on('dispatchLoopShutdown', function (ApplicationEvent $event) {
-            list($obj, $request, $response) = [$event->getObject(), $event->getRequest(), $event->getResponse()];
-            $body = $response->getBody();
+            $obj = $event->getObject();
+            $request = $event->getRequest();
+            $response = $event->getResponse();
+            $_body = $response->getBody();
+            $body = '';
+            foreach ($_body as $html) {
+                $body .= $html;
+            }
             $total = strlen($body);
             $body_msg = $total > 500 ? substr($body, 0, 500) . "...total<{$total}>chars..." : $body;
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'body' => $body_msg];
@@ -102,14 +122,17 @@ abstract class AbstractBoot
         });
 
         $preDispatch && Application::on('preDispatch', function (ApplicationEvent $event) {
-            list($obj, $request) = [$event->getObject(), $event->getRequest()];
-            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->all_request(), 'session' => $request->all_session(), 'cookie' => $request->all_cookie()];
+            $obj = $event->getObject();
+            $request = $event->getRequest();
+            $all_session = $request->all_session();
+            $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri(), 'params' => $request->getParams(), 'request' => $request->all_request(), 'session' => $all_session, 'cookie' => $request->all_cookie()];
             $tag = $request->debugTag(get_class($obj) . ' #preDispatch');
             static::consoleDebug($data, $tag, 1);
         });
 
         $postDispatch && Application::on('postDispatch', function (ApplicationEvent $event) {
-            list($obj, $request) = [$event->getObject(), $event->getRequest()];
+            $obj = $event->getObject();
+            $request = $event->getRequest();
             $data = ['route' => $request->getCurrentRoute(), 'routeInfo' => $request->getRouteInfoAsUri()];
             $tag = $request->debugTag(get_class($obj) . ' #postDispatch');
             static::consoleDebug($data, $tag, 1);
@@ -122,7 +145,7 @@ abstract class AbstractBoot
             $layout = $obj->_getLayout();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
             unset($params['action_content']);
-            $data = ['params' => $params, 'tpl_path' => $tpl_path];
+            $data = ['params' => self::tryFixParams($params), 'tpl_path' => $tpl_path];
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #preDisplay' . (!empty($layout) ? "[{$file_name} #{$layout}]" : ''));
             static::consoleDebug($data, $tag, 1);
         });  // 注册 模版渲染 打印模版变量  用于调试
@@ -132,7 +155,7 @@ abstract class AbstractBoot
             $params = $event->getViewArgs();
             $tpl_path = $event->getViewFile();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
-            $data = ['params' => $params, 'tpl_path' => $tpl_path];
+            $data = ['params' => self::tryFixParams($params), 'tpl_path' => $tpl_path];
             $tag = $obj->getRequest()->debugTag(get_class($obj) . " #preWidget [{$file_name}]");
             static::consoleDebug($data, $tag, 1);
         });  // 注册 组件渲染 打印组件变量  用于调试
@@ -165,6 +188,23 @@ abstract class AbstractBoot
             $time_str = round($time, 3) * 1000;
             static::consoleDebug([$sql_str, $args], "[SQL] {$_tag} <{$time_str}ms>", 1);
         });
+    }
+
+    protected static function tryFixParams($params)
+    {
+        $ret = [];
+        foreach ($params as $key => $item) {
+            if (is_object($item)) {
+                if (is_callable([$item, 'toArray'])) {
+                    $ret[$key] = call_user_func_array([$item, 'toArray'], []);
+                } else {
+                    $ret[$key] = $item;
+                }
+            } else {
+                $ret[$key] = $item;
+            }
+        }
+        return $ret;
     }
 
 }

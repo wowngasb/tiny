@@ -238,6 +238,23 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     }
 
     /**
+     * 设置 session 保存 句柄
+     * @param \SessionHandlerInterface $sessionhandler
+     * @param bool $register_shutdown
+     * @return RequestInterface
+     */
+    public function session_set_save_handler(\SessionHandlerInterface $sessionhandler, $register_shutdown = true)
+    {
+        session_set_save_handler($sessionhandler, $register_shutdown);
+        return $this;
+    }
+
+    function session_name($name = null)
+    {
+        return !empty($name) ? session_name($name) : session_name();
+    }
+
+    /**
      * 启用 session
      * @return StdRequest
      */
@@ -262,7 +279,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function session_id($id = null)
     {
-        return $this->_session_started && !empty($id) ? session_id($id) : null;
+        return !empty($id) ? session_id($id) : session_id();
     }
 
     /**

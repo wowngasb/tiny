@@ -156,6 +156,16 @@ interface RequestInterface
     public function session_start();
 
     /**
+     * 设置 session 保存 句柄
+     * @param \SessionHandlerInterface $sessionhandler
+     * @param bool $register_shutdown
+     * @return RequestInterface
+     */
+    public function session_set_save_handler(\SessionHandlerInterface $sessionhandler, $register_shutdown = true);
+
+    public function session_name($name = null);
+
+    /**
      * @param null $id
      * @return null|string
      */

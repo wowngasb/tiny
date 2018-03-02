@@ -309,7 +309,7 @@ trait CacheTrait
         }
 
         //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
-        if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log);
             return $val['data'];
         }
@@ -505,7 +505,7 @@ trait CacheTrait
             }
         }
 
-        if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log);
             return $val['data'];
         }

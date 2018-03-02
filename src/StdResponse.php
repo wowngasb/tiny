@@ -282,8 +282,8 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function json($data = [], $status = 200, array $headers = [], $options = 0)
     {
-        if (is_string($data)) {
-            $json_str = $data;
+        if (is_string($data) || is_integer($data) || is_double($data)) {
+            $json_str = "$data";
         } elseif ($data instanceof JsonSerializable) {
             $json_str = json_encode($data, $options);
         } elseif (is_callable([$data, 'toArray'])) {
@@ -392,10 +392,10 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function sendHeader()
     {
-        if( !empty($this->_body['_json']) ){
+        if (!empty($this->_body['_json'])) {
             $this->addHeader('Content-Type:application/json');
         }
-        if( !empty($this->_body['_jsonp']) ){
+        if (!empty($this->_body['_jsonp'])) {
             $this->addHeader('Content-Type:application/javascript');
         }
         if (!$this->_header_sent) {

@@ -81,7 +81,12 @@ abstract class AbstractContext extends AbstractClass
     public function _has($name)
     {
         $tmp = $this->all_request();
-        return isset($tmp[$name]);
+        $value = isset($tmp[$name]) ? $tmp[$name] : '';
+        $boolOrArray = is_bool($value) || is_array($value);
+        if(!$boolOrArray && trim((string)$value) === ''){
+            return false;
+        }
+        return true;
     }
 
     public function set_get($name, $val)
@@ -249,7 +254,8 @@ abstract class AbstractContext extends AbstractClass
         return $this->_request->path();
     }
 
-    public function fullUrl(){
+    public function fullUrl()
+    {
         return $this->_request->full();
     }
 

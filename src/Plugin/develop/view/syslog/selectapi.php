@@ -13,8 +13,46 @@
     <link href="http://g.alicdn.com/bui/bui/1.1.21/css/bs3/dpl.css" rel="stylesheet">
     <link href="http://g.alicdn.com/bui/bui/1.1.21/css/bs3/bui.css" rel="stylesheet">
     <link href="http://g.tbcdn.cn/fi/bui/css/layout-min.css" rel="stylesheet">
-    <link href="http://help.aodianyun.com/css/tomorrow.min.css" rel="stylesheet">
     <style type="text/css">
+
+        pre {
+            background:#fff;
+            border:#d8d8d8 1px solid;
+            padding:.5em;
+        }
+        .hljs-comment,.hljs-title {
+            color:#8e908c
+        }
+        .hljs-variable,.hljs-attribute,.hljs-tag,.hljs-regexp,.ruby .hljs-constant,.xml .hljs-tag .hljs-title,.xml .hljs-pi,.xml .hljs-doctype,.html .hljs-doctype,.css .hljs-id,.css .hljs-class,.css .hljs-pseudo {
+            color:#c82829
+        }
+        .hljs-number,.hljs-preprocessor,.hljs-pragma,.hljs-built_in,.hljs-literal,.hljs-params,.hljs-constant {
+            color:#f5871f
+        }
+        .ruby .hljs-class .hljs-title,.css .hljs-rules .hljs-attribute {
+            color:#eab700
+        }
+        .hljs-string,.hljs-value,.hljs-inheritance,.hljs-header,.ruby .hljs-symbol,.xml .hljs-cdata {
+            color:#718c00
+        }
+        .css .hljs-hexcolor {
+            color:#3e999f
+        }
+        .hljs-function,.python .hljs-decorator,.python .hljs-title,.ruby .hljs-function .hljs-title,.ruby .hljs-title .hljs-keyword,.perl .hljs-sub,.javascript .hljs-title,.coffeescript .hljs-title {
+            color:#4271ae
+        }
+        .hljs-keyword,.javascript .hljs-function {
+            color:#8959a8
+        }
+        .hljs {
+            display:block;
+            background:white;
+            color:#4d4d4c;
+        }
+        .coffeescript .javascript,.javascript .xml,.tex .hljs-formula,.xml .javascript,.xml .vbscript,.xml .css,.xml .hljs-cdata {
+            opacity:.5
+        }
+
         .demo-content{
             margin-left: 10px;
             margin-top: 10px;
@@ -23,9 +61,9 @@
     <script src="http://g.tbcdn.cn/fi/bui/jquery-1.8.1.min.js"></script>
     <script src="http://g.alicdn.com/bui/seajs/2.3.0/sea.js"></script>
     <script src="http://g.alicdn.com/bui/bui/1.1.21/config.js"></script>
-    <script src="http://help.aodianyun.com/js/highlight.min.js"></script>
-    <script src="http://help.aodianyun.com/js/highlight.min.js"></script>
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
     <script src="http://cdn.bootcss.com/json2/20150503/json2.min.js"></script>
+
 </head>
 <body>
 <div class="demo-content">

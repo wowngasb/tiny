@@ -220,6 +220,11 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         return $this;
     }
 
+    public function getAllRoute()
+    {
+        return $this->_routers;
+    }
+
     /**
      * 根据 名字 获取 路由  default 会返回 $this
      * @param string $route
@@ -466,15 +471,8 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         // if not set config ROOT_PATH, try find root by "root\vendor\wowngasb\tiny\src\"
         $path = self::config('ROOT_PATH', '');
         $path = !empty($path) ? $path : dirname(dirname(dirname(dirname(__DIR__))));
-        while (Util::str_endwith($path, $seq)) {
-            $path = substr($path, 0, -strlen($seq));
-        }
-        $add_path = Util::joinNotEmpty($seq, $paths);
-        while (Util::str_endwith($add_path, $seq)) {
-            $add_path = substr($add_path, 0, -strlen($seq));
-        }
-        $last_seq = $add_last ? $seq : '';
-        return empty($add_path) ? "{$path}{$last_seq}" : "{$path}{$seq}{$add_path}{$last_seq}";
+
+        return Util::path_join($path, $paths, $add_last, $seq);
     }
 
     public static function cache_path(array $paths = [], $add_last = true, $seq = DIRECTORY_SEPARATOR)
@@ -484,15 +482,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
         if (empty($path)) {
             $path = static::path(['cache'], true, $seq);
         }
-        while (Util::str_endwith($path, $seq)) {
-            $path = substr($path, 0, -strlen($seq));
-        }
-        $add_path = Util::joinNotEmpty($seq, $paths);
-        while (Util::str_endwith($add_path, $seq)) {
-            $add_path = substr($add_path, 0, -strlen($seq));
-        }
-        $last_seq = $add_last ? $seq : '';
-        return empty($add_path) ? "{$path}{$last_seq}" : "{$path}{$seq}{$add_path}{$last_seq}";
+        return Util::path_join($path, $paths, $add_last, $seq);
     }
 
     /**

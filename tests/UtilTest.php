@@ -18,6 +18,60 @@ class UtilTest extends BaseNothingTest
 
     use PHPMock;
 
+    public function test_split_seq()
+    {
+        Util::split_seq('12345678');
+        $_func = self::_buildFunc(__METHOD__);
+        $test_data = [
+            [
+                'args' => [
+                    '12345678',
+                ],
+                'return' => '12,345,678'
+            ], [
+                'args' => [
+                    12345678,
+                ],
+                'return' => '12,345,678'
+            ], [
+                'args' => [
+                    123,
+                ],
+                'return' => '123'
+            ], [
+                'args' => [
+                    'abcdefg',
+                ],
+                'return' => 'a,bcd,efg'
+            ], [
+                'args' => [
+                    'abcdefg', 3, ' '
+                ],
+                'return' => 'a bcd efg'
+            ], [
+                'args' => [
+                    'abcdefg', 3, ''
+                ],
+                'return' => 'abcdefg'
+            ], [
+                'args' => [
+                    '中华人民共和国',
+                ],
+                'return' => '中,华人民,共和国'
+            ], [
+                'args' => [
+                    '12345678', 4
+                ],
+                'return' => '1234,5678'
+            ],
+        ];
+        foreach ($test_data as $test_item) {
+            $item = $test_item['args'];
+            $tmp = call_user_func_array([static::$_class, $_func], $item);
+            PHPUnit_Framework_Assert::assertEquals($test_item['return'], $tmp, static::_buildMsg($_func, $item, $tmp));
+        }
+    }
+
     public function test_deep_merge()
     {
         Util::deep_merge(['a' => 1], ['b' => 2]);

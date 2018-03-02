@@ -23,6 +23,7 @@ class where extends AbstractQuery
      */
     public function __construct($value, $operator = '=', callable $filter = null)
     {
+        $operator = strtolower(trim($operator));
         $this->operator = !empty(self::$_allow_operator[$operator]) ? $operator : '=';
         $this->value = $value;
 

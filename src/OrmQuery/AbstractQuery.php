@@ -16,12 +16,14 @@ abstract class AbstractQuery
 
     protected static $_allow_operator = [
         '=' => 1,
+        '!=' => 1,
         '>' => 1,
         '<' => 1,
         '>=' => 1,
         '<=' => 1,
         '<>' => 1,
         'like' => 1,
+        'LIKE' => 1,
     ];
 
     protected $_filter = null;

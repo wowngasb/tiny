@@ -100,6 +100,9 @@ class ApiDispatch extends AbstractDispatch
         try {
             /** @var AbstractApi $context */
             $result = call_user_func_array([$context, $action], $params);
+            if(is_object($result) && is_callable([$result, 'toArray'])){
+                $result = call_user_func_array([$result, 'toArray'], []);
+            }
             if (!isset($result['code'])) {
                 $result['code'] = 0;
             }

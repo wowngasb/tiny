@@ -131,4 +131,12 @@ class FastRoute implements RouteInterface
         return call_user_func_array($this->_buildUrl, [$schema, $host, $routeInfo, $params]);
     }
 
+    /**
+     * @return string
+     */
+    public function getCacheFile()
+    {
+        return $this->_cache_file;
+    }
+
 }

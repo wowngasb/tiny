@@ -13,139 +13,103 @@ use Tiny\Abstracts\AbstractClass;
 abstract class Util extends AbstractClass
 {
 
-    public static function prepare_query($query, $params)
-    {
-        $keys = [];
-        $values = [];
+    ##########################
+    ######## 辅助测试 ########
+    ##########################
 
-        # build a regular expression for each parameter
-        foreach ($params as $key => $value) {
-            if (is_string($key)) {
-                $keys[] = '/:' . $key . '/';
-            } else {
-                $keys[] = '/[?]/';
-            }
-            if (is_numeric($value)) {
-                $values[] = intval($value);
-            } else {
-                $values[] = '"' . $value . '"';
-            }
-        }
-        $query = preg_replace($keys, $values, $query, 1, $count);
-        return $query;
+    public static function _class()
+    {
+        return static::class;
     }
 
+    public static function _namespace()
+    {
+        return __NAMESPACE__;
+    }
+
+
+    ##########################
+    ######## 目录处理 ########
+    ##########################
+
     /**
-     * @param mixed $ex
+     * 遍历文件夹 得到目录结构
+     * @param string $path
      * @param string $base_path
      * @return array
      */
-    public static function trace_exception($ex, $base_path = '')
+    public static function treePath($path, $base_path = '')
     {
-        if (empty($ex) || !$ex instanceof \Exception) {
+        if (empty($base_path)) {
+            $base_path = $path;
+        }
+        if (!is_dir($path) || !is_readable($path)) {
             return [];
         }
-        $traces = $ex->getTrace();
-        $_file = $ex->getFile();
-        $_line = $ex->getLine();
 
-        $ret = [];
-        foreach ($traces as $trace) {
-            list($args, $class, $file, $function, $line, $type) = Util::vl($trace, [
-                'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
-            ]);
-            $arg_list = [];
-            foreach ($args as $arg) {
-                $arg_list[] = static::dump_val($arg);
+        $result = [];
+        $temp = [];
+        $allfiles = scandir($path);  //获取目录下所有文件与文件夹
+        foreach ($allfiles as $key => $filename) {  //遍历一遍目录下的文件与文件夹
+            if ($filename == '.' || $filename == '..') {
+                continue;
             }
-            $args_str = join(',', $arg_list);
-            $file_str = !empty($base_path) ? str_replace($base_path, '', $file) : $file;
-            $class_str = !empty($class) ? "{$class}{$type}" : '';
-            $ret[] = [
-                'file_str' => $file_str,
-                'line' => $line,
-                'class_str' => $class_str,
-                'function' => $function,
-                'args_str' => $args_str,
+            $fullname = $path . '/' . $filename;  //得到完整文件路径
+            $file_item = [
+                'name' => $filename,
+                'fullname' => $fullname,
+                'ctime' => filectime($fullname),
+                'mtime' => filemtime($fullname),
+                'path' => str_replace($base_path, '', $fullname),
             ];
-        }
-        return $ret;
-    }
-
-
-    public static function dump_val($data, $is_short = false)
-    {
-        $type = gettype($data);
-        switch ($type) {
-            case 'NULL':
-                return 'null';
-            case 'boolean':
-                return ($data ? 'true' : 'false');
-            case 'integer':
-            case 'double':
-            case 'float':
-                return $data;
-            case 'string':
-                return '"' . addslashes($data) . '"';
-            case 'object':
-                $class = get_class($data);
-                return "{$class}";
-            case 'array':
-                if ($is_short) {
-                    return "<Array>";
+            if (is_dir($fullname)) { //是目录的话继续递归
+                $file_item['type'] = 'dir';
+                $file_item['sub'] = self::treePath($fullname, $base_path);
+                $file_item['size'] = 0;
+                foreach ($file_item['sub'] as $k => $v) {
+                    $file_item['size'] += $v['size'];
                 }
-                $output_index_count = 0;
-                $output_indexed = array();
-                $output_associative = array();
-                $idx = 0;
-                foreach ($data as $key => $value) {
-                    if ($idx >= 5) {
-                        $output_indexed[] = '...';
-                        $output_associative[] = '...';
-                        break;
-                    }
-                    $output_indexed[] = static::dump_val($value, true);
-                    $output_associative[] = static::dump_val($key, true) . ':' . static::dump_val($value, true);
-                    if ($output_index_count !== NULL && $output_index_count++ !== $key) {
-                        $output_index_count = NULL;
-                    }
-                    $idx += 1;
-                }
-                if ($output_index_count !== NULL) {
-                    return '[' . implode(',', $output_indexed) . ']';
-                } else {
-                    return '{' . implode(',', $output_associative) . '}';
-                }
-            default:
-                return '<object>'; // Not supported
-        }
-    }
-
-    public static function assoc_array(array $var)
-    {
-        return empty ($var) || array_keys($var) === range(0, sizeof($var) - 1);
-    }
-
-    public static function deep_merge(array $arr1, array $arr2)
-    {
-        if (static::assoc_array($arr1) || static::assoc_array($arr2)) {
-            return array_merge($arr1, $arr2);
-        }
-        foreach ($arr1 as $key => $item) {
-            if (isset($arr2[$key])) {
-                if (is_array($item) && is_array($arr2[$key])) {
-                    $arr1[$key] = static::deep_merge($item, $arr2[$key]);
-                } else {
-                    $arr1[$key] = $arr2[$key];
-                }
+                $result[] = $file_item;
+            } else if (is_file($fullname)) {
+                $file_item['type'] = 'file';
+                $file_item['size'] = filesize($fullname);
+                $temp[] = $file_item;
             }
         }
-        foreach ($arr2 as $key => $item) {
-            if (!isset($arr1[$key])) {
-                $arr1[$key] = $item;
-            }
+
+        foreach ($temp as $key => $tmp) {
+            $result[] = $tmp; //这样可以让文件夹排前面，文件在后面
         }
-        return $arr1;
+        return $result;
+    }
+
+    public static function load_git_ver($base_path)
+    {
+        $git_head = static::path_join($base_path, ['.git', 'HEAD'], false);
+        $git_ref = is_file($git_head) && is_readable($git_head) ? trim(file_get_contents($git_head)) : '';
+        $git_arr = explode(':', $git_ref);
+        $ref_type = trim($git_arr[0]);
+        $ref_file = trim($git_arr[1]);
+        $git_sha = static::path_join($base_path, ['.git', $ref_file], false);
+        $git_ver = is_file($git_sha) && is_readable($git_sha) ? trim(file_get_contents($git_sha)) : '';
+        return [
+            'git_ref' => $git_ref,
+            'ref_type' => $ref_type,
+            'git_ver' => $git_ver,
+        ];
+    }
+
+    public static function path_join($base_path, array $paths = [], $add_last = true, $seq = DIRECTORY_SEPARATOR)
+    {
+        while (static::str_endwith($base_path, $seq)) {
+            $base_path = substr($base_path, 0, -strlen($seq));
+        }
+        $add_path = static::joinNotEmpty($seq, $paths);
+        while (static::str_endwith($add_path, $seq)) {
+            $add_path = substr($add_path, 0, -strlen($seq));
+        }
+        $last_seq = $add_last ? $seq : '';
+        return empty($add_path) ? "{$base_path}{$last_seq}" : "{$base_path}{$seq}{$add_path}{$last_seq}";
     }
 
     public static function file_name($path)
@@ -169,119 +133,28 @@ abstract class Util extends AbstractClass
         return $path;
     }
 
-
-    public static function dsl($str, $split = '#', $kv = '=')
+    public static function mkdir_r($dir, $rights = 666)
     {
-        list($str, $split, $kv) = [trim($str), trim($split), trim($kv)];
-        if (empty($str)) {
-            return [
-                'base' => $str,
-                'args' => [],
-            ];
+        if (!is_dir($dir)) {
+            static::mkdir_r(dirname($dir), $rights);
+            mkdir($dir, $rights);
         }
-
-        $matchs = [];
-        $reg = "/{$split}([A-Za-z0-9_]+){$kv}([A-Za-z0-9_]*)/";
-        preg_match_all($reg, $str, $matchs);
-        $args = [];
-        foreach ($matchs[0] as $item) {
-            $str = str_replace($item, '', $str);
-        }
-
-        foreach ($matchs[1] as $idx => $key) {
-            $val = $matchs[2][$idx];
-            $args[$key] = is_numeric($val) ? ($val + 0) : $val;
-        }
-        return [
-            'base' => $str,
-            'args' => $args,
-        ];
     }
 
-    public static function _class()
+    public static function getfiles($path, array $last = [])
     {
-        return static::class;
-    }
-
-    public static function _namespace()
-    {
-        return __NAMESPACE__;
-    }
-
-    public static function split_seq($str, $skip = 3, $seq = ',')
-    {
-        $str = strval($str);
-        $str_len = static::utf8_strlen($str);
-        if ($str_len <= $skip) {
-            return $str;
+        foreach (scandir($path) as $afile) {
+            if ($afile == '.' || $afile == '..') {
+                continue;
+            }
+            $_path = "{$path}/{$afile}";
+            if (is_dir($_path)) {
+                $last = array_merge($last, static::getfiles($_path, $last));
+            } else if (is_file($_path)) {
+                $last[$_path] = $afile;
+            }
         }
-
-        $char_list = [];
-        for ($idx = 0; $idx < $str_len; $idx++) {
-            $char_list[] = static::utf8_substr($str, $idx, 1);
-        }
-        $char_list = array_reverse($char_list);
-        $out_list = [];
-        foreach ($char_list as $idx => $char) {
-            $out_list[] = $idx > 0 && $idx % $skip == 0 ? "{$char}{$seq}" : $char;
-        }
-        return join('', array_reverse($out_list));
-    }
-
-    public static function utf8_substr($str, $start, $length = null, $suffix = "")
-    {
-        if (is_null($length)) {
-            $length = static::utf8_strlen($str) - $start;
-        }
-        if (function_exists("mb_substr")) {
-            $slice = mb_substr($str, $start, $length, "utf-8");
-        } elseif (function_exists('iconv_substr')) {
-            $slice = iconv_substr($str, $start, $length, "utf-8");
-        } else {
-            $re = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xff][\x80-\xbf]{3}/";
-            preg_match_all($re, $str, $match);
-            $slice = join("", array_slice($match[0], $start, $length));
-        }
-        return $slice . (static::utf8_strlen($slice) < static::utf8_strlen($str) ? $suffix : '');
-    }
-
-    /**
-     * 获取某年某月最大天数
-     * @param int $year 年
-     * @param int $month 月
-     * @return int 最大天数
-     */
-    public static function max_days($year, $month)
-    {
-        return $month == 2 ? ($year % 4 != 0 ? 28 : ($year % 100 != 0 ? 29 : ($year % 400 != 0 ? 28 : 29))) : (($month - 1) % 7 % 2 != 0 ? 30 : 31);
-    }
-
-    /**
-     * 20120304 日期转为时间戳
-     * @param int $per_day
-     * @return false|int
-     */
-    public static function intday2time($per_day)
-    {
-        $per_day = intval($per_day);
-        $month = floor($per_day / 100) % 100;
-        $day = $per_day % 100;
-        $year = floor($per_day / 10000);
-        return mktime(0, 0, 0, $month, $day, $year);
-    }
-
-    public static function url_query($url, $need)
-    {
-        $tmp = "{$need}=";
-        $idx = strpos($url, $tmp);
-        if (empty($idx)) {
-            return '';
-        }
-        $idx += strlen($tmp);
-        $end = strpos($url, '&', $idx);
-        $len = ($end > $idx) ? $end - $idx : strlen($url) - $idx;
-        $rst = substr($url, $idx, $len);
-        return urldecode($rst);
+        return $last;
     }
 
     public static function mime_content_type($filename)
@@ -356,6 +229,144 @@ abstract class Util extends AbstractClass
         }
     }
 
+    ##########################
+    ######## SQL处理 ########
+    ##########################
+
+    public static function prepare_query($query, $params)
+    {
+        $keys = [];
+        $values = [];
+
+        # build a regular expression for each parameter
+        foreach ($params as $key => $value) {
+            if (is_string($key)) {
+                $keys[] = '/:' . $key . '/';
+            } else {
+                $keys[] = '/[?]/';
+            }
+            if (is_numeric($value)) {
+                $values[] = intval($value);
+            } else {
+                $values[] = '"' . $value . '"';
+            }
+        }
+        $query = preg_replace($keys, $values, $query, 1, $count);
+        return $query;
+    }
+
+    ##########################
+    ######## 异常处理 ########
+    ##########################
+
+    /**
+     * @param mixed $ex
+     * @param string $base_path
+     * @return array
+     */
+    public static function trace_exception($ex, $base_path = '')
+    {
+        if (empty($ex) || !$ex instanceof \Exception) {
+            return [];
+        }
+        $traces = $ex->getTrace();
+        $_file = $ex->getFile();
+        $_line = $ex->getLine();
+
+        $ret = [];
+        foreach ($traces as $trace) {
+            $need = Util::vl($trace, [
+                'args' => [], 'class' => '', 'file' => $_file, 'function' => 'unknown_func', 'line' => $_line, 'type' => '::'
+            ]);
+            list($args, $class, $file, $function, $line, $type) = [
+                $need['args'], $need['class'], $need['file'], $need['function'], $need['line'], $need['type']
+            ];
+            $arg_list = [];
+            if (!empty($args)) {
+                foreach ($args as $arg) {
+                    $arg_list[] = static::dump_val($arg);
+                }
+            }
+            $args_str = join(',', $arg_list);
+            $file_str = !empty($base_path) ? str_replace($base_path, '', $file) : $file;
+            $class_str = !empty($class) ? "{$class}{$type}" : '';
+            $ret[] = [
+                'file_str' => $file_str,
+                'line' => $line,
+                'class_str' => $class_str,
+                'function' => $function,
+                'args_str' => $args_str,
+            ];
+        }
+        return $ret;
+    }
+
+    public static function trace_fix(array $trace_list, array $fix_replace)
+    {
+        $search = array_keys($fix_replace);
+        $replace = array_values($fix_replace);
+        foreach ($trace_list as &$trace) {
+            $args_str = !empty($trace['args_str']) ? $trace['args_str'] : '';
+            if (!empty($args_str)) {
+                $args_str = str_replace($search, $replace, $args_str);
+            }
+            $trace['args_str'] = $args_str;
+        }
+        return $trace_list;
+    }
+
+    ##########################
+    ######## 打印变量 ########
+    ##########################
+
+    public static function dump_val($data, $is_short = false, $max_item = 5)
+    {
+        $type = gettype($data);
+        switch ($type) {
+            case 'NULL':
+                return 'null';
+            case 'boolean':
+                return ($data ? 'true' : 'false');
+            case 'integer':
+            case 'double':
+            case 'float':
+                return $data;
+            case 'string':
+                return '"' . addslashes($data) . '"';
+            case 'object':
+                $class = get_class($data);
+                return "{$class}";
+            case 'array':
+                if ($is_short) {
+                    return "<Array>";
+                }
+                $output_index_count = 0;
+                $output_indexed = array();
+                $output_associative = array();
+                $idx = 0;
+                foreach ($data as $key => $value) {
+                    if ($idx >= $max_item) {
+                        $output_indexed[] = '...';
+                        $output_associative[] = '...';
+                        break;
+                    }
+                    $output_indexed[] = static::dump_val($value, true);
+                    $output_associative[] = static::dump_val($key, true) . ':' . static::dump_val($value, true);
+                    if ($output_index_count !== NULL && $output_index_count++ !== $key) {
+                        $output_index_count = NULL;
+                    }
+                    $idx += 1;
+                }
+                if ($output_index_count !== NULL) {
+                    return '[' . implode(',', $output_indexed) . ']';
+                } else {
+                    return '{' . implode(',', $output_associative) . '}';
+                }
+            default:
+                return '<object>'; // Not supported
+        }
+    }
+
     public static function jsonEncode($var)
     {
         if (function_exists('json_encode')) {
@@ -398,28 +409,36 @@ abstract class Util extends AbstractClass
         }
     }
 
-    public static function mkdir_r($dir, $rights = 666)
-    {
-        if (!is_dir($dir)) {
-            static::mkdir_r(dirname($dir), $rights);
-            mkdir($dir, $rights);
-        }
-    }
+    ##########################
+    ######## DSL处理 ########
+    ##########################
 
-    public static function getfiles($path, array $last = [])
+    public static function dsl($str, $split = '#', $kv = '=')
     {
-        foreach (scandir($path) as $afile) {
-            if ($afile == '.' || $afile == '..') {
-                continue;
-            }
-            $_path = "{$path}/{$afile}";
-            if (is_dir($_path)) {
-                $last = array_merge($last, static::getfiles($_path, $last));
-            } else if (is_file($_path)) {
-                $last[$_path] = $afile;
-            }
+        list($str, $split, $kv) = [trim($str), trim($split), trim($kv)];
+        if (empty($str)) {
+            return [
+                'base' => $str,
+                'args' => [],
+            ];
         }
-        return $last;
+
+        $matchs = [];
+        $reg = "/{$split}([A-Za-z0-9_]+){$kv}([A-Za-z0-9_]*)/";
+        preg_match_all($reg, $str, $matchs);
+        $args = [];
+        foreach ($matchs[0] as $item) {
+            $str = str_replace($item, '', $str);
+        }
+
+        foreach ($matchs[1] as $idx => $key) {
+            $val = $matchs[2][$idx];
+            $args[$key] = is_numeric($val) ? ($val + 0) : $val;
+        }
+        return [
+            'base' => $str,
+            'args' => $args,
+        ];
     }
 
     ##########################
@@ -427,7 +446,78 @@ abstract class Util extends AbstractClass
     ##########################
 
     /**
-     * 从一个数组中提取需要的key  缺失的key设置为空字符串
+     * 根据一个 数组的 值 构建一个 字典 常用于去重或判断是否存在
+     * @param array $list 需要值为 string
+     * @return array 字典 hash
+     */
+    public static function build_map(array $list)
+    {
+        $map = [];
+        foreach ($list as $item) {
+            $map[$item] = 1;
+        }
+        return $map;
+    }
+
+    /**
+     * 判断一个 数组 为 list 还是 hash
+     * @param array $var
+     * @return bool  list 返回 true
+     */
+    public static function assoc_array(array $var)
+    {
+        return empty($var) || array_keys($var) === range(0, sizeof($var) - 1);
+    }
+
+    /**
+     * 深度合并两个数组 优先使用第二个的值覆盖第一个
+     * @param array $arr1
+     * @param array $arr2
+     * @return array
+     */
+    public static function deep_merge(array $arr1, array $arr2)
+    {
+        if (static::assoc_array($arr1) || static::assoc_array($arr2)) {
+            return array_merge($arr1, $arr2);
+        }
+        foreach ($arr1 as $key => $item) {
+            if (isset($arr2[$key])) {
+                if (is_array($item) && is_array($arr2[$key])) {
+                    $arr1[$key] = static::deep_merge($item, $arr2[$key]);
+                } else {
+                    $arr1[$key] = $arr2[$key];
+                }
+            }
+        }
+        foreach ($arr2 as $key => $item) {
+            if (!isset($arr1[$key])) {
+                $arr1[$key] = $item;
+            }
+        }
+        return $arr1;
+    }
+
+    /**
+     * 把数组 key 都转为 小写  后面的 key 可能覆盖前面的
+     * @param array $data
+     * @return array
+     */
+    public static function lower_key(array $data)
+    {
+        $rst = [];
+        foreach ($data as $key => $item) {
+            $key = static::trimlower($key);
+            $rst[$key] = $item;
+        }
+        return $rst;
+    }
+
+    ##########################
+    ######## 取值处理 ########
+    ##########################
+
+    /**
+     * 从一个数组中提取需要的key  缺失的key设置为默认值  常用于修复一个数组
      * @param array $arr 原数组
      * @param array $need 需要的key 列表
      * @param string $default 默认值
@@ -443,10 +533,10 @@ abstract class Util extends AbstractClass
     }
 
     /**
-     * 过滤列表的每一个元素  取出需要的key
+     * 过滤列表的每一个元素  取出需要的key  常用于精简列表
      * @param array $list 列表 每行为一个数组
      * @param array $need 需要的 keys 列表
-     * @return array
+     * @return array  筛选过后的 list
      */
     public static function filter_list(array $list, array $need)
     {
@@ -467,9 +557,8 @@ abstract class Util extends AbstractClass
         return $ret;
     }
 
-
     /**
-     * 获取一个数组的指定键值 未设置则使用 默认值
+     * 获取一个数组的指定键值 未设置则使用 默认值  常用于获取单个值
      * @param array $val
      * @param string $key
      * @param mixed $default 默认值 默认为 null
@@ -480,11 +569,17 @@ abstract class Util extends AbstractClass
         return isset($val[$key]) ? $val[$key] : $default;
     }
 
+    /**
+     * 获取一个数组的  多个指定键值 未设置则使用 默认值  常用于一次获取多个值
+     * @param array $val 数据源 数组
+     * @param array $keys 建 默认值 数组 格式为 [key => default, ...]
+     * @return array  key 的关联数组
+     */
     public static function vl(array $val, array $keys)
     {
         $ret = [];
         foreach ($keys as $key => $default) {
-            $ret[] = static::v($val, $key, $default);
+            $ret[$key] = static::v($val, $key, $default);
         }
         return $ret;
     }
@@ -492,6 +587,31 @@ abstract class Util extends AbstractClass
     ##########################
     ######## 时间处理 ########
     ##########################
+
+    /**
+     * 获取某年某月最大天数
+     * @param int $year 年
+     * @param int $month 月
+     * @return int 最大天数
+     */
+    public static function max_days($year, $month)
+    {
+        return $month == 2 ? ($year % 4 != 0 ? 28 : ($year % 100 != 0 ? 29 : ($year % 400 != 0 ? 28 : 29))) : (($month - 1) % 7 % 2 != 0 ? 30 : 31);
+    }
+
+    /**
+     * 20120304 日期转为时间戳
+     * @param int $per_day
+     * @return false|int
+     */
+    public static function intday2time($per_day)
+    {
+        $per_day = intval($per_day);
+        $month = floor($per_day / 100) % 100;
+        $day = $per_day % 100;
+        $year = floor($per_day / 10000);
+        return mktime(0, 0, 0, $month, $day, $year);
+    }
 
     /**
      * 在指定时间 上添加N个月的日期字符串
@@ -560,8 +680,8 @@ abstract class Util extends AbstractClass
     }
 
     /**
-     * 计算两个时间戳的差值 字符串
-     * @param $c
+     * 计算两个时间戳的差值 返回 字符串
+     * @param int $c
      * @return string 时间差 xx小时xx分xx秒
      */
     public static function interval2str($c)
@@ -578,8 +698,76 @@ abstract class Util extends AbstractClass
     }
 
     ##########################
+    ######## 字符串生成 ########
+    ##########################
+
+    /**
+     * @param int $length
+     * @return string
+     */
+    public static function rand_str($length)
+    {
+        if ($length <= 0) {
+            return '';
+        }
+        $str = '';
+        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        $max = strlen($tmp_str) - 1;
+        for ($i = 0; $i < $length; $i++) {
+            $str .= $tmp_str[rand(0, $max)];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
+        }
+        return $str;
+    }
+
+    public static function short_hash($input, $length = 8)
+    {
+        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        $max = strlen($tmp_str) - 1;
+        $cmp_int = $max * $max * $length * $length;
+        $str = '';
+        $hash_int = abs(crc32($input)) + abs(crc32(md5($input)));
+        while (strlen($str) < $length) {
+            $idx = $hash_int % $max;
+            $str .= $tmp_str[$idx];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
+            $hash_int = intval($hash_int / $max);
+            if ($hash_int < $cmp_int * strlen($str)) {
+                $hash_int += abs(crc32("{$input}_{$str}"));
+            }
+        }
+        return $str;
+    }
+
+    ##########################
     ######## 字符串处理 ########
     ##########################
+
+    /**
+     * 把一个字符串 每隔几个字母 插入分隔符
+     * 常用于 大额数字显示 如  12345678  处理为   12,345,678
+     * @param string $str
+     * @param int $skip
+     * @param string $seq
+     * @return string
+     */
+    public static function split_seq($str, $skip = 3, $seq = ',')
+    {
+        $str = strval($str);
+        $str_len = static::utf8_strlen($str);
+        if ($str_len <= $skip) {
+            return $str;
+        }
+
+        $char_list = [];
+        for ($idx = 0; $idx < $str_len; $idx++) {
+            $char_list[] = static::utf8_substr($str, $idx, 1);
+        }
+        $char_list = array_reverse($char_list);
+        $out_list = [];
+        foreach ($char_list as $idx => $char) {
+            $out_list[] = $idx > 0 && $idx % $skip == 0 ? "{$char}{$seq}" : $char;
+        }
+        return join('', array_reverse($out_list));
+    }
 
     /**
      * 检查字符串是否包含指定关键词
@@ -740,8 +928,94 @@ abstract class Util extends AbstractClass
     }
 
     ##########################
+    ######## 过滤相关 ########
+    ##########################
+
+    /**
+     * xss 清洗数组 尝试对数组中特定字段进行处理
+     * @param array $data
+     * @param array $keys
+     * @return array 清洗后的数组
+     */
+    public static function xss_filter(array $data, array $keys)
+    {
+        foreach ($keys as $key) {
+            if (!empty($data[$key]) && is_string($data[$key])) {
+                $data[$key] = static::xss_clean($data[$key]);
+            }
+        }
+        return $data;
+    }
+
+    public static function safe_str($str)
+    {
+        $safe_chars = str_split('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_');
+        $safe_map = self::build_map($safe_chars);
+        $chars = self::utf8_str_split($str);
+        $ret_list = [];
+        foreach ($chars as $char) {
+            if (!empty($safe_map[$char])) {
+                $ret_list[] = $char;
+            }
+        }
+        return join('', $ret_list);
+    }
+
+    /**
+     * xss 过滤函数 清洗字符串
+     * @param string $val
+     * @return string
+     */
+    public static function xss_clean($val)
+    {
+        $val = preg_replace('/([\x00-\x09,\x0a-\x0c,\x0e-\x19])/', '', $val);
+        $search = <<<EOT
+abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()~`";:?+/={}[]-_|'\<>
+EOT;
+
+        for ($i = 0; $i < strlen($search); $i++) {
+            // @ @ search for the hex values
+            $val = preg_replace('/(&#[xX]0{0,8}' . dechex(ord($search[$i])) . ';?)/i', $search[$i], $val); // with a ;
+            // @ @ 0{0,7} matches '0' zero to seven times
+            $val = preg_replace('/(&#0{0,8}' . ord($search[$i]) . ';?)/', $search[$i], $val); // with a ;
+        }
+        $val = preg_replace('/([<,>,",\'])/', '', $val);
+        return $val;
+    }
+
+    ##########################
     ######## 中文处理 ########
     ##########################
+
+    public static function utf8_substr($str, $start, $length = null, $suffix = "")
+    {
+        if (is_null($length)) {
+            $length = static::utf8_strlen($str) - $start;
+        }
+        if (function_exists("mb_substr")) {
+            $slice = mb_substr($str, $start, $length, "utf-8");
+        } elseif (function_exists('iconv_substr')) {
+            $slice = iconv_substr($str, $start, $length, "utf-8");
+        } else {
+            $re = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xff][\x80-\xbf]{3}/";
+            preg_match_all($re, $str, $match);
+            $slice = join("", array_slice($match[0], $start, $length));
+        }
+        return $slice . (static::utf8_strlen($slice) < static::utf8_strlen($str) ? $suffix : '');
+    }
+
+    public static function utf8_str_split($str, $l = 0)
+    {
+        if ($l > 0) {
+            $ret = [];
+            $len = mb_strlen($str, "UTF-8");
+            for ($i = 0; $i < $len; $i += $l) {
+                $ret[] = mb_substr($str, $i, $l, "UTF-8");
+            }
+            return $ret;
+        }
+        return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
+    }
 
     /**
      * 计算utf8字符串长度
@@ -826,24 +1100,6 @@ abstract class Util extends AbstractClass
         $last_len = strlen($str) % 4;
         $str = $last_len == 2 ? $str . '==' : ($last_len == 3 ? $str . '=' : $str);
         $str = base64_decode($str);
-        return $str;
-    }
-
-    /**
-     * @param int $length
-     * @return string
-     */
-    public static function rand_str($length)
-    {
-        if ($length <= 0) {
-            return '';
-        }
-        $str = '';
-        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-        $max = strlen($tmp_str) - 1;
-        for ($i = 0; $i < $length; $i++) {
-            $str .= $tmp_str[rand(0, $max)];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
-        }
         return $str;
     }
 
@@ -979,83 +1235,29 @@ abstract class Util extends AbstractClass
         return $result;
     }
 
-    /**
-     * xss 清洗数组 尝试对数组中特定字段进行处理
-     * @param array $data
-     * @param array $keys
-     * @return array 清洗后的数组
-     */
-    public static function xss_filter(array $data, array $keys)
-    {
-        foreach ($keys as $key) {
-            if (!empty($data[$key]) && is_string($data[$key])) {
-                $data[$key] = static::xss_clean($data[$key]);
-            }
-        }
-        return $data;
-    }
-
-    public static function safe_str($str)
-    {
-        $safe_chars = str_split('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_');
-        $safe_map = self::build_map($safe_chars);
-        $chars = self::utf8_str_split($str);
-        $ret_list = [];
-        foreach ($chars as $char) {
-            if (!empty($safe_map[$char])) {
-                $ret_list[] = $char;
-            }
-        }
-        return join('', $ret_list);
-    }
-
-    public static function build_map(array $list)
-    {
-        $map = [];
-        foreach ($list as $item) {
-            $map[$item] = 1;
-        }
-        return $map;
-    }
-
-    public static function utf8_str_split($str, $l = 0)
-    {
-        if ($l > 0) {
-            $ret = array();
-            $len = mb_strlen($str, "UTF-8");
-            for ($i = 0; $i < $len; $i += $l) {
-                $ret[] = mb_substr($str, $i, $l, "UTF-8");
-            }
-            return $ret;
-        }
-        return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
-    }
-
-    /**
-     * xss 过滤函数 清洗字符串
-     * @param string $val
-     * @return string
-     */
-    public static function xss_clean($val)
-    {
-        $val = preg_replace('/([\x00-\x09,\x0a-\x0c,\x0e-\x19])/', '', $val);
-        $search = <<<EOT
-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()~`";:?+/={}[]-_|'\<>
-EOT;
-
-        for ($i = 0; $i < strlen($search); $i++) {
-            // @ @ search for the hex values
-            $val = preg_replace('/(&#[xX]0{0,8}' . dechex(ord($search[$i])) . ';?)/i', $search[$i], $val); // with a ;
-            // @ @ 0{0,7} matches '0' zero to seven times
-            $val = preg_replace('/(&#0{0,8}' . ord($search[$i]) . ';?)/', $search[$i], $val); // with a ;
-        }
-        $val = preg_replace('/([<,>,",\'])/', '', $val);
-        return $val;
-    }
-
     ##########################
     ######## URL相关 ########
     ##########################
+
+    /**
+     * 直接从 url 中读取参数 如 url_query('http://baidu.com?a=b', 'a') = 'b'
+     * @param string $url
+     * @param string $need
+     * @return string
+     */
+    public static function url_query($url, $need)
+    {
+        $tmp = "{$need}=";
+        $idx = strpos($url, $tmp);
+        if (empty($idx)) {
+            return '';
+        }
+        $idx += strlen($tmp);
+        $end = strpos($url, '&', $idx);
+        $len = ($end > $idx) ? $end - $idx : strlen($url) - $idx;
+        $rst = substr($url, $idx, $len);
+        return !empty($rst) ? urldecode($rst) : '';
+    }
 
     /**
      * 拼接 url get 地址
@@ -1082,6 +1284,113 @@ EOT;
             $args_list[] = "{$key}=" . urlencode($val);
         }
         return !empty($args_list) ? $base_url . join($args_list, '&') : $base_url;
+    }
+
+    /**
+     * 获取当前请求的 url
+     * @param string $sys_host
+     * @param string $request_uri
+     * @return string
+     */
+    public static function build_url($sys_host, $request_uri = '/')
+    {
+        $uri = !empty($request_uri) ? $request_uri : '/';
+        $uri = static::str_startwith($uri, '/') ? substr($uri, 1) : $uri;
+        $sys_host = static::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
+        $url = "{$sys_host}{$uri}";
+        return $url;
+    }
+
+    /**
+     * 尝试 读取 url 中的端口
+     * @param string $url
+     * @param int $default_post
+     * @return int
+     */
+    public static function get_port($url, $default_post = 80)
+    {
+        $s_idx = stripos($url, '://');
+        if ($s_idx !== false) {
+            $url = substr($url, $s_idx + 3);
+        }
+
+        $domain = explode('/', $url)[0];
+        $p_idx = strrpos($domain, ':');
+        if ($p_idx === false) {
+            return $default_post;
+        }
+        return intval(substr($domain, $p_idx + 1));
+    }
+
+    /**
+     * 请求url，并返回 json 结果
+     * @param string $query_url
+     * @param array $header
+     * @param string $type
+     * @param array $post_fields
+     * @param bool $base_auth
+     * @param int $timeout
+     * @param bool $is_log
+     * @return array
+     */
+    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = false, $timeout = 20, $is_log = true)
+    {
+        $t1 = microtime(true);
+
+        $ch = curl_init();
+        $port = static::get_port($query_url, 80);
+        curl_setopt($ch, CURLOPT_URL, $query_url);
+        curl_setopt($ch, CURLOPT_PORT, $port);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, true);
+        if ($base_auth) {
+            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        }
+        if ($type == 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            if (!empty($post_fields)) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+            }
+        }
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($type));
+
+        if (!empty($header)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        }
+
+        //execute post
+        $response = curl_exec($ch);
+        //get response code
+        $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        //close connection
+        $http_ok = $response_code == 200 || $response_code == 201 || $response_code == 204;
+        $use_time = round(microtime(true) - $t1, 3) * 1000 . 'ms';
+
+        $log_msg = " use:{$use_time}, query_url:{$query_url}, response_code:{$response_code}";
+        $total = strlen($response);
+        $log_msg .= $total > 500 ? ', rst:' . substr($response, 0, 500) . "...total<{$total}>chars..." : ", rst:{$response}";
+        if (!$http_ok) {
+            $log_msg .= ', curl_error:' . curl_error($ch);
+            $log_msg .= ', curl_errno:' . curl_errno($ch);
+            error_log("{$log_msg}");
+        } else {
+            $is_log && error_log("{$log_msg}");;
+        }
+        curl_close($ch);
+        //return result
+        if ($http_ok) {
+            $data = json_decode(trim($response), true);
+            return !is_null($data) ? $data : ['code' => 0, 'msg' => '接口返回非json', 'resp' => $response];
+        } else {
+            return ['code' => 500, 'msg' => '调用远程接口失败', 'resp' => $response, 'HttpCode' => $response_code];
+        }
     }
 
     #########################################
@@ -1159,6 +1468,10 @@ EOT;
         return strtolower(preg_replace('/((?<=[a-z])(?=[A-Z]))/', '_', $str));
     }
 
+    ##########################
+    ######## 拼接相关 ########
+    ##########################
+
     /**
      * 使用 seq 把 list 数组中的非空字符串连接起来  _join('_', [1,2,3]) = '1_2_3'
      * @param string $seq
@@ -1204,119 +1517,6 @@ EOT;
             }
         }
         return $arr1;
-    }
-
-    /**
-     * 获取当前请求的 url
-     * @param string $sys_host
-     * @param string $request_uri
-     * @return string
-     */
-    public static function build_url($sys_host, $request_uri = '/')
-    {
-        $uri = !empty($request_uri) ? $request_uri : '/';
-        $uri = static::str_startwith($uri, '/') ? substr($uri, 1) : $uri;
-        $sys_host = static::str_endwith($sys_host, '/') ? $sys_host : "{$sys_host}/";
-        $url = "{$sys_host}{$uri}";
-        return $url;
-    }
-
-    public static function lower_key(array $data)
-    {
-        $rst = [];
-        foreach ($data as $key => $item) {
-            $key = static::trimlower($key);
-            $rst[$key] = $item;
-        }
-        return $rst;
-    }
-
-
-    public static function get_port($url, $default_post = 80)
-    {
-        $s_idx = stripos($url, '://');
-        if ($s_idx === false) {
-            return $default_post;
-        }
-        $url = substr($url, $s_idx + 3);
-        $domain = explode('/', $url)[0];
-        $p_idx = strrpos($domain, ':');
-        if ($p_idx === false) {
-            return $default_post;
-        }
-        return intval(substr($domain, $p_idx + 1));
-    }
-
-
-    /**
-     * post请求url，并返回结果
-     * @param string $query_url
-     * @param array $header
-     * @param string $type
-     * @param array $post_fields
-     * @param int $base_auth
-     * @param int $timeout
-     * @param bool $is_log
-     * @return array
-     */
-    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = 0, $timeout = 20, $is_log = true)
-    {
-        $t1 = microtime(true);
-
-        $ch = curl_init();
-        $port = static::get_port($query_url, 80);
-        curl_setopt($ch, CURLOPT_URL, $query_url);
-        curl_setopt($ch, CURLOPT_PORT, $port);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_BINARYTRANSFER, true);
-        curl_setopt($ch, CURLOPT_NOSIGNAL, true);
-        if ($base_auth) {
-            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        }
-        if ($type == 'POST') {
-            curl_setopt($ch, CURLOPT_POST, true);
-            if (!empty($post_fields)) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
-            }
-        }
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($type));
-
-        if (!empty($header)) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        }
-
-        //execute post
-        $response = curl_exec($ch);
-        //get response code
-        $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        //close connection
-        $http_ok = $response_code == 200 || $response_code == 201 || $response_code == 204;
-        $use_time = round(microtime(true) - $t1, 3) * 1000 . 'ms';
-
-        $log_msg = " use:{$use_time}, query_url:{$query_url}, response_code:{$response_code}";
-        $total = strlen($response);
-        $log_msg .= $total > 500 ? ', rst:' . substr($response, 0, 500) . "...total<{$total}>chars..." : ", rst:{$response}";
-        if (!$http_ok) {
-            $log_msg .= ', curl_error:' . curl_error($ch);
-            $log_msg .= ', curl_errno:' . curl_errno($ch);
-            error_log("{$log_msg}");
-        } else {
-            $is_log && error_log("{$log_msg}");;
-        }
-        curl_close($ch);
-        //return result
-        if ($http_ok) {
-            $data = json_decode(trim($response), true);
-            return !is_null($data) ? $data : ['code' => 0, 'msg' => '接口返回非json', 'resp' => $response];
-        } else {
-            return ['code' => 500, 'msg' => '调用远程接口失败', 'resp' => $response, 'HttpCode' => $response_code];
-        }
     }
 
 }

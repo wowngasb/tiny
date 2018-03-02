@@ -55,12 +55,13 @@ trait OrmTrait
      * @param array $data
      * @return array
      */
-    private static function _fixFillAbleData(array $data)
+    protected static function _fixFillAbleData(array $data)
     {
         $ret = [];
         foreach ($data as $key => $item) {
-            if (static::_fillAble($key)) {
-                $ret[$key] = $item;
+            $_key = Util::trimlower($key);
+            if (static::_fillAble($_key)) {
+                $ret[$key] = is_array($item) ? json_encode($item) : $item;
             }
         }
         return $ret;
@@ -83,10 +84,12 @@ trait OrmTrait
     /**
      * 直接获取 ORM table 不推荐直接使用该接口  推荐使用模块预设方法
      * @param array $where 检索条件数组 具体格式参见文档
-     * @return \Illuminate\Database\Query\Builder | \Illuminate\Database\Eloquent\Builder
+     * @param array $select
+     * @param array $orderBy
+     * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      * @throws OrmStartUpError
      */
-    public static function tableBuilder(array $where = [])
+    public static function tableBuilder(array $where = [], array $select = [], array $orderBy = [])
     {
         $table = static::getBuilder();
         if (empty($where)) {
@@ -167,6 +170,15 @@ trait OrmTrait
             //依次调用设置的查询条件
             call_user_func_array([$table, $func], $query);
         }
+        if (!empty($select)) {
+            $table->select($select);
+        }
+        if (!empty($orderBy) && !empty($orderBy[0])) {
+            $column = $orderBy[0];
+            $direction = !empty($orderBy[1]) && Util::trimlower($orderBy[1]) == 'desc' ? 'desc' : 'asc';
+            $table->orderBy($column, $direction);
+        }
+
         return $table;
     }
 
@@ -223,6 +235,24 @@ trait OrmTrait
         return trim($prefix);
     }
 
+    public static function incOneById($id, $filed, $value = 1)
+    {
+        if (empty($id) || empty($filed)) {
+            return;
+        }
+        static::incItem($id, $filed, $value);
+        static::getOneById($id, -1);
+    }
+
+    public static function decOneById($id, $filed, $value = 1)
+    {
+        if (empty($id) || empty($filed)) {
+            return;
+        }
+        static::decItem($id, $filed, $value);
+        static::getOneById($id, -1);
+    }
+
     /**
      * 根据主键获取数据 自动使用缓存
      * @param $id
@@ -232,13 +262,21 @@ trait OrmTrait
     public static function getOneById($id, $timeCache = null)
     {
         if (empty($id)) {
-            return [];
+            return null;
         }
 
         $cache_time = static::cacheTime();
         $db_name = static::dbName();
         $table_name = static::tableName();
         $primary_key = static::primaryKey();
+        if (empty($cache_time)) {
+            if (empty($timeCache)) {
+                return static::getItem($id);
+            } elseif ($timeCache < 0) {
+                return null;
+            }
+        }
+
         $timeCache = is_null($timeCache) ? $cache_time : intval($timeCache);
 
         $tag = "{$primary_key}={$id}";
@@ -248,7 +286,7 @@ trait OrmTrait
             $tmp = static::getItem($id);
             return $tmp;
         }, function ($data) {
-            return !empty($data);
+            return !empty($data) ? true : 3;
         }, $timeCache, static::getCachePreFix(), [], self::sqlDebug());
 
         return $data;
@@ -267,7 +305,7 @@ trait OrmTrait
      * @param string $key 需要的字段  键名
      * @param string $default 无对应条目时的默认值
      * @param null $timeCache
-     * @return mixed
+     * @return string
      */
     public static function valueOneById($id, $key, $default = '', $timeCache = null)
     {
@@ -369,12 +407,24 @@ trait OrmTrait
      * 根据主键更新数据 自动更新缓存
      * @param $id
      * @param array $data
-     * @return array 返回更新后的数据
+     * @return int
      */
     public static function setOneById($id, array $data)
     {
         if (empty($id)) {
-            return [];
+            return null;
+        }
+        $update = 0;
+        if (!empty($data)) {
+            $update = static::setItem($id, $data);
+        }
+        static::getOneById($id, -1);
+        return $update;
+    }
+
+    public static function setAndGetOne($id, array $data){
+        if (empty($id)) {
+            return null;
         }
         if (!empty($data)) {
             static::setItem($id, $data);
@@ -398,27 +448,38 @@ trait OrmTrait
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
-     * @return int 返回数据 主键 自增id
+     * @return mixed|null 返回数据
      */
     public static function upsertOne(array $where, array $value)
     {
         $id = static::upsertItem($where, $value);
-        !empty($id) && static::getOneById($id, -1);
-        return $id;
+        return !empty($id) ? static::getOneById($id, -1) : null;
+    }
+
+    /**
+     * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
+     * @param array $where 检索条件数组 具体格式参见文档
+     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @return mixed|null 返回数据
+     */
+    public static function upsertAndGetOne(array $where, array $value)
+    {
+        $id = static::upsertItem($where, $value);
+        return !empty($id) ? static::getOneById($id, 0) : null;
     }
 
     /**
      * 添加新数据 自动更新缓存
      * @param array $data
-     * @return array
+     * @return mixed|null
      */
     public static function createAndGetOne(array $data)
     {
         if (!empty($data)) {
             $id = static::newItem($data);
-            return !empty($id) ? static::getOneById($id, 0) : [];
+            return !empty($id) ? static::getOneById($id, 0) : null;
         } else {
-            return [];
+            return null;
         }
     }
 
@@ -647,7 +708,7 @@ trait OrmTrait
         $result = $table->pluck($column, $key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         $rst = [];
-        foreach ($result as $key => $val) {
+        foreach ($result as $k => $val) {
             $rst[] = $val;
         }
         return $rst;
@@ -889,6 +950,26 @@ trait OrmTrait
         return $result;
     }
 
+    /**
+     * Paginate the given query.
+     *
+     * @param \Illuminate\Database\Query\Builder $table
+     * @param  int $perPage
+     * @param  array $columns
+     * @param  string $pageName
+     * @param  int|null $page
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function _paginate($table, $perPage = null, $columns = ['*'], $pageName = 'page', $page = null)
+    {
+        $start_time = microtime(true);
+        $result = $table->paginate($perPage, $columns, $pageName, $page);
+        static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        return $result;
+    }
+
     ####################################
     ########### 条目操作函数 ############
     ####################################
@@ -925,13 +1006,7 @@ trait OrmTrait
         $max_select = static::maxSelect();
         $table = static::tableBuilder($where);
         if (!empty($with)) {
-            if (is_array($with)) {
-                foreach ($with as $with_item) {
-                    $table->with($with_item);
-                }
-            } else {
-                $table->with($with);
-            }
+            $table->with($with);
         }
         $start = $start <= 0 ? 0 : $start;
         $limit = $limit > $max_select ? $max_select : $limit;
@@ -988,9 +1063,10 @@ trait OrmTrait
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
-     * @return array
+     * @param string | array $with
+     * @return mixed
      */
-    public static function firstItem(array $where, array $sort_option = [], array $columns = ['*'])
+    public static function firstItem(array $where = [], array $sort_option = [], array $columns = ['*'], $with = '', $orderBy = '')
     {
         $start_time = microtime(true);
         $table = static::tableBuilder($where);
@@ -999,6 +1075,12 @@ trait OrmTrait
             $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
             $direction = $direction == 'desc' ? 'desc' : 'asc';
             $table->orderBy($field, $direction);
+        }
+        if (!empty($with)) {
+            $table->with($with);
+        }
+        if(!empty($orderBy)){
+            $table->groupBy($orderBy);
         }
         $item = $table->first($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -1054,8 +1136,13 @@ trait OrmTrait
     public static function checkItem($value, $filed = null)
     {
         $primary_key = static::primaryKey();
-        $filed = $filed ?: $primary_key;
-        $tmp = static::firstItem([strtolower($filed) => $value], [], [$primary_key]);
+        if (is_array($value)) {
+            $where = $value;
+        } else {
+            $filed = $filed ?: $primary_key;
+            $where = [strtolower($filed) => $value];
+        }
+        $tmp = static::firstItem($where, [], [$primary_key]);
         if (!empty($tmp) && !empty($tmp[$primary_key])) {
             return $tmp[$primary_key];
         } else {
@@ -1068,13 +1155,14 @@ trait OrmTrait
      * @param mixed $value 需匹配的字段的值
      * @param string $filed 字段名 默认为 null 表示使用主键
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
-     * @return array
+     * @param string | array $with
+     * @return mixed
      */
-    public static function getItem($value, $filed = null, array $columns = ['*'])
+    public static function getItem($value, $filed = null, array $columns = ['*'], $with = '')
     {
         $primary_key = static::primaryKey();
         $filed = $filed ?: $primary_key;
-        return static::firstItem([strtolower($filed) => $value], [], $columns);
+        return static::firstItem([strtolower($filed) => $value], [], $columns, $with);
     }
 
     /**

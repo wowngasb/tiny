@@ -116,7 +116,11 @@ class RedisSession implements \SessionHandlerInterface
             $sessionId = "{$this->_pre_fix}{$sessionId}";
         }
         $sessionData = $this->_encodeData($sessionData);
-        return $redis->setex($sessionId, $this->_lifeTime, $sessionData);
+        if(!empty($sessionData)){
+            return $redis->setex($sessionId, $this->_lifeTime, $sessionData);
+        } else {
+            return $redis->del($sessionId);
+        }
     }
 
     /**

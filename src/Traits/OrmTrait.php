@@ -253,6 +253,24 @@ trait OrmTrait
         static::getOneById($id, -1);
     }
 
+    public static function incAndGetOne($id, $filed, $value = 1)
+    {
+        if (empty($id) || empty($filed)) {
+            return null;
+        }
+        static::incItem($id, $filed, $value);
+        return static::getOneById($id, 0);
+    }
+
+    public static function decAndGetOne($id, $filed, $value = 1)
+    {
+        if (empty($id) || empty($filed)) {
+            return null;
+        }
+        static::decItem($id, $filed, $value);
+        return static::getOneById($id, 0);
+    }
+
     /**
      * 根据主键获取数据 自动使用缓存
      * @param $id
@@ -422,7 +440,8 @@ trait OrmTrait
         return $update;
     }
 
-    public static function setAndGetOne($id, array $data){
+    public static function setAndGetOne($id, array $data)
+    {
         if (empty($id)) {
             return null;
         }
@@ -1064,6 +1083,7 @@ trait OrmTrait
      * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @param string | array $with
+     * @param string | array $orderBy
      * @return mixed
      */
     public static function firstItem(array $where = [], array $sort_option = [], array $columns = ['*'], $with = '', $orderBy = '')
@@ -1079,7 +1099,7 @@ trait OrmTrait
         if (!empty($with)) {
             $table->with($with);
         }
-        if(!empty($orderBy)){
+        if (!empty($orderBy)) {
             $table->groupBy($orderBy);
         }
         $item = $table->first($columns);

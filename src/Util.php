@@ -27,6 +27,41 @@ abstract class Util extends AbstractClass
         return __NAMESPACE__;
     }
 
+    ##########################
+    ######## graphql处理 ########
+    ##########################
+
+    public static function graphql_argst(array $variables)
+    {
+        $ret = [];
+        foreach ($variables as $var => $t) {
+            $ret[] = '$' . "{$var}: {$t}";
+        }
+        return join(', ', $ret);
+    }
+
+    public static function graphql_argsr(array $variables)
+    {
+        $ret = [];
+        foreach ($variables as $var => $t) {
+            $ret[] = "{$var}: " . '$' . "{$var}";
+        }
+        return join(', ', $ret);
+    }
+
+    public static function graphql_fragments(array $fragmentsMap, $name)
+    {
+        if (empty($fragmentsMap[$name]) || empty($fragmentsMap[$name][0])) {
+            return '';
+        }
+        $f_str = trim($fragmentsMap[$name][0]);
+        $f_base = !empty($fragmentsMap[$name][1]) ? $fragmentsMap[$name][1] : [];
+        $ret = $f_str;
+        foreach ($f_base as $base) {
+            $ret .= "\n" . static::graphql_fragments($fragmentsMap, $base);
+        }
+        return $ret;
+    }
 
     ##########################
     ######## 目录处理 ########
@@ -110,6 +145,16 @@ abstract class Util extends AbstractClass
         }
         $last_seq = $add_last ? $seq : '';
         return empty($add_path) ? "{$base_path}{$last_seq}" : "{$base_path}{$seq}{$add_path}{$last_seq}";
+    }
+
+    public static function base_name($path)
+    {
+        $file_name = static::file_name($path);
+        $idx = strrpos($file_name, '.');
+        if ($idx !== false) {
+            $file_name = substr($file_name, 0, $idx);
+        }
+        return $file_name;
     }
 
     public static function file_name($path)
@@ -301,6 +346,13 @@ abstract class Util extends AbstractClass
         return $ret;
     }
 
+    public static function msg_fix($msg, array $fix_replace)
+    {
+        $search = array_keys($fix_replace);
+        $replace = array_values($fix_replace);
+        return str_replace($search, $replace, $msg);
+    }
+
     public static function trace_fix(array $trace_list, array $fix_replace)
     {
         $search = array_keys($fix_replace);
@@ -341,8 +393,8 @@ abstract class Util extends AbstractClass
                     return "<Array>";
                 }
                 $output_index_count = 0;
-                $output_indexed = array();
-                $output_associative = array();
+                $output_indexed = [];
+                $output_associative = [];
                 $idx = 0;
                 foreach ($data as $key => $value) {
                     if ($idx >= $max_item) {
@@ -446,17 +498,217 @@ abstract class Util extends AbstractClass
     ##########################
 
     /**
+     * 判断 数组 全部符合 特定条件
+     * @param array $arr
+     * @param callable|null $func
+     * @return bool
+     */
+    public static function allOfArray(array $arr, callable $func = null)
+    {
+        if (empty($func)) {
+            $func = function ($key, $val) {
+                false && func_get_args();
+                return (bool)$val;
+            };
+        }
+        foreach ($arr as $k => $v) {
+            if (!$func($k, $v)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 判断 数组 是否存在某一个 符合 特定条件
+     * @param array $arr
+     * @param callable|null $func
+     * @return bool
+     */
+    public static function oneOfArray(array $arr, callable $func = null)
+    {
+        if (empty($func)) {
+            $func = function ($key, $val) {
+                false && func_get_args();
+                return (bool)$val;
+            };
+        }
+        foreach ($arr as $k => $v) {
+            if ($func($k, $v)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 计算 数组 符合 特定条件 的 个数
+     * @param array $arr
+     * @param callable|null $func
+     * @return int
+     */
+    public static function countOfArray(array $arr, callable $func = null)
+    {
+        if (empty($func)) {
+            $func = function ($key, $val) {
+                false && func_get_args();
+                return (bool)$val;
+            };
+        }
+        $num = 0;
+        foreach ($arr as $k => $v) {
+            if ($func($k, $v)) {
+                $num += 1;
+            }
+        }
+        return $num;
+    }
+
+
+    /**
+     * @param mixed $item
+     * @return array|mixed
+     */
+    public static function try2array($item)
+    {
+        if (empty($item)) {
+            return [];
+        }
+
+        if (is_array($item)) {
+            return $item;
+        } elseif (is_object($item)) {
+            if ($item instanceof \JsonSerializable) {
+                $json_str = json_encode($item);
+                return json_decode($json_str, true);
+            } elseif (is_callable([$item, 'toArray'])) {
+                return call_user_func_array([$item, 'toArray'], []);
+            } elseif (is_callable([$item, 'toJson'])) {
+                $json_str = call_user_func_array([$item, 'toJson'], []);
+                return json_decode($json_str, true);
+            } else if ($item instanceof \Iterator) {
+                $ret = [];
+                foreach ($item as $key => $value) {
+                    $ret[$key] = $value;
+                }
+                return $ret;
+            } else {
+                return (array)$item;
+            }
+        }
+        return (array)$item;
+    }
+
+    /**
+     * 检查 sortOption 是否合法 并尝试修复
+     * @param array $sortOption
+     * @param array $allowSortField
+     * @param string $defaultField
+     * @param string $defaultDirection
+     * @return array
+     */
+    public static function check_sort(array $sortOption, array $allowSortField, $defaultField = '', $defaultDirection = 'asc')
+    {
+        $defaultDirection = static::trimlower($defaultDirection) == 'desc' ? 'desc' : 'asc';
+
+        $field = static::v($sortOption, 'field', $defaultField);
+        $direction = static::v($sortOption, 'direction', $defaultDirection);
+        $field = static::trimlower($field);
+        $direction = static::trimlower($direction);
+
+        if ($defaultDirection = 'asc') {
+            $direction = $direction == 'desc' ? 'desc' : 'asc';
+        } else {
+            $direction = $direction == 'asc' ? 'asc' : 'desc';
+        }
+
+        if (!in_array($field, $allowSortField)) {
+            $field = $defaultField;
+        }
+        return [
+            'field' => $field,
+            'direction' => $direction,
+        ];
+    }
+
+    /**
+     * 根据页数计算起始偏移 允许设置最大偏移
+     * @param int $page
+     * @param int $num
+     * @param int $total
+     * @param int $max_num
+     * @return array
+     */
+    public static function page_offset($page = 1, $num = 20, $total = -1, $max_num = 100)
+    {
+        $page = intval($page);
+        $num = intval($num);
+        $max_num = intval($max_num);
+        $total = intval($total);
+        $page = $page > 1 ? $page : 1;
+        $num = $num > 1 ? $num : 1;
+        $num = $num <= $max_num ? $num : $max_num;
+
+        $total = $total == -1 ? -1 : ($total >= 0 ? $total : 0);
+        return [
+            'offset' => ($page - 1) * $num,
+            'num' => $num,
+            'page' => $page,
+            'max_num' => $max_num,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * 检查 Range 类型 适合合法
+     * @param array $range_arr
+     * @param bool $as_int
+     * @return bool
+     */
+    public static function check_range(array $range_arr, $as_int = false)
+    {
+        if ($as_int) {
+            return isset($range_arr['lower']) && isset($range_arr['upper']) && $range_arr['lower'] < $range_arr['upper'];
+        } else {
+            return !empty($range_arr['lower']) && !empty($range_arr['upper']) && $range_arr['lower'] < $range_arr['upper'];
+        }
+    }
+
+    /**
      * 根据一个 数组的 值 构建一个 字典 常用于去重或判断是否存在
-     * @param array $list 需要值为 string
+     * @param array $key_list 需要值为 string
+     * @param bool $trimlower 是否 去除空格并转为小写
+     * @param int $default
      * @return array 字典 hash
      */
-    public static function build_map(array $list)
+    public static function build_map(array $key_list, $trimlower = false, $default = 1)
     {
         $map = [];
-        foreach ($list as $item) {
-            $map[$item] = 1;
+        foreach ($key_list as $key) {
+            if ($trimlower) {
+                $key = static::trimlower($key);
+            }
+            if ($key !== '') {
+                $map[$key] = $default;
+            }
         }
         return $map;
+    }
+
+    /**
+     * 取出一个数组 中 值不为空的 所有 key
+     * @param array $data
+     * @return array
+     */
+    public static function build_set(array $data)
+    {
+        $ret = [];
+        foreach ($data as $key => $item) {
+            if (!empty($item)) {
+                $ret[] = $key;
+            }
+        }
+        return $ret;
     }
 
     /**
@@ -517,7 +769,44 @@ abstract class Util extends AbstractClass
     ##########################
 
     /**
-     * 从一个数组中提取需要的key  缺失的key设置为默认值  常用于修复一个数组
+     * 从指定数组中 取出 指定 key 并去重
+     * @param array $list
+     * @param string $key
+     * @return array
+     */
+    public static function set_from(array $list, $key = 'id')
+    {
+        if (empty($list)) {
+            return [];
+        }
+        $ret = [];
+        foreach ($list as $item) {
+            $val = $item[$key];
+            if (!empty($val)) {
+                $ret[$val] = 1;
+            }
+        }
+        return array_keys($ret);
+    }
+
+    /**
+     * 尝试对原数组 进行 数据过滤   返回过滤后的数组
+     * @param array $item 原始数组
+     * @param array $fix_map 格式为  [key => $default | null, ...]   设置为 null 表示保留原值  否是使用 default 进行替换
+     * @return array
+     */
+    public static function fix_merge(array $item, array $fix_map)
+    {
+        foreach ($fix_map as $key => $fix) {
+            if (!is_null($fix)) {
+                $item[$key] = $fix;
+            }
+        }
+        return $item;
+    }
+
+    /**
+     * 从一个数组中提取需要的key  缺失的key设置为默认值 常用于修复一个数组
      * @param array $arr 原数组
      * @param array $need 需要的key 列表
      * @param string $default 默认值
@@ -533,13 +822,17 @@ abstract class Util extends AbstractClass
     }
 
     /**
-     * 过滤列表的每一个元素  取出需要的key  常用于精简列表
+     * 过滤列表的每一个元素  取出需要的key  返回精简后的元素组成的数组 常用于精简列表
      * @param array $list 列表 每行为一个数组
      * @param array $need 需要的 keys 列表
      * @return array  筛选过后的 list
      */
     public static function filter_list(array $list, array $need)
     {
+        if (empty($list)) {
+            return [];
+        }
+
         $need_map = [];
         foreach ($need as $n) {
             $need_map[$n] = 1;
@@ -564,19 +857,27 @@ abstract class Util extends AbstractClass
      * @param mixed $default 默认值 默认为 null
      * @return mixed
      */
-    public static function v(array $val, $key, $default = null)
+    public static function v($val, $key, $default = null)
     {
+        if (empty($val)) {
+            return $default;
+        }
+
         return isset($val[$key]) ? $val[$key] : $default;
     }
 
     /**
-     * 获取一个数组的  多个指定键值 未设置则使用 默认值  常用于一次获取多个值
+     * 获取一个数组的  多个指定键值   第一个数组中不存在的键 设置为第二个数组的 默认值  常用于一次获取多个值
      * @param array $val 数据源 数组
      * @param array $keys 建 默认值 数组 格式为 [key => default, ...]
      * @return array  key 的关联数组
      */
     public static function vl(array $val, array $keys)
     {
+        if (empty($val) && empty($keys)) {
+            return [];
+        }
+
         $ret = [];
         foreach ($keys as $key => $default) {
             $ret[$key] = static::v($val, $key, $default);

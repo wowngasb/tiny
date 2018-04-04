@@ -15,6 +15,11 @@ use Tiny\Event\OrmEvent;
 class OrmConfig extends AbstractClass
 {
 
+    const ACTION_INSERT = 'INSERT';
+    const ACTION_UPDATE = 'UPDATE';
+    const ACTION_DELETE = 'DELETE';
+
+
     private $_method = '';
 
     private $_db_name = '';       //数据库名

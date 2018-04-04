@@ -64,7 +64,7 @@ class MapRoute implements RouteInterface
         }
 
         $_uri = "/{$split_list[0]}/{$split_list[1]}/{$split_list[2]}";
-        $reg_str = "^\/([A-Za-z0-9_]+)\/([A-Za-z0-9_]+)\/([A-Za-z0-9_]+)";
+        $reg_str = "^\/([A-Za-z0-9_]+)\/([A-Za-z0-9_]+)\/([A-Za-z0-9_\-.]+)";
         $matches = [];
         preg_match("/{$reg_str}/i", $_uri, $matches);
 

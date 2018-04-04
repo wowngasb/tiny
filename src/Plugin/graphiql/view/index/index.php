@@ -84,7 +84,9 @@
         return str;
     }
 
-    var dmsObj = new ApiHub(true);
+    var dmsObj = new ApiHub({
+        debug: true
+    });
     // Defines a GraphQL fetcher using the fetch API.
     function graphQLFetcher(graphQLParams) {
         graphQLParams.query = replaceAll(graphQLParams.query, ["\n"], [""]);
@@ -96,12 +98,14 @@
             dmsObj.api_ajax(
                 location.hostname,
                 '/api/GraphQLApi/exec',
-                graphQLParams,
+                JSON.stringify(graphQLParams),
                 function (res) {
                     resolve(res);
                 },
                 function (error) {
                     resolve(error);
+                }, null, null, {
+                    contentType: "application/json"
                 }
             );
         });

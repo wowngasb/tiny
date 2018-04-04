@@ -118,7 +118,7 @@ abstract class SimpleController extends AbstractController
         if (isset($this->_script_src_map[$src])) {
             return '';
         } else {
-            $assets_ver = Application::config('ENV_WEB.ver', '');
+            $assets_ver = '1.0';
             $js_ver = !empty($assets_ver) ? "?v={$assets_ver}" : '';
             $this->_script_src_map[$src] = 1;
             $this->_addScriptSrc("<script src=\"{$src}{$js_ver}\" type=\"{$type}\"></script>", $priority);
@@ -135,7 +135,7 @@ abstract class SimpleController extends AbstractController
         if (isset($this->_link_href_map[$href])) {
             return '';
         } else {
-            $assets_ver = Application::config('ENV_WEB.ver', '');
+            $assets_ver = '1.0';
             $css_ver = !empty($assets_ver) ? "?v={$assets_ver}" : '';
             $this->_link_href_map[$href] = "<link href=\"{$href}{$css_ver}\" rel=\"{$rel}\">";
             return '';

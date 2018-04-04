@@ -21,8 +21,8 @@ class DevelopDispatch extends AbstractDispatch
      */
     public static function initMethodNamespace(array $routeInfo)
     {
-        $controller = !empty($routeInfo[1]) ? Util::trimlower($routeInfo[1]) : 'index';
-        $module = !empty($routeInfo[0]) ? Util::trimlower($routeInfo[0]) : 'develop';
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : 'index';
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : 'develop';
 
         return "\\Tiny\\Plugin\\{$module}\\controller\\{$controller}";
     }

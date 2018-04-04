@@ -55,6 +55,26 @@ trait LogTrait
         static::debug($log_msg, $method, $class . '_', $line_no);
     }
 
+    public static function funcGetArgs(array $args = [], $method = '')
+    {
+        if (!empty($method) && stripos($method, '::') <= 0) {
+            return [];
+        }
+        try {
+            $tmp = explode('::', $method);
+            $reflection = new \ReflectionMethod($tmp[0], $tmp[1]);
+            $param = $reflection->getParameters();
+            $tmp_args = [];
+            foreach ($param as $arg) {
+                $tmp_args[$arg->name] = array_shift($args);
+            }
+            $args = $tmp_args;
+        } catch (\Exception $e) {
+            error_log("debugArgs Exception target:{$method}, error:" . $e->getMessage());
+        }
+        return $args;
+    }
+
     public static function debugArgs(array $args, $method = '', $class = 'sys_log', $line_no = 0, $max_items = 10, $max_chars = 50)
     {
         if (!empty($method)) {

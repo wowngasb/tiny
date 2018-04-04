@@ -9,8 +9,8 @@
 namespace Tiny\Plugin\graphiql\controller;
 
 
-use Tiny\Util;
 use Tiny\Plugin\graphiql\GraphiQLController;
+use Tiny\Util;
 
 class assets extends GraphiQLController
 {
@@ -20,8 +20,10 @@ class assets extends GraphiQLController
         $uri = $this->getRequest()->getRequestUri();
         $tmp_list = explode('/', $uri);
         $file_name = $tmp_list[count($tmp_list) - 1];
+        $file_name = explode('#', $file_name)[0];
+        $file_name = explode('?', $file_name)[0];
         $routeInfo = $this->getRequest()->getRouteInfo();
-        $file_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->template_dir, $routeInfo[0], $routeInfo[1], $file_name]);
+        $file_path = Util::joinNotEmpty(DIRECTORY_SEPARATOR, [$this->template_dir, $routeInfo[1], $file_name]);
         $this->sendFile($file_path);
     }
 

@@ -21,18 +21,18 @@ trait EncryptTrait
      */
     protected static function _getSalt()
     {
-        throw new AppStartUpError("must overwrite method static::_getSalt");
+        throw new AppStartUpError("must overwrite method EncryptTrait::_getSalt() :string");
     }
 
 
-    public static function _encode($str, $expiry = 0)
+    public static function _encode($str, $expiry = 0, $salt = '')
     {
-        return Application::encrypt($str, $expiry, static::_getSalt());
+        return Application::encrypt($str, $expiry, static::_getSalt() . "{$salt}");
     }
 
-    public static function _decode($token)
+    public static function _decode($token, $salt = '')
     {
-        return Application::decrypt($token, static::_getSalt());
+        return Application::decrypt($token, static::_getSalt() . "{$salt}");
     }
 
 }

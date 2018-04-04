@@ -426,6 +426,9 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      */
     public static function config($key, $default = '')
     {
+        if (empty($key)) {
+            return $default;
+        }
         $config = static::app()->getConfig();
         return self::_find_config($key, $default, $config);
     }

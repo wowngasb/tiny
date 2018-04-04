@@ -220,19 +220,19 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array([], ['a', 'b', 'c'], 1),
+                'args' => [[], ['a', 'b', 'c'], 1],
                 'return' => ['a' => 1, 'b' => 1, 'c' => 1]
             ], [
-                'args' => array(['a' => 2, 'b' => 2], ['a', 'b', 'c'], 1),
+                'args' => [['a' => 2, 'b' => 2], ['a', 'b', 'c'], 1],
                 'return' => ['a' => 2, 'b' => 2, 'c' => 1]
             ], [
-                'args' => array(['a' => 2, 'b' => 2], [], 1),
+                'args' => [['a' => 2, 'b' => 2], [], 1],
                 'return' => []
             ], [
-                'args' => array(['a' => 2, 'b' => 2], ['a', 'b', 'c']),
+                'args' => [['a' => 2, 'b' => 2], ['a', 'b', 'c']],
                 'return' => ['a' => 2, 'b' => 2, 'c' => '']
             ], [
-                'args' => array([], []),
+                'args' => [[], []],
                 'return' => []
             ],
         ];
@@ -248,13 +248,13 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array(['a' => 2, 'b' => 2], 'c'),
+                'args' => [['a' => 2, 'b' => 2], 'c'],
                 'return' => null
             ], [
-                'args' => array(['a' => 2, 'b' => 2], 'b'),
+                'args' => [['a' => 2, 'b' => 2], 'b'],
                 'return' => 2
             ], [
-                'args' => array(['a' => 2, 'b' => 2], 'c', 3),
+                'args' => [['a' => 2, 'b' => 2], 'c', 3],
                 'return' => 3
             ],
         ];
@@ -274,25 +274,25 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('2017-01-21 12:34:56', 1),
+                'args' => ['2017-01-21 12:34:56', 1],
                 'return' => '2017-02-21 12:34:56'
             ], [
-                'args' => array('2017-01-31 12:34:56', 1),
+                'args' => ['2017-01-31 12:34:56', 1],
                 'return' => '2017-02-28 12:34:56'
             ], [
-                'args' => array('2016-01-31 12:34:56', 1),
+                'args' => ['2016-01-31 12:34:56', 1],
                 'return' => '2016-02-29 12:34:56'
             ], [
-                'args' => array('2016-02-29 12:34:56', 12),
+                'args' => ['2016-02-29 12:34:56', 12],
                 'return' => '2017-02-28 12:34:56'
             ], [
-                'args' => array('2016-02-29 12:34:56', 0),
+                'args' => ['2016-02-29 12:34:56', 0],
                 'return' => '2016-02-29 12:34:56'
             ], [
-                'args' => array('2016-02-29 12:34:56', -1),
+                'args' => ['2016-02-29 12:34:56', -1],
                 'return' => '2016-02-29 12:34:56'
             ], [
-                'args' => array('2016-02-29 12:34:56', 48000),
+                'args' => ['2016-02-29 12:34:56', 48000],
                 'return' => '6016-02-29 12:34:56'
             ],
         ];
@@ -308,14 +308,14 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array(1502435519, 1502435519 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 60 + 1],
                 'return' => ["day" => 0, "hour" => 0, "min" => 1, "sec" => 1]
             ], [
-                'args' => array(1502435519, 1502435519 + 3600 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 3600 + 60 + 1],
 
                 'return' => ["day" => 0, "hour" => 1, "min" => 1, "sec" => 1]
             ], [
-                'args' => array(1502435519, 1502435519 + 24 * 3600 + 3600 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 24 * 3600 + 3600 + 60 + 1],
                 'return' => ["day" => 1, "hour" => 1, "min" => 1, "sec" => 1]
             ],
         ];
@@ -342,14 +342,14 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array(1502435519, 1502435519 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 60 + 1],
                 'return' => "1分1秒"
             ], [
-                'args' => array(1502435519, 1502435519 + 3600 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 3600 + 60 + 1],
 
                 'return' => "1小时1分1秒"
             ], [
-                'args' => array(1502435519, 1502435519 + 24 * 3600 + 3600 + 60 + 1),
+                'args' => [1502435519, 1502435519 + 24 * 3600 + 3600 + 60 + 1],
                 'return' => "25小时1分1秒"
             ],
         ];
@@ -382,20 +382,20 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('abc,def,abcd', 'abc'),
+                'args' => ['abc,def,abcd', 'abc'],
                 'return' => false
             ], [
-                'args' => array('abc,def,abcd', 'aaa|def'),
+                'args' => ['abc,def,abcd', 'aaa|def'],
 
                 'return' => false
             ], [
-                'args' => array('abc,def,abcd', 'aaa,def,', ','),
+                'args' => ['abc,def,abcd', 'aaa,def,', ','],
                 'return' => false
             ], [
-                'args' => array('abc,def,abcd', 'abcde'),
+                'args' => ['abc,def,abcd', 'abcde'],
                 'return' => true
             ], [
-                'args' => array('abc,def,abcd', 'abcde  |  | defa'),
+                'args' => ['abc,def,abcd', 'abcde  |  | defa'],
                 'return' => true
             ],
         ];
@@ -413,20 +413,20 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array(1024),
+                'args' => [1024],
                 'return' => '1K'
             ], [
-                'args' => array(1024 + 512, 'K'),
+                'args' => [1024 + 512, 'K'],
 
                 'return' => '1.50M'
             ], [
-                'args' => array(1024 + 512, 'K', '', 3),
+                'args' => [1024 + 512, 'K', '', 3],
                 'return' => '1.500M'
             ], [
-                'args' => array((1024 + 512) * 10, 'K', 'G', 3),
+                'args' => [(1024 + 512) * 10, 'K', 'G', 3],
                 'return' => '0.015G'
             ], [
-                'args' => array(0.0125, 'G'),
+                'args' => [0.0125, 'G'],
                 'return' => '12.80M'
             ],
         ];
@@ -442,17 +442,17 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('15099991234'),
+                'args' => ['15099991234'],
                 'return' => '150****1234'
             ], [
-                'args' => array('150999912345678'),
+                'args' => ['150999912345678'],
 
                 'return' => '150********5678'
             ], [
-                'args' => array('15099991234', 2, 3),
+                'args' => ['15099991234', 2, 3],
                 'return' => '15******234'
             ], [
-                'args' => array('1509999'),
+                'args' => ['1509999'],
                 'return' => '1509999'
             ],
         ];
@@ -468,17 +468,17 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('one20170101@test.com'),
+                'args' => ['one20170101@test.com'],
                 'return' => 'one********@test.com'
             ], [
-                'args' => array('one20170101@test.com', 4),
+                'args' => ['one20170101@test.com', 4],
 
                 'return' => 'one2*******@test.com'
             ], [
-                'args' => array('one@test.com'),
+                'args' => ['one@test.com'],
                 'return' => 'one@test.com'
             ], [
-                'args' => array('one20170101#test.com'),
+                'args' => ['one20170101#test.com'],
                 'return' => 'one20170101#test.com'
             ],
         ];
@@ -497,18 +497,29 @@ class UtilTest extends BaseNothingTest
     {
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
-            ['args' => array("0xff", "255")],
-            ['args' => array("1.00000000000000001", "0.1e1")],
-            ['args' => array("+1", "0.1e1")],
-            ['args' => array("1e0", "0.1e1")],
-            ['args' => array("-0e10", "0")],
-            ['args' => array("1000", "0x3e8")],
-            ['args' => array("1234", "  	1234")],
+            [
+                'args' => ["0xff", "255"]
+            ], [
+                'args' => ["1.00000000000000001", "0.1e1"]
+            ], [
+                'args' => ["+1", "0.1e1"]
+            ], [
+                'args' => ["1e0", "0.1e1"]
+            ], [
+                'args' => ["-0e10", "0"]
+            ], [
+                'args' => ["1000", "0x3e8"]
+            ], [
+                'args' => ["1234", "  	1234"]
+            ], [
+                'args' => [md5('c!C123449477'), md5('d!D206687225')]
+            ], [
+                'args' => [md5('e!E160399390'), md5('f!F24413812')]
+            ], [
+                'args' => [sha1('aA1537368460!'), sha1('fF3560631665!')]
+            ],
         ];
 
-        $test_data[] = ['args' => array(md5('c!C123449477'), md5('d!D206687225'))];
-        $test_data[] = ['args' => array(md5('e!E160399390'), md5('f!F24413812'))];
-        $test_data[] = ['args' => array(sha1('aA1537368460!'), sha1('fF3560631665!'))];
         foreach ($test_data as $test_item) {
             $item = $test_item['args'];
             $tmp = ($item[0] == $item[1]);
@@ -518,13 +529,28 @@ class UtilTest extends BaseNothingTest
         }
 
         $test_data = [
-            ['args' => array('abc', 'abc'), 'return' => true],
-            ['args' => array('abc123', 'abc123'), 'return' => true],
-            ['args' => array('20170101', 20170101), 'return' => true],
-            ['args' => array('abc', 'Abc'), 'return' => false],
-            ['args' => array('abc', 'abc '), 'return' => false],
-            ['args' => array('abc', ' abc'), 'return' => false],
-            ['args' => array('abc', 'ABC'), 'return' => false],
+            [
+                'args' => ['abc', 'abc'],
+                'return' => true
+            ], [
+                'args' => ['abc123', 'abc123'],
+                'return' => true
+            ], [
+                'args' => ['20170101', 20170101],
+                'return' => true
+            ], [
+                'args' => ['abc', 'Abc'],
+                'return' => false
+            ], [
+                'args' => ['abc', 'abc '],
+                'return' => false
+            ], [
+                'args' => ['abc', ' abc'],
+                'return' => false
+            ], [
+                'args' => ['abc', 'ABC'],
+                'return' => false
+            ],
         ];
         foreach ($test_data as $test_item) {
             $item = $test_item['args'];
@@ -553,16 +579,16 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('', ''),
+                'args' => ['', ''],
                 'return' => true
             ], [
-                'args' => array('one20170101@test.com', 'one'),
+                'args' => ['one20170101@test.com', 'one'],
                 'return' => true
             ], [
-                'args' => array('one@test.com', 'one1'),
+                'args' => ['one@test.com', 'one1'],
                 'return' => false
             ], [
-                'args' => array('one20170101#test.com', 'onE'),
+                'args' => ['one20170101#test.com', 'onE'],
                 'return' => false
             ],
         ];
@@ -578,16 +604,16 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('', ''),
+                'args' => ['', ''],
                 'return' => true
             ], [
-                'args' => array('one20170101@test.com', 'com'),
+                'args' => ['one20170101@test.com', 'com'],
                 'return' => true
             ], [
-                'args' => array('one@test.com', 'com1'),
+                'args' => ['one@test.com', 'com1'],
                 'return' => false
             ], [
-                'args' => array('one20170101#test.com', 'coM'),
+                'args' => ['one20170101#test.com', 'coM'],
                 'return' => false
             ],
         ];
@@ -603,16 +629,16 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('', ''),
+                'args' => ['', ''],
                 'return' => true
             ], [
-                'args' => array('one20170101@test.com', 'one'),
+                'args' => ['one20170101@test.com', 'one'],
                 'return' => true
             ], [
-                'args' => array('one@test.com', 'one1'),
+                'args' => ['one@test.com', 'one1'],
                 'return' => false
             ], [
-                'args' => array('one20170101#test.com', 'onE'),
+                'args' => ['one20170101#test.com', 'onE'],
                 'return' => true
             ],
         ];
@@ -628,16 +654,16 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('', ''),
+                'args' => ['', ''],
                 'return' => true
             ], [
-                'args' => array('one20170101@test.com', 'com'),
+                'args' => ['one20170101@test.com', 'com'],
                 'return' => true
             ], [
-                'args' => array('one@test.com', 'com1'),
+                'args' => ['one@test.com', 'com1'],
                 'return' => false
             ], [
-                'args' => array('one20170101#test.com', 'coM'),
+                'args' => ['one20170101#test.com', 'coM'],
                 'return' => true
             ],
         ];
@@ -657,19 +683,19 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('utf8长度'),
+                'args' => ['utf8长度'],
                 'return' => 6
             ], [
-                'args' => array('长度'),
+                'args' => ['长度'],
                 'return' => 2
             ], [
-                'args' => array('utf8'),
+                'args' => ['utf8'],
                 'return' => 4
             ], [
-                'args' => array(''),
+                'args' => [''],
                 'return' => 0
             ], [
-                'args' => array(' '),
+                'args' => [' '],
                 'return' => 1
             ],
         ];
@@ -685,10 +711,10 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('你我他'),
+                'args' => ['你我他'],
                 'return' => '你我他'
             ], [
-                'args' => array('abc'),
+                'args' => ['abc'],
                 'return' => 'abc'
             ],
         ];
@@ -704,10 +730,10 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('\u89e3\u51bb\u8d26\u53f7\u6210\u529f'),
+                'args' => ['\u89e3\u51bb\u8d26\u53f7\u6210\u529f'],
                 'return' => '解冻账号成功'
             ], [
-                'args' => array('abc'),
+                'args' => ['abc'],
                 'return' => 'abc'
             ],
         ];
@@ -725,7 +751,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('\u89e3'),
+                'args' => ['\u89e3'],
                 'return' => '解'
             ],
         ];
@@ -852,7 +878,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array(['abc' => "<div >bcd\n</div>"], ['abc']),
+                'args' => [['abc' => "<div >bcd\n</div>"], ['abc']],
                 'return' => ['abc' => "div bcd/div"]
             ],
         ];
@@ -868,7 +894,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array("<div >bcd\n</div>\t"),
+                'args' => ["<div >bcd\n</div>\t"],
                 'return' => "div bcd/div"
             ],
         ];
@@ -883,19 +909,22 @@ class UtilTest extends BaseNothingTest
     ######## URL相关 ########
     ##########################
 
+    /**
+     *
+     */
     public function test_build_get()
     {
         Util::build_get("http://test.com", []);
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array("http://test.com"),
+                'args' => ["http://test.com"],
                 'return' => "http://test.com"
             ], [
-                'args' => array("http://test.com", ['a' => 1, 'b' => 2]),
+                'args' => ["http://test.com", ['a' => 1, 'b' => 2]],
                 'return' => "http://test.com/?a=1&b=2"
             ], [
-                'args' => array("http://test.com/", ['a' => 1, 'b' => 2]),
+                'args' => ["http://test.com/", ['a' => 1, 'b' => 2]],
                 'return' => "http://test.com/?a=1&b=2"
             ],
         ];
@@ -919,7 +948,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('Foo\Test\testClass::testFunc'),
+                'args' => ['Foo\Test\testClass::testFunc'],
                 'return' => "testClass"
             ],
         ];
@@ -938,7 +967,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('Foo\Test\testClass::testFunc'),
+                'args' => ['Foo\Test\testClass::testFunc'],
                 'return' => "testFunc"
             ],
         ];
@@ -958,7 +987,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('Foo\Test\testClass::testFunc'),
+                'args' => ['Foo\Test\testClass::testFunc'],
                 'return' => "test_func"
             ],
         ];
@@ -978,7 +1007,7 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('Foo\Test\testClass::testFunc'),
+                'args' => ['Foo\Test\testClass::testFunc'],
                 'return' => "test_class"
             ],
         ];
@@ -999,22 +1028,22 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('test_class'),
+                'args' => ['test_class'],
                 'return' => "testClass"
             ], [
-                'args' => array('_test_class'),
+                'args' => ['_test_class'],
                 'return' => "TestClass"
             ], [
-                'args' => array('_Test_class'),
+                'args' => ['_Test_class'],
                 'return' => "TestClass"
             ], [
-                'args' => array('_Test_clasS'),
+                'args' => ['_Test_clasS'],
                 'return' => "TestClasS"
             ], [
-                'args' => array('__Test_class'),
+                'args' => ['__Test_class'],
                 'return' => "TestClass"
             ], [
-                'args' => array('__test_class'),
+                'args' => ['__test_class'],
                 'return' => "TestClass"
             ],
         ];
@@ -1034,31 +1063,31 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('testClass'),
+                'args' => ['testClass'],
                 'return' => "test_class"
             ], [
-                'args' => array('TestClass'),
+                'args' => ['TestClass'],
                 'return' => "test_class"
             ], [
-                'args' => array('TestClassSSS'),
+                'args' => ['TestClassSSS'],
                 'return' => "test_class_sss"
             ], [
-                'args' => array('_Test_clasS'),
+                'args' => ['_Test_clasS'],
                 'return' => "_test_clas_s"
             ], [
-                'args' => array('ABCTestClass'),
+                'args' => ['ABCTestClass'],
                 'return' => "abctest_class"
             ], [
-                'args' => array('123TestClass'),
+                'args' => ['123TestClass'],
                 'return' => "123test_class"
             ], [
-                'args' => array('TestClass123'),
+                'args' => ['TestClass123'],
                 'return' => "test_class123"
             ], [
-                'args' => array('TestClasS123'),
+                'args' => ['TestClasS123'],
                 'return' => "test_clas_s123"
             ], [
-                'args' => array('TestClassEx123'),
+                'args' => ['TestClassEx123'],
                 'return' => "test_class_ex123"
             ],
         ];
@@ -1078,25 +1107,25 @@ class UtilTest extends BaseNothingTest
         $_func = self::_buildFunc(__METHOD__);
         $test_data = [
             [
-                'args' => array('_', [1, 2, 3]),
+                'args' => ['_', [1, 2, 3]],
                 'return' => "1_2_3"
             ], [
-                'args' => array('_', [0, 1, 2, 3]),
+                'args' => ['_', [0, 1, 2, 3]],
                 'return' => "0_1_2_3"
             ], [
-                'args' => array('_', [0, '', 2, 3]),
+                'args' => ['_', [0, '', 2, 3]],
                 'return' => "0_2_3"
             ], [
-                'args' => array('_', [0, '', 2, '']),
+                'args' => ['_', [0, '', 2, '']],
                 'return' => "0_2"
             ], [
-                'args' => array('_', ['', '']),
+                'args' => ['_', ['', '']],
                 'return' => ""
             ], [
-                'args' => array('_', []),
+                'args' => ['_', []],
                 'return' => ""
             ], [
-                'args' => array('', []),
+                'args' => ['', []],
                 'return' => ""
             ],
         ];

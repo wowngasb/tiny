@@ -14,6 +14,7 @@ class ApiHelper
         'debug' => 1,
         'debugargs' => 1,
         'debugresult' => 1,
+        'funcgetargs' => 1,
         'info' => 1,
         'warn' => 1,
         'error' => 1,
@@ -21,8 +22,11 @@ class ApiHelper
         'beforeaction' => 1,
         'getrequest' => 1,
         'getresponse' => 1,
+        'client_ip' => 1,
         'on' => 1,
         'path' => 1,
+        'fullurl' => 1,
+        'auth' => 1,
         'all_get' => 1,
         'all_post' => 1,
         'all_env' => 1,
@@ -100,9 +104,13 @@ class ApiHelper
     {
         $date_str = date('Y-m');
         $_dev_debug = $dev_debug ? 'true' : 'false';
-        $log_msg = "build API.js@{$cls}, method:" . json_encode($method_list);
+        $log_msg = "build API.js@{$cls}";
         self::debug($log_msg, __METHOD__, __CLASS__, __LINE__);
         $js_str = <<<EOT
+define('static/api/{$cls}', function(require, exports, module) {
+
+  var global = typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};
+  
 /*!
  * {$cls}.js
  * Auto Create By ApiHelper
@@ -164,10 +172,15 @@ function {$cls}Helper(){
             data: args,
             cache: false,
             dataType: host === location.hostname.toLowerCase() ? "json" : "jsonp",
+            error: function(xhr, status, error){
+                typeof failure === 'function' && failure({
+                    xhr: xhr, status: status, error: error
+                });
+            },
             success: function (res) {
                 self.debug && typeof logHandler === 'function' && logHandler(logLevelHandler(res), Math.round((new Date().getTime() - start_time)), args, res);
                 var code = typeof res.code !== 'undefined' ? parseInt(res.code) : -1
-                if (code === 0 || (typeof res.code !== 'undefined' && !res.error)) {
+                if (code === 0 || (code === -1 && !res.error)) {
                     typeof success === 'function' && success(res);
                 } else {
                     typeof failure === 'function' && failure(res);
@@ -191,7 +204,9 @@ EOT;
         logHandler = logHandler || function (t, u, a, d) {
             t in _l && (_l[t])(_d(),'['+t+'] '+_p+'('+u+'ms)','args:',a,'data:',d);
         };
-        return _ajax(_h, _p, args, success, failure, logHandler, logLevelHandler, fixArgs);
+        return !success && Promise ? new Promise(function(resolve, reject){
+            _ajax(_h, _p, args, resolve, reject, logHandler, logLevelHandler, fixArgs);
+        }) : _ajax(_h, _p, args, success, failure, logHandler, logLevelHandler, fixArgs);
     };
     {$args_str}
 
@@ -205,6 +220,8 @@ EOT;
 
 return new {$cls}Helper();
 })));
+
+});
 EOT;
         return $js_str;
     }

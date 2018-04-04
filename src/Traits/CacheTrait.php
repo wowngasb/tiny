@@ -137,7 +137,7 @@ trait CacheTrait
      * 使用redis缓存函数调用的结果 优先使用缓存中的数据
      * @param string $method 所在方法 方便检索
      * @param array $keys 缓存 keys
-     * @param int | null $timeCache 允许的数据缓存时间 0表示返回函数结果并清空缓存  负数表示不执行调用只清空缓存  默认为300
+     * @param int | null $timeCache  $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
      * @param string $prefix 缓存键 的 前缀
      * @param bool $is_log 是否显示日志
      * @return array
@@ -283,8 +283,14 @@ trait CacheTrait
         $rKey = self::_buildCacheKey($method, $key, $prefix);
 
         if ($timeCache <= 0) {
-            $data = $timeCache == 0 ? $func() : [];
-            self::_clearDataByFastCache($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
+            // $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
+            $data = ($timeCache == 0 || $timeCache == -2) ? $func() : [];
+            if ($timeCache == -2) {
+                self::_setDataByFastCache($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log);
+            } else {
+                self::_clearDataByFastCache($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
+            }
+
             return $data;
         }
         $useStatic = false;
@@ -315,6 +321,25 @@ trait CacheTrait
         }
 
         $data = $func();
+        self::_setDataByFastCache($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log);
+
+        return $data;
+    }
+
+    private static function _setDataByFastCache($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log)
+    {
+        $mCache = self::_getCacheInstance();
+        if (empty($mCache)) {
+            error_log(__METHOD__ . ' can not get mCache by _getCacheInstance!');
+            return;
+        }
+
+        $now = time();
+        $timeCache = is_null($timeCache) ? self::$_cache_default_expires : $timeCache;
+        $timeCache = intval($timeCache);
+        $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $rKey = self::_buildCacheKey($method, $key, $prefix);
+
         $val = ['data' => $data, '_update_' => time()];
         $use_cache = $filter($val['data']);
         if (is_numeric($use_cache) && $use_cache > 0) {  //当 $filter 返回一个数字时  使用返回结果当作缓存时间
@@ -342,8 +367,6 @@ trait CacheTrait
         } else {
             self::_cacheDebug('skip', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
         }
-
-        return $val['data'];
     }
 
     public static function _mgetDataByRedis($method, array $keys, $timeCache = null, $prefix = null, $is_log = false)
@@ -480,8 +503,13 @@ trait CacheTrait
 
         $rKey = self::_buildCacheKey($method, $key, $prefix);
         if ($timeCache <= 0) {
-            $data = $timeCache == 0 ? $func() : [];
-            self::_clearDataByRedis($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
+            // $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
+            $data = ($timeCache == 0 || $timeCache <= -2) ? $func() : [];
+            if ($timeCache <= -2) {
+                self::_setDataByRedis($method, $key, $prefix, $data, $filter, -$timeCache, $tags, $is_log);
+            } else {
+                self::_clearDataByRedis($method, $key, $prefix, self::_buildTagsByData($tags, $data), $is_log);
+            }
             return $data;
         }
         $useStatic = false;
@@ -511,6 +539,25 @@ trait CacheTrait
         }
 
         $data = $func();
+        self::_setDataByRedis($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log);
+
+        return $data;
+    }
+
+    private static function _setDataByRedis($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log)
+    {
+        $mRedis = self::_getRedisInstance();
+        if (empty($mRedis) || $mRedis instanceof EmptyMock) {
+            error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
+            return;
+        }
+        $now = time();
+        $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
+        $timeCache = intval($timeCache);
+        $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+
+        $rKey = self::_buildCacheKey($method, $key, $prefix);
+
         $val = ['data' => $data, '_update_' => time()];
         $use_cache = $filter($val['data']);
         if (is_numeric($use_cache) && $use_cache > 0) {  //当 $filter 返回一个数字时  使用返回结果当作缓存时间
@@ -538,10 +585,7 @@ trait CacheTrait
         } else {
             self::_cacheDebug("skip", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
         }
-
-        return $val['data'];
     }
-
 
     ####################################################
     ##################### 辅助方法 ####################

@@ -12,12 +12,13 @@ use Closure;
 use Illuminate\Database\Eloquent\Model as _Model;
 use stdClass;
 use Tiny\Plugin\DbHelper;
+use Tiny\Traits\LogTrait;
 use Tiny\Traits\OrmTrait;
 
 class Model extends _Model
 {
 
-    use OrmTrait;
+    use OrmTrait, LogTrait;
 
     /**
      * Get the database connection for the model.
@@ -775,11 +776,11 @@ class Model extends _Model
     /**
      * Concatenate values of a given column as a string.
      *
-     * @param  string  $column
-     * @param  string  $glue
+     * @param  string $column
+     * @param  string $glue
      * @return string
      */
-    public static  function implode($column, $glue = '')
+    public static function implode($column, $glue = '')
     {
         return self::_s_call('implode', [$column, $glue]);
     }
@@ -789,7 +790,7 @@ class Model extends _Model
      *
      * @return bool
      */
-    public static  function exists()
+    public static function exists()
     {
         return self::_s_call('exists', []);
     }
@@ -797,10 +798,10 @@ class Model extends _Model
     /**
      * Retrieve the "count" result of the query.
      *
-     * @param  string  $columns
+     * @param  string $columns
      * @return int
      */
-    public  static function count($columns = '*')
+    public static function count($columns = '*')
     {
         return self::_s_call('count', [$columns]);
     }
@@ -808,10 +809,10 @@ class Model extends _Model
     /**
      * Retrieve the minimum value of a given column.
      *
-     * @param  string  $column
+     * @param  string $column
      * @return mixed
      */
-    public static  function min($column)
+    public static function min($column)
     {
         return self::_s_call('min', [$column]);
     }
@@ -819,10 +820,10 @@ class Model extends _Model
     /**
      * Retrieve the maximum value of a given column.
      *
-     * @param  string  $column
+     * @param  string $column
      * @return mixed
      */
-    public  static function max($column)
+    public static function max($column)
     {
         return self::_s_call('max', [$column]);
     }
@@ -830,10 +831,10 @@ class Model extends _Model
     /**
      * Retrieve the sum of the values of a given column.
      *
-     * @param  string  $column
+     * @param  string $column
      * @return mixed
      */
-    public static  function sum($column)
+    public static function sum($column)
     {
         return self::_s_call('sum', [$column]);
     }
@@ -841,10 +842,10 @@ class Model extends _Model
     /**
      * Retrieve the average of the values of a given column.
      *
-     * @param  string  $column
+     * @param  string $column
      * @return mixed
      */
-    public  static function avg($column)
+    public static function avg($column)
     {
         return self::_s_call('avg', [$column]);
     }
@@ -852,10 +853,10 @@ class Model extends _Model
     /**
      * Alias for the "avg" method.
      *
-     * @param  string  $column
+     * @param  string $column
      * @return mixed
      */
-    public static  function average($column)
+    public static function average($column)
     {
         return self::_s_call('average', [$column]);
     }
@@ -863,11 +864,11 @@ class Model extends _Model
     /**
      * Execute an aggregate function on the database.
      *
-     * @param  string  $function
-     * @param  array   $columns
+     * @param  string $function
+     * @param  array $columns
      * @return mixed
      */
-    public  static function aggregate($function, $columns = ['*'])
+    public static function aggregate($function, $columns = ['*'])
     {
         return self::_s_call('aggregate', [$function, $columns]);
     }
@@ -875,11 +876,11 @@ class Model extends _Model
     /**
      * Execute a numeric aggregate function on the database.
      *
-     * @param  string  $function
-     * @param  array   $columns
+     * @param  string $function
+     * @param  array $columns
      * @return float|int
      */
-    public static  function numericAggregate($function, $columns = ['*'])
+    public static function numericAggregate($function, $columns = ['*'])
     {
         return self::_s_call('numericAggregate', [$function, $columns]);
     }

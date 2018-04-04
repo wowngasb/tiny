@@ -217,7 +217,13 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     public function debugTag($tag = null)
     {
         if (!empty($tag)) {
-            $tag = strval($tag) . ':' . $this->usedMilliSecond() . 'ms';
+            $t = $this->usedMilliSecond();
+            if ($t > 0 && $t < 1000) {
+                $tag = "{$tag}: {$t}ms";
+            } elseif ($t >= 1000) {
+                $ts = $t / 1000;
+                $tag = "{$tag}: {$ts}s";
+            }
         }
         return $tag;
     }
@@ -950,7 +956,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     public function client_ip($default = null)
     {
         if (!isset($this->_cache_map['client_ip'])) {
-            $arr_ip_header = array(
+            $arr_ip_header = [
                 'HTTP_CDN_SRC_IP',
                 'HTTP_PROXY_CLIENT_IP',
                 'HTTP_WL_PROXY_CLIENT_IP',
@@ -958,7 +964,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
                 'HTTP_X_FORWARDED_FOR',
                 'HTTP_X_REAL_IP',
                 'REMOTE_ADDR',
-            );
+            ];
             $header = $this->request_header();
             $client_ip = Util::v($header, 'x_forwarded_for', 'unknown');
 
@@ -969,10 +975,14 @@ class StdRequest extends SymfonyRequest implements RequestInterface
                     break;
                 }
             }
+
+            $cips = [];
+            preg_match("/[\d\.]{7,15}/", $client_ip, $cips);
+            $client_ip = !empty($cips[0]) ? $cips[0] : 'unknown';
+
             if ($client_ip == 'unknown' && !is_null($default)) {
                 $client_ip = $default;
             }
-
             $this->_cache_map['client_ip'] = $client_ip;
         }
         return $this->_cache_map['client_ip'];

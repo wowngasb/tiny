@@ -20,10 +20,16 @@ class GraphiQLDispatch extends AbstractDispatch
      */
     public static function initMethodNamespace(array $routeInfo)
     {
-        $controller = !empty($routeInfo[1]) ? Util::trimlower($routeInfo[1]) : 'index';
-        $module = !empty($routeInfo[0]) ? Util::trimlower($routeInfo[0]) : 'graphiql';
+        $controller = !empty($routeInfo[1]) ? trim($routeInfo[1]) : 'index';
+        $module = !empty($routeInfo[0]) ? trim($routeInfo[0]) : 'graphiql';
 
         return "\\Tiny\\Plugin\\{$module}\\controller\\{$controller}";
+    }
+
+    public static function initMethodName(array $routeInfo)
+    {
+        $file_name = !empty($routeInfo[2]) ? trim($routeInfo[2]) : 'index';
+        return Util::stri_endwith($file_name, '.js') || Util::stri_endwith($file_name, '.css') ? 'index' : $file_name;
     }
 
 }

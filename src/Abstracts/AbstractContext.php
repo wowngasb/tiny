@@ -78,6 +78,31 @@ abstract class AbstractContext extends AbstractClass
         return $this->_response;
     }
 
+
+    public function client_ip()
+    {
+        return $this->getRequest()->client_ip();
+    }
+
+    public function _session_has($name)
+    {
+        $tmp = $this->all_session();
+        return !empty($tmp[$name]);
+    }
+
+    public function _session_forget($name)
+    {
+        $this->set_session($name, '');
+        $this->del_session($name);
+    }
+
+    public function _session_pull($name, $default = '')
+    {
+        $val = $this->_session($name, $default);
+        $this->_session_forget($name);
+        return $val;
+    }
+
     public function _has($name)
     {
         $tmp = $this->all_request();

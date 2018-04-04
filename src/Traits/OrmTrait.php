@@ -50,6 +50,12 @@ trait OrmTrait
     ############ 获取配置 ##############
     ####################################
 
+    protected static function _hookItemChange($action, $id)
+    {
+        false && func_get_args();
+        return;
+    }
+
     /**
      * 修复 更新 或 创建 数组  选出可填充的 key
      * @param array $data
@@ -59,8 +65,7 @@ trait OrmTrait
     {
         $ret = [];
         foreach ($data as $key => $item) {
-            $_key = Util::trimlower($key);
-            if (static::_fillAble($_key)) {
+            if (static::_fillAble($key)) {
                 $ret[$key] = is_array($item) ? json_encode($item) : $item;
             }
         }
@@ -69,6 +74,9 @@ trait OrmTrait
 
     private static function _fixFiledKey($filed)
     {
+        while (Util::str_startwith($filed, '$')) {
+            $filed = substr($filed, 1);
+        }
         $idx = strpos($filed, '#');
         $filed = $idx > 0 ? substr($filed, 0, $idx) : $filed;
         return trim($filed);
@@ -173,10 +181,9 @@ trait OrmTrait
         if (!empty($select)) {
             $table->select($select);
         }
-        if (!empty($orderBy) && !empty($orderBy[0])) {
-            $column = $orderBy[0];
-            $direction = !empty($orderBy[1]) && Util::trimlower($orderBy[1]) == 'desc' ? 'desc' : 'asc';
-            $table->orderBy($column, $direction);
+
+        if (!empty($orderBy) && (!empty($orderBy[0]) || !empty($orderBy['field']))) {
+            $table = self::_buildOrderBy($table, $orderBy);
         }
 
         return $table;
@@ -189,7 +196,7 @@ trait OrmTrait
      */
     protected static function getOrmConfig()
     {
-        throw new OrmStartUpError("cannot call OrmTrait::getOrmConfig() must overwrite it");
+        throw new OrmStartUpError("must overwrite method OrmTrait::getOrmConfig() :OrmConfig");
     }
 
     public static function maxSelect()
@@ -235,39 +242,39 @@ trait OrmTrait
         return trim($prefix);
     }
 
-    public static function incOneById($id, $filed, $value = 1)
+    public static function incOneById($id, $filed, $value = 1, array $extra = [])
     {
         if (empty($id) || empty($filed)) {
             return;
         }
-        static::incItem($id, $filed, $value);
+        static::incItem($id, $filed, $value, $extra);
         static::getOneById($id, -1);
     }
 
-    public static function decOneById($id, $filed, $value = 1)
+    public static function decOneById($id, $filed, $value = 1, array $extra = [])
     {
         if (empty($id) || empty($filed)) {
             return;
         }
-        static::decItem($id, $filed, $value);
+        static::decItem($id, $filed, $value, $extra);
         static::getOneById($id, -1);
     }
 
-    public static function incAndGetOne($id, $filed, $value = 1)
+    public static function incAndGetOne($id, $filed, $value = 1, array $extra = [])
     {
         if (empty($id) || empty($filed)) {
             return null;
         }
-        static::incItem($id, $filed, $value);
+        static::incItem($id, $filed, $value, $extra);
         return static::getOneById($id, 0);
     }
 
-    public static function decAndGetOne($id, $filed, $value = 1)
+    public static function decAndGetOne($id, $filed, $value = 1, array $extra = [])
     {
         if (empty($id) || empty($filed)) {
             return null;
         }
-        static::decItem($id, $filed, $value);
+        static::decItem($id, $filed, $value, $extra);
         return static::getOneById($id, 0);
     }
 
@@ -275,9 +282,10 @@ trait OrmTrait
      * 根据主键获取数据 自动使用缓存
      * @param $id
      * @param null $timeCache
+     * @param null $default
      * @return mixed|null
      */
-    public static function getOneById($id, $timeCache = null)
+    public static function getOneById($id, $timeCache = null, $default = null)
     {
         if (empty($id)) {
             return null;
@@ -306,15 +314,25 @@ trait OrmTrait
         }, function ($data) {
             return !empty($data) ? true : 3;
         }, $timeCache, static::getCachePreFix(), [], self::sqlDebug());
-
+        if (empty($data[$primary_key]) || $data[$primary_key] != $id) {
+            return $default;
+        }
         return $data;
     }
 
+    /**
+     * 根据 id 删除
+     * @param int $id
+     * @return bool
+     */
     public static function delOneById($id)
     {
+        if ($id <= 0) {
+            return false;
+        }
         $ret = static::delItem($id);
         static::getOneById($id, -1);
-        return $ret;
+        return $ret > 0;
     }
 
     /**
@@ -346,9 +364,9 @@ trait OrmTrait
         $ret_list = [];
         foreach ($id_list as $id) {
             if (!empty($ret_dict[$id])) {
-                $ret_list[] = $ret_dict[$id];
+                $ret_list[$id] = $ret_dict[$id];
             } else {
-                $ret_list[] = null;
+                $ret_list[$id] = null;
             }
         }
         return $ret_list;
@@ -429,7 +447,7 @@ trait OrmTrait
      */
     public static function setOneById($id, array $data)
     {
-        if (empty($id)) {
+        if ($id <= 0) {
             return null;
         }
         $update = 0;
@@ -442,7 +460,7 @@ trait OrmTrait
 
     public static function setAndGetOne($id, array $data)
     {
-        if (empty($id)) {
+        if ($id <= 0) {
             return null;
         }
         if (!empty($data)) {
@@ -488,6 +506,32 @@ trait OrmTrait
     }
 
     /**
+     * 检查条目 对应 字段 是否为 指定的值  匹配返回对应id   不匹配返回0
+     * @param int $id
+     * @param string|null $filed
+     * @param string $value
+     * @return int
+     */
+    public static function checkOne($id, $filed = null, $value = '')
+    {
+        if ($id <= 0) {
+            return 0;
+        }
+        $primary_key = static::primaryKey();
+        if (is_null($filed)) {
+            $filed = $primary_key;
+            $value = $id;
+        }
+
+        $tmp = static::getOneById($id);
+        if (!empty($tmp) && !empty($tmp[$primary_key]) && $tmp[$filed] == $value) {
+            return $tmp[$primary_key];
+        } else {
+            return 0;
+        }
+    }
+
+    /**
      * 添加新数据 自动更新缓存
      * @param array $data
      * @return mixed|null
@@ -520,6 +564,15 @@ trait OrmTrait
     {
         false && func_get_args();
         return true;
+    }
+
+    /**
+     * 返回需要隐藏的 字段 列表
+     * @return array
+     */
+    protected static function _hiddenFields()
+    {
+        return [];
     }
 
     ####################################
@@ -601,6 +654,23 @@ trait OrmTrait
         static::getOrmConfig()->doneSql($sql_str, $param, $time, $_tag);
     }
 
+    private static function _buildOrderBy($table, array $sort_option)
+    {
+        /** @var \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder $table */
+        if (!empty($sort_option['field'])) {
+            $sort_option = [
+                $sort_option['field'], !empty($sort_option['direction']) ? $sort_option['direction'] : ''
+            ];
+        }
+        if (!empty($sort_option[0])) {
+            $field = trim($sort_option[0]);
+            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
+            $direction = $direction == 'desc' ? 'desc' : 'asc';
+            $table->orderBy($field, $direction);
+        }
+        return $table;
+    }
+
     ####################################
     ########### 原 build 函数 ############
     ####################################
@@ -631,12 +701,7 @@ trait OrmTrait
     public static function _first($table, $columns = ['*'], array $sort_option = [])
     {
         $start_time = microtime(true);
-        if (!empty($sort_option[0])) {
-            $field = trim($sort_option[0]);
-            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
-            $direction = $direction == 'desc' ? 'desc' : 'asc';
-            $table->orderBy($field, $direction);
-        }
+        $table = self::_buildOrderBy($table, $sort_option);
         $result = $table->first($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;
@@ -661,7 +726,6 @@ trait OrmTrait
         }
         return $rst;
     }
-
 
     /**
      * Chunk the results of the query.
@@ -1037,12 +1101,7 @@ trait OrmTrait
         } else {
             $table->take($max_select);
         }
-        if (!empty($sort_option[0])) {
-            $field = trim($sort_option[0]);
-            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
-            $direction = $direction == 'desc' ? 'desc' : 'asc';
-            $table->orderBy($field, $direction);
-        }
+        $table = self::_buildOrderBy($table, $sort_option);
         $data = $table->get($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
@@ -1057,13 +1116,17 @@ trait OrmTrait
      * 获取以主键为key的dict   不允许超过最大数量限制
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
+     * @param int | null $maxSelect 最大选择 条目数 为空则会使用 getOrmConfig()->getMaxSelect()
      * @return array 数据 dict 格式为 [`item.primary_key` => `item`, ]
      */
-    public static function dictItem(array $where = [], array $columns = ['*'])
+    public static function dictItem(array $where = [], array $columns = ['*'], $maxSelect = null)
     {
         $start_time = microtime(true);
-        $max_select = static::maxSelect();
+        $max_select = !empty($maxSelect) && $maxSelect > 0 ? intval($maxSelect) : static::maxSelect();
         $primary_key = static::primaryKey();
+        if (!in_array($primary_key, $columns)) {
+            $columns[] = $primary_key;
+        }
         $table = static::tableBuilder($where);
         $table->take($max_select);
         $data = $table->get($columns);
@@ -1090,12 +1153,7 @@ trait OrmTrait
     {
         $start_time = microtime(true);
         $table = static::tableBuilder($where);
-        if (!empty($sort_option[0])) {
-            $field = trim($sort_option[0]);
-            $direction = !empty($sort_option[1]) ? Util::trimlower($sort_option[1]) : 'asc';
-            $direction = $direction == 'desc' ? 'desc' : 'asc';
-            $table->orderBy($field, $direction);
-        }
+        $table = self::_buildOrderBy($table, $sort_option);
         if (!empty($with)) {
             $table->with($with);
         }
@@ -1204,6 +1262,7 @@ trait OrmTrait
         $table = static::tableBuilder();
         $id = $table->insertGetId($data, $primary_key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::_hookItemChange(OrmConfig::ACTION_INSERT, $id);
         return $id;
     }
 
@@ -1219,9 +1278,13 @@ trait OrmTrait
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         unset($data[$primary_key]);
-        $table = static::tableBuilder()->where($primary_key, $id);
-        $update = $table->update($data);
+        $table = self::tableBuilder([
+            $primary_key => $id
+        ]);
+
+        $update = static::_update($table, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
         return $update;
     }
 
@@ -1237,6 +1300,7 @@ trait OrmTrait
         $table = static::tableBuilder()->where($primary_key, $id);
         $delete = $table->delete();
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::_hookItemChange(OrmConfig::ACTION_DELETE, $id);
         return $delete;
     }
 
@@ -1245,15 +1309,17 @@ trait OrmTrait
      * @param int $id 主键id
      * @param string $filed 需要增加的字段
      * @param int $value 需要改变的值 默认为 1
-     * @return int  操作影响的行数
+     * @param array $extra
+     * @return int 操作影响的行数
      */
-    public static function incItem($id, $filed, $value = 1)
+    public static function incItem($id, $filed, $value = 1, array $extra = [])
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         $table = static::tableBuilder()->where($primary_key, $id);
-        $increment = $table->increment($filed, $value);
+        $increment = $table->increment($filed, $value, $extra);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
         return $increment;
     }
 
@@ -1262,15 +1328,17 @@ trait OrmTrait
      * @param int $id 主键id
      * @param string $filed 需要减少的字段
      * @param int $value 需要改变的值 默认为 1
-     * @return int  操作影响的行数
+     * @param array $extra
+     * @return int 操作影响的行数
      */
-    public static function decItem($id, $filed, $value = 1)
+    public static function decItem($id, $filed, $value = 1, array $extra = [])
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         $table = static::tableBuilder()->where($primary_key, $id);
-        $decrement = $table->decrement($filed, $value);
+        $decrement = $table->decrement($filed, $value, $extra);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
         return $decrement;
     }
 

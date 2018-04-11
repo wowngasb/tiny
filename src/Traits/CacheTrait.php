@@ -712,8 +712,9 @@ trait CacheTrait
         $port = intval(Application::config('ENV_REDIS.port', 6379));
         $password = Application::config('ENV_REDIS.password', '');
         $database = intval(Application::config('ENV_REDIS.database', 0));
+        $timeout = intval(Application::config('ENV_REDIS.timeout', 5));
 
-        if (!$redis->connect($host, $port)) {
+        if (!$redis->connect($host, $port, $timeout)) {
             return null;
         }
         if (!empty($password)) {

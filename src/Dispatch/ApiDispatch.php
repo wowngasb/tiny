@@ -105,7 +105,9 @@ class ApiDispatch extends AbstractDispatch
             $context->getResponse()->ob_start();
             $result = call_user_func_array([$context, $action], $params);
             $context->getResponse()->ob_get_clean();
-
+            if ($result instanceof ResponseInterface) {
+                return;
+            }
             if (is_object($result) && is_callable([$result, 'toArray'])) {
                 $result = call_user_func_array([$result, 'toArray'], []);
             }

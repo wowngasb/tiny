@@ -50,10 +50,24 @@ trait OrmTrait
     ############ 获取配置 ##############
     ####################################
 
-    protected static function _hookItemChange($action, $id)
+    protected static $skip_map = [];
+
+    protected static function _hookItemChange($action, $id, array $keys = [])
     {
+        static $base_skip = [
+            'created_at',
+            'updated_at',
+            'deleted_at'
+        ];
+        if ($action == OrmConfig::ACTION_UPDATE) {
+            $tmp = Util::build_map($keys, true, 1, array_merge($base_skip, static::$skip_map));
+            if (empty($tmp)) {
+                return false;
+            }
+        }
+
         false && func_get_args();
-        return;
+        return true;
     }
 
     /**
@@ -1063,10 +1077,12 @@ trait OrmTrait
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @return int  数据条目数
      */
-    public static function countItem(array $where = [], array $columns = ['*'])
+    public static function countItem(array $where = [], array $columns = [])
     {
         $start_time = microtime(true);
         $table = static::tableBuilder($where);
+        $primary_key = static::primaryKey();
+        $columns = !empty($columns) ? $columns : [$primary_key];
         $count = $table->count($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $count;
@@ -1124,7 +1140,7 @@ trait OrmTrait
         $start_time = microtime(true);
         $max_select = !empty($maxSelect) && $maxSelect > 0 ? intval($maxSelect) : static::maxSelect();
         $primary_key = static::primaryKey();
-        if (!in_array($primary_key, $columns)) {
+        if (!in_array($primary_key, $columns) && !in_array('*', $columns)) {
             $columns[] = $primary_key;
         }
         $table = static::tableBuilder($where);
@@ -1262,7 +1278,7 @@ trait OrmTrait
         $table = static::tableBuilder();
         $id = $table->insertGetId($data, $primary_key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_INSERT, $id);
+        static::_hookItemChange(OrmConfig::ACTION_INSERT, $id, array_keys($data));
         return $id;
     }
 
@@ -1284,7 +1300,7 @@ trait OrmTrait
 
         $update = static::_update($table, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_keys($data));
         return $update;
     }
 
@@ -1319,7 +1335,7 @@ trait OrmTrait
         $table = static::tableBuilder()->where($primary_key, $id);
         $increment = $table->increment($filed, $value, $extra);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
         return $increment;
     }
 
@@ -1338,7 +1354,7 @@ trait OrmTrait
         $table = static::tableBuilder()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value, $extra);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id);
+        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
         return $decrement;
     }
 

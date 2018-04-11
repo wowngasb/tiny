@@ -4,6 +4,7 @@ namespace Tiny\Plugin;
 
 use Closure;
 use Illuminate\Database\Capsule\Manager;
+use PDO;
 use Tiny\Application;
 use Tiny\Exception\OrmStartUpError;
 use Tiny\Util;
@@ -38,6 +39,9 @@ class DbHelper extends Manager
             'charset' => Util::v($db_config, 'charset', 'utf8'),
             'collation' => Util::v($db_config, 'collation', 'utf8_unicode_ci'),
             'prefix' => Util::v($db_config, 'prefix', ''),
+            'options' => [
+                PDO::ATTR_TIMEOUT => Util::v($db_config, 'timeout', 5),
+            ]
         ];
         return $db_config;
     }

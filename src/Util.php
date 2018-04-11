@@ -681,12 +681,15 @@ abstract class Util extends AbstractClass
      * @param int $default
      * @return array 字典 hash
      */
-    public static function build_map(array $key_list, $trimlower = false, $default = 1)
+    public static function build_map(array $key_list, $trimlower = false, $default = 1, $exclude = [])
     {
         $map = [];
         foreach ($key_list as $key) {
             if ($trimlower) {
                 $key = static::trimlower($key);
+            }
+            if (!empty($exclude) && in_array($key, $exclude)) {
+                continue;
             }
             if ($key !== '') {
                 $map[$key] = $default;

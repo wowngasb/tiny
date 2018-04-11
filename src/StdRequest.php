@@ -219,10 +219,10 @@ class StdRequest extends SymfonyRequest implements RequestInterface
         if (!empty($tag)) {
             $t = $this->usedMilliSecond();
             if ($t > 0 && $t < 1000) {
-                $tag = "{$tag}: {$t}ms";
+                $tag = "{$tag} @{$t}ms";
             } elseif ($t >= 1000) {
                 $ts = $t / 1000;
-                $tag = "{$tag}: {$ts}s";
+                $tag = "{$tag} @{$ts}s";
             }
         }
         return $tag;

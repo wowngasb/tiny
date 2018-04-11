@@ -75,21 +75,27 @@ trait LogTrait
         return $args;
     }
 
+    protected static function _getMethodArgs(array $args, $method = '')
+    {
+        $func_args = [];
+        try {
+            $tmp = explode('::', $method);
+            $reflection = new \ReflectionMethod($tmp[0], $tmp[1]);
+            $param = $reflection->getParameters();
+
+            foreach ($param as $arg) {
+                $func_args[$arg->name] = array_shift($args);
+            }
+        } catch (\Exception $e) {
+            error_log("debugArgs Exception target:{$method}, error:" . $e->getMessage());
+        }
+        return $func_args;
+    }
+
     public static function debugArgs(array $args, $method = '', $class = 'sys_log', $line_no = 0, $max_items = 10, $max_chars = 50)
     {
         if (!empty($method)) {
-            try {
-                $tmp = explode('::', $method);
-                $reflection = new \ReflectionMethod($tmp[0], $tmp[1]);
-                $param = $reflection->getParameters();
-                $tmp_args = [];
-                foreach ($param as $arg) {
-                    $tmp_args[$arg->name] = array_shift($args);
-                }
-                $args = $tmp_args;
-            } catch (\Exception $e) {
-                error_log("debugArgs Exception target:{$method}, error:" . $e->getMessage());
-            }
+            $args = self::_getMethodArgs($args, $method);
         }
         $log_msg = "FuncArgs:" . self::_mixed2msg($args, $max_items, $max_chars);
         static::debug($log_msg, $method, $class . '_', $line_no);

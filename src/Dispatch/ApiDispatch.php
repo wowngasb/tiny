@@ -101,16 +101,14 @@ class ApiDispatch extends AbstractDispatch
         $callback = $context->_get('callback', '');
         try {
             /** @var AbstractApi $context */
-
             $context->getResponse()->ob_start();
             $result = call_user_func_array([$context, $action], $params);
             $context->getResponse()->ob_get_clean();
             if ($result instanceof ResponseInterface) {
                 return;
             }
-            if (is_object($result) && is_callable([$result, 'toArray'])) {
-                $result = call_user_func_array([$result, 'toArray'], []);
-            }
+
+            $result = Util::try2array($result);
             if (!isset($result['code'])) {
                 $result['code'] = 0;
             }

@@ -45,7 +45,7 @@ class RedisSession implements \SessionHandlerInterface
 
     private function _encodeData($sessionData)
     {
-        if(empty($sessionData)){
+        if (empty($sessionData)) {
             return '';
         }
         $gz = gzencode($sessionData, 9);
@@ -54,7 +54,7 @@ class RedisSession implements \SessionHandlerInterface
 
     private function _decodeData($sessionData)
     {
-        if(empty($sessionData)){
+        if (empty($sessionData)) {
             return '';
         }
         $sessionData = Application::decrypt($sessionData, $this->_salt);
@@ -75,7 +75,7 @@ class RedisSession implements \SessionHandlerInterface
     }
 
     /**
-     * 类似于析构函数，在write之后调用或者session_write_close()函数之后调用
+     * 类似于析构函数，在write之后调用或者 session_write_close() 函数之后调用
      */
     public function close()
     {
@@ -94,9 +94,9 @@ class RedisSession implements \SessionHandlerInterface
             $redis->select($this->_db);
         }
         if (!empty($this->_pre_fix)) {
-            $sessionId = "{$this->_pre_fix}{$sessionId}";
+            $sessionId = "{$this->_pre_fix}:{$sessionId}";
         }
-        $sessionData = $redis->get($sessionId);
+        $sessionData = $redis->get(trim($sessionId));
         return $this->_decodeData($sessionData);
     }
 
@@ -113,13 +113,13 @@ class RedisSession implements \SessionHandlerInterface
             $redis->select($this->_db);
         }
         if (!empty($this->_pre_fix)) {
-            $sessionId = "{$this->_pre_fix}{$sessionId}";
+            $sessionId = "{$this->_pre_fix}:{$sessionId}";
         }
         $sessionData = $this->_encodeData($sessionData);
-        if(!empty($sessionData)){
-            return $redis->setex($sessionId, $this->_lifeTime, $sessionData);
+        if (!empty($sessionData)) {
+            return $redis->setex(trim($sessionId), $this->_lifeTime, $sessionData);
         } else {
-            return $redis->del($sessionId);
+            return $redis->del(trim($sessionId));
         }
     }
 
@@ -135,9 +135,9 @@ class RedisSession implements \SessionHandlerInterface
             $redis->select($this->_db);
         }
         if (!empty($this->_pre_fix)) {
-            $sessionId = "{$this->_pre_fix}{$sessionId}";
+            $sessionId = "{$this->_pre_fix}:{$sessionId}";
         }
-        return $redis->delete($sessionId) >= 1;
+        return $redis->delete(trim($sessionId)) >= 1;
     }
 
     /**

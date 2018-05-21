@@ -9,6 +9,22 @@ class RpcHelper
 
     use LogTrait;
 
+
+    public static function _get_port($url, $default_post = 80)
+    {
+        $s_idx = stripos($url, '://');
+        if ($s_idx === false) {
+            return $default_post;
+        }
+        $url = substr($url, $s_idx + 3);
+        $domain = explode('/', $url)[0];
+        $p_idx = stripos($domain, ':');
+        if ($p_idx === false) {
+            return $default_post;
+        }
+        return intval(explode(':', $url)[1]);
+    }
+
     /**
      * post请求url，并返回结果
      * @param string $query_url
@@ -23,8 +39,11 @@ class RpcHelper
     {
         $t1 = microtime(true);
         $ch = curl_init();
+
+        $port = self::_get_port($query_url, 80);
         curl_setopt($ch, CURLOPT_URL, $query_url);
-        curl_setopt($ch, CURLOPT_PORT, 80);
+        curl_setopt($ch, CURLOPT_PORT, $port);
+
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);

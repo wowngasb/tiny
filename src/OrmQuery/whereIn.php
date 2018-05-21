@@ -18,7 +18,7 @@ class whereIn extends AbstractQuery
      * @param array $values
      * @param callable|null $filter 本条件是否生效的回调函数 参数为自身
      */
-    public function __construct(array $values, callable $filter = null)
+    public function __construct($values, callable $filter = null)
     {
         $this->values = $values;
 

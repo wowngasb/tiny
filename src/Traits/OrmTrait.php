@@ -498,10 +498,10 @@ trait OrmTrait
     /**
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
      * @return mixed|null 返回数据
      */
-    public static function upsertOne(array $where, array $value)
+    public static function upsertOne(array $where, $value)
     {
         $id = static::upsertItem($where, $value);
         return !empty($id) ? static::getOneById($id, -1) : null;
@@ -510,10 +510,10 @@ trait OrmTrait
     /**
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
      * @return mixed|null 返回数据
      */
-    public static function upsertAndGetOne(array $where, array $value)
+    public static function upsertAndGetOne(array $where, $value)
     {
         $id = static::upsertItem($where, $value);
         return !empty($id) ? static::getOneById($id, 0) : null;
@@ -726,11 +726,26 @@ trait OrmTrait
      *
      * @param \Illuminate\Database\Query\Builder $table
      * @param  array $columns
+     * @param int $start
+     * @param int $limit
      * @return array|static[]
      */
-    public static function _get($table, $columns = ['*'])
+    public static function _get($table, $columns = ['*'], $start = 0, $limit = 0)
     {
         $start_time = microtime(true);
+
+        $max_select = static::maxSelect();
+        $start = $start <= 0 ? 0 : $start;
+        $limit = $limit > $max_select ? $max_select : $limit;
+        if ($start > 0) {
+            $table->skip($start);
+        }
+        if ($limit > 0) {
+            $table->take($limit);
+        } else {
+            $table->take($max_select);
+        }
+
         $result = $table->get($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
@@ -1143,9 +1158,10 @@ trait OrmTrait
         if (!in_array($primary_key, $columns) && !in_array('*', $columns)) {
             $columns[] = $primary_key;
         }
+        $columns_set = array_keys(Util::build_map($columns, true));
         $table = static::tableBuilder($where);
         $table->take($max_select);
-        $data = $table->get($columns);
+        $data = $table->get($columns_set);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
         $rst = [];
@@ -1162,10 +1178,10 @@ trait OrmTrait
      * @param array $sort_option 排序依据 格式为 ['column', 'asc|desc']
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @param string | array $with
-     * @param string | array $orderBy
+     * @param string | array $groupBy
      * @return mixed
      */
-    public static function firstItem(array $where = [], array $sort_option = [], array $columns = ['*'], $with = '', $orderBy = '')
+    public static function firstItem(array $where = [], array $sort_option = [], array $columns = ['*'], $with = '', $groupBy = '')
     {
         $start_time = microtime(true);
         $table = static::tableBuilder($where);
@@ -1173,8 +1189,8 @@ trait OrmTrait
         if (!empty($with)) {
             $table->with($with);
         }
-        if (!empty($orderBy)) {
-            $table->groupBy($orderBy);
+        if (!empty($groupBy)) {
+            $table->groupBy($groupBy);
         }
         $item = $table->first($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
@@ -1184,14 +1200,19 @@ trait OrmTrait
     /**
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据
      * @param array $where 检索条件数组 具体格式参见文档
-     * @param array $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
      * @return int 返回数据 主键 自增id
      */
-    public static function upsertItem(array $where, array $value)
+    public static function upsertItem(array $where, $value)
     {
-        $data = self::_fixFillAbleData($value);
         $primary_key = static::primaryKey();
         $tmp = static::firstItem($where);
+
+        if (is_callable($value)) {
+            $value = call_user_func_array($value, [$tmp]);
+        }
+        $data = self::_fixFillAbleData($value);
+
         if (empty($tmp)) {
             return static::newItem($data);
         } else {

@@ -101,7 +101,7 @@ trait LogTrait
         static::debug($log_msg, $method, $class . '_', $line_no);
     }
 
-    private static function _mixed2msg($var, $max_items, $max_chars, $indent = 0)
+    protected static function _mixed2msg($var, $max_items = 10, $max_chars = 50, $indent = 0)
     {
         $tab = str_repeat("  ", $indent + 1);
         $tab_pre = str_repeat("  ", $indent);

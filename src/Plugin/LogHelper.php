@@ -22,6 +22,7 @@ namespace Tiny\Plugin;
  *  2.static Level OFF
  *  OFF Level是最高等级的，用于关闭所有日志记录。
 */
+use app\Util;
 use Tiny\Application;
 
 class LogHelper
@@ -116,7 +117,7 @@ class LogHelper
             return '';
         }
 
-        $logPath = $this->_log_path . '/' . $this->_module;
+        $logPath = (!Util::str_endwith($this->_log_path, '/') ? $this->_log_path . '/' : $this->_log_path) . $this->_module;
 
         if (!is_dir($logPath)) {
             mkdir($logPath, 0777, true);
@@ -202,7 +203,7 @@ class LogHelper
             return '';  //防止恶意访问 只允许访问log文件夹下文件
         }
         if (is_file($file)) {
-            $file_str = file_get_contents($file);
+            $file_str = filesize($file) > 5 * 1024 * 1024 ? 'file gt 5 MB' : file_get_contents($file);
             return $file_str;
         } else {
             return '';
@@ -230,7 +231,6 @@ class LogHelper
             $new_path = $path . '.' . time();
             $content = date('Y-m-d H:i:s') . " [WARN] superAdmin cut this file by syslog, rename file：{$new_path}\n";
             file_put_contents($file, $content, FILE_APPEND | LOCK_EX);
-            usleep(100 * 1000);  //暂停一下等待文件关闭
             $test = @rename($file, $log_path . $new_path) ? true : false;
             if ($test) {
                 $content = date('Y-m-d H:i:s') . " [WARN] superAdmin cut last file by syslog, last file：{$new_path}\n";

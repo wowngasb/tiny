@@ -80,7 +80,7 @@ class FastRoute implements RouteInterface
                 return [null, null];
             case Dispatcher::METHOD_NOT_ALLOWED:
                 $allowedMethods = $routeInfo[1];
-                throw new MethodNotAllowedError("method not allowed uri:{$uri}, method:" . $request->getMethod() . ", allowed:{$allowedMethods}");
+                throw new MethodNotAllowedError("method not allowed uri:{$uri}, method:" . $request->getMethod() . ", allowed:" . join(',', $allowedMethods));
             case Dispatcher::FOUND:
                 $handler = $routeInfo[1];
                 $vars = $routeInfo[2];
@@ -107,7 +107,8 @@ class FastRoute implements RouteInterface
         return [null, null];
     }
 
-    private function _fixAction($request, $controller, $action){
+    private function _fixAction($request, $controller, $action)
+    {
         if (!empty($action) && !is_null($this->_actionPre)) {
             $action = call_user_func_array($this->_actionPre, [$request, $controller, $action]);
         }

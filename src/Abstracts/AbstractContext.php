@@ -108,7 +108,7 @@ abstract class AbstractContext extends AbstractClass
         $tmp = $this->all_request();
         $value = isset($tmp[$name]) ? $tmp[$name] : '';
         $boolOrArray = is_bool($value) || is_array($value);
-        if(!$boolOrArray && trim((string)$value) === ''){
+        if (!$boolOrArray && trim((string)$value) === '') {
             return false;
         }
         return true;
@@ -274,9 +274,14 @@ abstract class AbstractContext extends AbstractClass
         return $this->_request->all_session();
     }
 
-    public function path()
+    public function path($pre = '')
     {
-        return $this->_request->path();
+        return $pre . $this->_request->path();
+    }
+
+    public function _requestHost()
+    {
+        return $this->_request->host();
     }
 
     public function fullUrl()

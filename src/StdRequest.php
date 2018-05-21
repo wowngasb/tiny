@@ -135,7 +135,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     public function getRouteInfoAsUri()
     {
         $arr = $this->getRouteInfo();
-        return "{$arr[0]}/{$arr[1]}/{$arr[2]}";
+        return !empty($arr) ? "{$arr[0]}/{$arr[1]}/{$arr[2]}" : '/';
     }
 
     /**
@@ -285,7 +285,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function session_id($id = null)
     {
-        return !empty($id) ? session_id($id) : session_id();
+        return !empty($id) ? session_id($id) : trim(session_id());
     }
 
     /**

@@ -8,6 +8,8 @@
 
 namespace Tiny;
 
+use DateTime;
+use DateTimeZone;
 use Tiny\Abstracts\AbstractClass;
 
 abstract class Util extends AbstractClass
@@ -359,7 +361,7 @@ abstract class Util extends AbstractClass
         $replace = array_values($fix_replace);
         foreach ($trace_list as &$trace) {
             $args_str = !empty($trace['args_str']) ? $trace['args_str'] : '';
-            if (!empty($args_str)) {
+            if (!empty($args_str) && !empty($search) && !empty($replace)) {
                 $args_str = str_replace($search, $replace, $args_str);
             }
             $trace['args_str'] = $args_str;
@@ -496,6 +498,13 @@ abstract class Util extends AbstractClass
     ##########################
     ######## 数组处理 ########
     ##########################
+
+    public static function array_eq($arr1, $arr2)
+    {
+        sort($arr1);
+        sort($arr2);
+        return $arr1 == $arr2;
+    }
 
     /**
      * 判断 数组 全部符合 特定条件
@@ -667,11 +676,40 @@ abstract class Util extends AbstractClass
      */
     public static function check_range(array $range_arr, $as_int = false)
     {
-        if ($as_int) {
-            return isset($range_arr['lower']) && isset($range_arr['upper']) && $range_arr['lower'] < $range_arr['upper'];
-        } else {
-            return !empty($range_arr['lower']) && !empty($range_arr['upper']) && $range_arr['lower'] < $range_arr['upper'];
+        if (empty($range_arr['lower']) && empty($range_arr['upper'])) {
+            return false;
         }
+
+        if ($as_int) {
+            return $range_arr['lower'] <= $range_arr['upper'];
+        } else {
+            return $range_arr['lower'] <= $range_arr['upper'];
+        }
+    }
+
+    /**
+     * @param array $arr_list
+     * @param callable $key_func 参数 $idx, $item
+     * @param callable $val_func 参数 $idx, $item
+     * @return array
+     */
+    public static function list2map(array $arr_list, callable $key_func, callable $val_func)
+    {
+        if (empty($arr_list)) {
+            return [];
+        }
+
+        $ret_map = [];
+        foreach ($arr_list as $idx => $item) {
+            $key = call_user_func_array($key_func, [$idx, $item]);
+            if (!empty($key)) {
+                $val = call_user_func_array($val_func, [$idx, $item]);
+                if (!is_null($val)) {
+                    $ret_map[$key] = $val;
+                }
+            }
+        }
+        return $ret_map;
     }
 
     /**
@@ -679,6 +717,7 @@ abstract class Util extends AbstractClass
      * @param array $key_list 需要值为 string
      * @param bool $trimlower 是否 去除空格并转为小写
      * @param int $default
+     * @param array $exclude
      * @return array 字典 hash
      */
     public static function build_map(array $key_list, $trimlower = false, $default = 1, $exclude = [])
@@ -892,6 +931,18 @@ abstract class Util extends AbstractClass
     ######## 时间处理 ########
     ##########################
 
+    public static function dateUTC($dateTimeUTC = null, $dateFormat = 'Y-m-d\TH:i:s\Z', $timeZone = 'UTC')
+    {
+        $dateTimeUTC = !empty($dateTimeUTC) ? $dateTimeUTC : date("Y-m-d H:i:s");
+
+        $default_timezone = date_default_timezone_get();
+        $date = new DateTime($dateTimeUTC, new DateTimeZone($default_timezone));
+        $date->setTimeZone(new DateTimeZone($timeZone));
+
+        return $date->format($dateFormat);
+    }
+
+
     /**
      * 获取某年某月最大天数
      * @param int $year 年
@@ -970,7 +1021,7 @@ abstract class Util extends AbstractClass
      * @param int $etime 结束时间错
      * @return string  时间差 xx小时xx分xx秒
      */
-    public static function str_time($stime, $etime)
+    public static function str_time($stime, $etime = 0)
     {
         $c = abs(intval($etime - $stime));
         $s = $c % 60;
@@ -1031,7 +1082,8 @@ abstract class Util extends AbstractClass
         $str = '';
         $hash_int = abs(crc32($input)) + abs(crc32(md5($input)));
         while (strlen($str) < $length) {
-            $idx = $hash_int % $max;
+            $idx = abs($hash_int % $max);
+
             $str .= $tmp_str[$idx];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
             $hash_int = intval($hash_int / $max);
             if ($hash_int < $cmp_int * strlen($str)) {
@@ -1285,6 +1337,20 @@ EOT;
         }
         $val = preg_replace('/([<,>,",\'])/', '', $val);
         return $val;
+    }
+
+    public static function xss_clean_textarea($val)
+    {
+        $val = strval($val);
+        $tmp_list = explode("\n", $val);
+        $out_list = [];
+        foreach ($tmp_list as $item) {
+            $tmp = trim(static::xss_clean($item));
+            if ($tmp !== '') {
+                $out_list[] = $tmp;
+            }
+        }
+        return join("\n", $out_list);
     }
 
     ##########################
@@ -1578,7 +1644,6 @@ EOT;
         if (stripos($base_url, '?') > 0) {
 
         } else {
-            $base_url .= substr($base_url, -1, 1) == '/' ? '' : '/';
             $base_url .= stripos($base_url, '?') > 0 ? '' : "?";
         }
         $base_url = (substr($base_url, -1) == '?' || substr($base_url, -1) == '&') ? $base_url : "{$base_url}&";

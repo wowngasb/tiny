@@ -61,22 +61,22 @@ class Q
         return new orWhereNotBetween($lower, $upper, $filter);
     }
 
-    public static function whereIn(array $values, callable $filter = null)
+    public static function whereIn($values, callable $filter = null)
     {
         return new whereIn($values, $filter);
     }
 
-    public static function orWhereIn(array $values, callable $filter = null)
+    public static function orWhereIn($values, callable $filter = null)
     {
         return new orWhereIn($values, $filter);
     }
 
-    public static function whereNotIn(array $values, callable $filter = null)
+    public static function whereNotIn($values, callable $filter = null)
     {
         return new whereNotIn($values, $filter);
     }
 
-    public static function orWhereNotIn(array $values, callable $filter = null)
+    public static function orWhereNotIn($values, callable $filter = null)
     {
         return new orWhereNotIn($values, $filter);
     }

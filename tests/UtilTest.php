@@ -922,7 +922,7 @@ class UtilTest extends BaseNothingTest
                 'return' => "http://test.com"
             ], [
                 'args' => ["http://test.com", ['a' => 1, 'b' => 2]],
-                'return' => "http://test.com/?a=1&b=2"
+                'return' => "http://test.com?a=1&b=2"
             ], [
                 'args' => ["http://test.com/", ['a' => 1, 'b' => 2]],
                 'return' => "http://test.com/?a=1&b=2"

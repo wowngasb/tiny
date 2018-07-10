@@ -19,6 +19,8 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
     protected $_header_list = [];  // 响应给请求的Header
     protected $_header_sent = false;  // 响应Header 是否已经发送
     protected $_code = 200;  // 响应给请求端的HTTP状态码
+    protected $_header_send = 0;
+    protected $_body_send = 0;
     protected $_body = [];  // 响应给请求的body
 
     /** @var RequestInterface */
@@ -351,9 +353,10 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function addHeader($string, $replace = true, $http_response_code = null)
     {
+        /*
         if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
-        }
+        }*/
         $this->_header_list[] = [$string, $replace, $http_response_code];
         if (!is_null($http_response_code)) {
             $this->setResponseCode(intval($http_response_code));
@@ -379,11 +382,36 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function setResponseCode($code)
     {
+        /*
         if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
-        }
+        }*/
         $this->_code = intval($code);
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getResponseCode()
+    {
+        return $this->_code;
+    }
+
+    /**
+     * @return int
+     */
+    public function getHeaderSendLength()
+    {
+        return $this->_header_send;
+    }
+
+    /**
+     * @return int
+     */
+    public function getBodySendLength()
+    {
+        return $this->_body_send;
     }
 
     /**
@@ -400,6 +428,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
         }
         if (!$this->_header_sent) {
             foreach ($this->_header_list as $idx => $val) {
+                $this->_header_send += strlen($val[0]);
                 header($val[0], $val[1], $val[2]);
             }
             http_response_code($this->_code);
@@ -414,12 +443,14 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
      */
     public function resetHeader()
     {
+        /*
         if ($this->_header_sent) {
             throw new AppStartUpError('header has been send');
-        }
+        }*/
 
         $this->_header_list = [];
         $this->_code = 200;
+        $this->_header_send = 0;
         return $this;
     }
 
@@ -473,6 +504,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
             $this->_body = [];
         }
         unset($this->_body[$name]);
+        $this->_body_send = 0;
         return $this;
     }
 
@@ -503,6 +535,7 @@ class StdResponse extends SymfonyResponse implements ResponseInterface
             $this->sendHeader();
         }
         foreach ($this->yieldBody() as $html) {
+            $this->_body_send += strlen($html);
             echo $html;  // 输出 响应内容
         }
         $this->_body = [];

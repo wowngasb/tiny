@@ -16,6 +16,7 @@ use Tiny\Event\ApplicationEvent;
 use Tiny\Event\ControllerEvent;
 use Tiny\Event\OrmEvent;
 use Tiny\Traits\OrmConfig;
+use Tiny\Util;
 
 abstract class AbstractBoot
 {
@@ -145,7 +146,8 @@ abstract class AbstractBoot
             $layout = $obj->_getLayout();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
             unset($params['action_content']);
-            $data = ['params' => self::tryFixParams($params), 'tpl_path' => $tpl_path];
+            $data = self::tryFixParams($params);
+            $data['__tpl_path__'] = $tpl_path;
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #preDisplay' . (!empty($layout) ? "[{$file_name} #{$layout}]" : ''));
             static::consoleDebug($data, $tag, 1);
         });  // 注册 模版渲染 打印模版变量  用于调试
@@ -155,7 +157,8 @@ abstract class AbstractBoot
             $params = $event->getViewArgs();
             $tpl_path = $event->getViewFile();
             $file_name = pathinfo($tpl_path, PATHINFO_FILENAME);
-            $data = ['params' => self::tryFixParams($params), 'tpl_path' => $tpl_path];
+            $data = self::tryFixParams($params);
+            $data['__tpl_path__'] = $tpl_path;
             $tag = $obj->getRequest()->debugTag(get_class($obj) . " #preWidget [{$file_name}]");
             static::consoleDebug($data, $tag, 1);
         });  // 注册 组件渲染 打印组件变量  用于调试
@@ -195,11 +198,7 @@ abstract class AbstractBoot
         $ret = [];
         foreach ($params as $key => $item) {
             if (is_object($item)) {
-                if (is_callable([$item, 'toArray'])) {
-                    $ret[$key] = call_user_func_array([$item, 'toArray'], []);
-                } else {
-                    $ret[$key] = $item;
-                }
+                $ret[$key] = Util::try2array($item);
             } else {
                 $ret[$key] = $item;
             }

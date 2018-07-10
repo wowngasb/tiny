@@ -83,7 +83,7 @@ EOT;
         $crypt_key = Application::config('ENV_CRYPT_KEY');
         $auth_str = $request->_cookie($name, '');
         $develop_key = Util::decode($auth_str, $crypt_key);
-        return !empty($develop_key) ? $develop_key : $request->_request('token', '');
+        return !empty($develop_key) ? $develop_key : $request->_request('devtoken', '');
     }
 
     final public static function _setDevelopKey(RequestInterface $request, $develop_key)

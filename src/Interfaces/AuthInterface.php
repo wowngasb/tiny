@@ -35,6 +35,12 @@ interface AuthInterface
      */
     public function guest();
 
+    /**
+     * 判断当前用户 角色 指定权限 值
+     * @param string $key
+     * @return mixed
+     */
+    public function role($key);
 
     /**
      * Get the currently authenticated user.

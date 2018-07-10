@@ -190,7 +190,7 @@ class LogHelper
      * @param $path
      * @return string
      */
-    public static function readLogByPath($path)
+    public static function readLogByPath($path, $max_mb = 5)
     {
         $log_config = Application::config('ENV_LOG');
         $log_path = !empty($log_config['path']) ? $log_config['path'] : '';
@@ -203,7 +203,7 @@ class LogHelper
             return '';  //防止恶意访问 只允许访问log文件夹下文件
         }
         if (is_file($file)) {
-            $file_str = filesize($file) > 5 * 1024 * 1024 ? 'file gt 5 MB' : file_get_contents($file);
+            $file_str = filesize($file) > $max_mb * 1024 * 1024 ? "file gt {$max_mb} MB" : file_get_contents($file);
             return $file_str;
         } else {
             return '';

@@ -80,7 +80,7 @@ class sysLog extends DevelopController
     public function downLoadLogFile()
     {
         $path = $this->_get('file', '');
-        $file_str = LogHelper::readLogByPath($path);
+        $file_str = LogHelper::readLogByPath($path, 100);
         $file_name = str_replace('/', '_', $path);
         $file_name = substr($file_name, 1);
         header("Content-type:text/log");

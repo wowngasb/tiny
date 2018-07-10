@@ -17,12 +17,14 @@ use Tiny\Interfaces\RouteInterface;
  * Class Application
  * @package Tiny
  */
-abstract class Application extends AbstractDispatch implements RouteInterface
+class Application extends AbstractDispatch implements RouteInterface
 {
 
     // 配置相关
     private $_config = [];  // 全局配置
-    private $_app_name = 'app';  // app 目录，用于 拼接命名空间 和 定位模板文件
+    protected $_appname = '';  // app 目录，用于 拼接命名空间 和 定位模板文件
+    protected static $_default_appname = 'app';  // 默认 app 名称  子类可以重写
+
     private $_bootstrap_completed = false;  // 布尔值, 指明当前的Application是否已经运行
 
     // 已添加的 路由器 和 分发器 列表
@@ -33,19 +35,24 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     private $_route_name = 'default';  // 默认路由名字，总是会路由到 index
     private $_default_route_info = ['index', 'index', 'index'];
 
+    protected static $_config_cache_map = [];
+
     // 单实例 实现
-    private static $_instance = null;  // Application实现单利模式, 此属性保存当前实例
+    protected static $_instance_map = [];  // Application实现单利模式, 此属性保存当前实例
 
     /**
      * Application constructor.
-     * @param string $app_name
+     * @param string $appname
      * @param array $config
      * @internal param $app_name
      */
-    private function __construct(array $config = [], $app_name = 'app')
+    private function __construct(array $config = [], $appname = null)
     {
+        if (is_null($appname)) {
+            $appname = static::$_default_appname;
+        }
         $this->_config = $config;
-        $this->_app_name = $app_name;
+        $this->_appname = $appname;
     }
 
     /**
@@ -69,7 +76,7 @@ abstract class Application extends AbstractDispatch implements RouteInterface
      */
     public function getAppName()
     {
-        return $this->_app_name;
+        return $this->_appname;
     }
 
     /**
@@ -103,6 +110,76 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     public function setConfig(array $config)
     {
         $this->_config = $config;
+        $app_name = $this->getAppName();
+        self::$_config_cache_map[$app_name] = [];
+    }
+
+    /**
+     * 获取 全局配置 指定key的值 不存在则返回 default
+     * @param string $key
+     * @param mixed $default
+     * @param null | string $appname
+     * @return mixed
+     */
+    public static function config($key, $default = '', $appname = null)
+    {
+        if (is_null($appname)) {
+            $appname = static::$_default_appname;
+        }
+
+        if (empty($key)) {
+            return $default;
+        }
+        $app = static::app($appname);
+        $app_name = $app->getAppName();
+        if (isset(self::$_config_cache_map[$app_name][$key])) {
+            return self::$_config_cache_map[$app_name][$key];
+        }
+        $config = $app->getConfig();
+        self::$_config_cache_map[$app_name][$key] = Util::find_config($key, $default, $config);
+        return self::$_config_cache_map[$app_name][$key];
+    }
+
+    /**
+     * @param string $key
+     * @param mixed $val
+     * @param null | string $appname
+     */
+    public static function set_config($key, $val, $appname = null)
+    {
+        if (is_null($appname)) {
+            $appname = static::$_default_appname;
+        }
+
+        $app = static::app($appname);
+        $app_name = $app->getAppName();
+        self::$_config_cache_map[$app_name] = [];
+        $last_val = self::config($key, null, $appname);
+
+        $cfg = Util::def_config($key, $val, $last_val);
+
+        $config = Util::deep_merge($app->getConfig(), $cfg);
+        static::app()->setConfig($config);
+    }
+
+    /**
+     * 获取当前的Application实例
+     * @param string|null $appname
+     * @param array|null $config
+     * @return Application
+     */
+    public static function app($appname = null, array $config = null)
+    {
+        if (is_null($appname)) {
+            $appname = static::$_default_appname;
+        }
+
+        $_config = !empty($config) ? $config : [];
+
+        if (empty(self::$_instance_map[$appname])) {
+            self::$_instance_map[$appname] = new static($_config, $appname);
+        }
+        return self::$_instance_map[$appname];
     }
 
     ###############################################################
@@ -362,21 +439,6 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     ############## 常用 辅助函数 放在这里方便使用 #################
     ###############################################################
 
-    /**
-     * 获取当前的Application实例
-     * @param string|null $appname
-     * @param array|null $config
-     * @return Application
-     */
-    public static function app($appname = null, array $config = null)
-    {
-        if (is_null(self::$_instance)) {
-            $_config = !is_null($config) ? $config : [];
-            self::$_instance = new static($_config, $appname);
-        }
-        return self::$_instance;
-    }
-
     public static function appname()
     {
         return static::app()->getAppName();
@@ -416,53 +478,6 @@ abstract class Application extends AbstractDispatch implements RouteInterface
     public static function decrypt($string, $salt = '')
     {
         return Util::decode($string, self::config('CRYPT_KEY', ''), $salt);
-    }
-
-    /**
-     * 获取 全局配置 指定key的值 不存在则返回 default
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
-    public static function config($key, $default = '')
-    {
-        if (empty($key)) {
-            return $default;
-        }
-        $config = static::app()->getConfig();
-        return self::_find_config($key, $default, $config);
-    }
-
-    public static function set_config($key, $val)
-    {
-        if (strpos($key, '.') !== false) {
-            throw new AppStartUpError("cannot set config with key with dot, key: {$key}");
-        }
-        $config = static::app()->getConfig();
-        $last_val = !empty($config[$key]) ? $config[$key] : '';
-        if (is_array($last_val) && is_array($val)) {
-            $config[$key] = Util::deep_merge($last_val, $val);
-        } else {
-            $config[$key] = $val;
-        }
-        static::app()->setConfig($config);
-    }
-
-    private static function _find_config($key, $default = '', array $config = [])
-    {
-        $tmp_list = explode('.', $key, 2);
-        $pre_key = !empty($tmp_list[0]) ? trim($tmp_list[0]) : '';
-        $last_key = !empty($tmp_list[1]) ? trim($tmp_list[1]) : '';
-        if (!empty($pre_key)) {
-            if (empty($last_key)) {
-                return isset($config[$pre_key]) ? $config[$pre_key] : $default;
-            }
-            $config = isset($config[$pre_key]) ? $config[$pre_key] : [];
-            if (!is_array($config)) {
-                throw  new AppStartUpError("get config key:{$key} but value at {$pre_key} not array");
-            }
-        }
-        return self::_find_config($last_key, $default, $config);
     }
 
     ###############################################################

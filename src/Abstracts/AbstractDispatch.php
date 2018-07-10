@@ -117,9 +117,12 @@ abstract class AbstractDispatch extends AbstractClass
      * @param ResponseInterface $response
      * @param Exception $ex
      */
-    public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex)
+    public static function traceException(RequestInterface $request, ResponseInterface $response, \Exception $ex)
     {
         false && func_get_args();
+        $log_msg = __METHOD__ . " ex:" . $ex->getMessage() . " <" . get_class($ex) . ">";
+        error_log($log_msg);
+
         if ($ex instanceof NotFoundError) {
             static::traceNotFound($request, $response, $ex);
         }

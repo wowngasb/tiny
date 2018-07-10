@@ -135,7 +135,21 @@ class ApiDispatch extends AbstractDispatch
      */
     public static function traceException(RequestInterface $request, ResponseInterface $response, Exception $ex, $get_previous = true)
     {
+        $log_msg = __METHOD__ . " ex:" . $ex->getMessage() . " <" . get_class($ex) . ">";
+        error_log($log_msg);
+
         $response->resetBody();
+
+        $result = static::_buildExceptionResult($ex, $get_previous);
+
+        $callback = $request->_get('callback', '');
+        $json_str = !empty($callback) ? "{$callback}(" . json_encode($result) . ');' : json_encode($result);
+        $response->addHeader('Content-Type: application/json;charset=utf-8', false)->appendBody($json_str);
+    }
+
+
+    protected static function _buildExceptionResult(Exception $ex, $get_previous = true)
+    {
         $code = intval($ex->getCode());  // code 为0 或 无error字段 表示没有错误  code设置为0 会忽略error字段
         $error = Application::dev() ? [
             'Exception' => get_class($ex),
@@ -157,9 +171,7 @@ class ApiDispatch extends AbstractDispatch
             $result['error']['errors'][] = Application::dev() ? ['Exception' => get_class($ex), 'code' => $ex->getCode(), 'message' => $ex->getMessage(), 'file' => $ex->getFile() . ' [' . $ex->getLine() . ']'] : ['code' => $ex->getCode(), 'message' => $ex->getMessage()];
         }
 
-        $callback = $request->_get('callback', '');
-        $json_str = !empty($callback) ? "{$callback}(" . json_encode($result) . ');' : json_encode($result);
-        $response->addHeader('Content-Type: application/json;charset=utf-8', false)->appendBody($json_str);
+        return $result;
     }
 
     protected static function _fixTraceInfo(Exception $ex)

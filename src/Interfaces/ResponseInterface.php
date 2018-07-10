@@ -176,6 +176,21 @@ interface ResponseInterface
     public function setResponseCode($code);
 
     /**
+     * @return int
+     */
+    public function getResponseCode();
+
+    /**
+     * @return int
+     */
+    public function getHeaderSendLength();
+
+    /**
+     * @return int
+     */
+    public function getBodySendLength();
+
+    /**
      * 发送响应header给请求端 只有第一次发送有效 多次发送不会出现异常
      * @return self
      */

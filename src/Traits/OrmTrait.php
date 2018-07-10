@@ -114,9 +114,7 @@ trait OrmTrait
     public static function tableBuilder(array $where = [], array $select = [], array $orderBy = [])
     {
         $table = static::getBuilder();
-        if (empty($where)) {
-            return $table;
-        }
+
         $query_list = [];
         foreach ($where as $_filed => $item) {
             // $filed 支持 `filed#123` 注释方式来为同一个filed 添加多个and条件
@@ -499,12 +497,13 @@ trait OrmTrait
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
-     * @return mixed|null 返回数据
+     * @return int
      */
     public static function upsertOne(array $where, $value)
     {
         $id = static::upsertItem($where, $value);
-        return !empty($id) ? static::getOneById($id, -1) : null;
+        !empty($id) && static::getOneById($id, -1);
+        return $id;
     }
 
     /**
@@ -1136,11 +1135,7 @@ trait OrmTrait
         $data = $table->get($columns);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
 
-        $rst = [];
-        foreach ($data as $key => $val) {
-            $rst[$key] = static::_fixItem($val);
-        }
-        return $rst;
+        return $data;
     }
 
     /**
@@ -1167,7 +1162,7 @@ trait OrmTrait
         $rst = [];
         foreach ($data as $key => $val) {
             $id = $val[$primary_key];
-            $rst[$id] = static::_fixItem($val);
+            $rst[$id] = $val;
         }
         return $rst;
     }
@@ -1296,6 +1291,7 @@ trait OrmTrait
                 $data[$key] = json_encode($value);
             }
         }
+
         $table = static::tableBuilder();
         $id = $table->insertGetId($data, $primary_key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);

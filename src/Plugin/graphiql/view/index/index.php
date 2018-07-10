@@ -17,17 +17,31 @@
     <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'graphiql.js']) ?>"></script>
     <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'jquery-1.7.2.min.js']) ?>"></script>
     <script src="<?= \Tiny\Application::url($request, ['', 'assets', 'apihub.js']) ?>"></script>
+    <style>
+        body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #splash {
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            font-family: system, -apple-system, "San Francisco", ".SFNSDisplay-Regular", "Segoe UI", Segoe, "Segoe WP", "Helvetica Neue", helvetica, "Lucida Grande", arial, sans-serif;
+            height: 100vh;
+            justify-content: center;
+            text-align: center;
+        }
+        #graphql-box{
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
-<div style="height: 100%">
-    <div id="graphql-token" style="height: 30px;margin-left: 20px;line-height: 30px;">
-        <label >Token:<input type="text" name="token" style="width: 200px"></label>
-    </div>
-    <div id="graphql-box" ></div>
-</div>
+<div id="graphql-box" ></div>
 <script type="text/javascript">
     $(function(){
-        $('#graphql-box').height( $('body').height() - $('#graphql-token').height() );
+        //$('#graphql-box').height( $('body').height() - $('#graphql-token').height() );
     });
 
     // Parse the search string to get url parameters.

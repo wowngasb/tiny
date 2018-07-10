@@ -373,7 +373,7 @@ abstract class Util extends AbstractClass
     ######## 打印变量 ########
     ##########################
 
-    public static function dump_val($data, $is_short = false, $max_item = 5)
+    public static function dump_val($data, $is_short = false, $max_item = 5, $max_str = 50)
     {
         $type = gettype($data);
         switch ($type) {
@@ -386,7 +386,9 @@ abstract class Util extends AbstractClass
             case 'float':
                 return $data;
             case 'string':
-                return '"' . addslashes($data) . '"';
+                $var_str = static::utf8_strlen($data) > $max_str ? self::utf8_substr($data, 0, $max_str) . '...' : $data;
+                $tmp = json_encode($var_str);
+                return "\"{$tmp}\"";
             case 'object':
                 $class = get_class($data);
                 return "{$class}";
@@ -499,6 +501,16 @@ abstract class Util extends AbstractClass
     ######## 数组处理 ########
     ##########################
 
+    public static function fmap_first($val, array $funcMap, $default = null)
+    {
+        foreach ($funcMap as $key => $func) {
+            if ($func($val)) {
+                return $key;
+            }
+        }
+        return $default;
+    }
+
     public static function array_eq($arr1, $arr2)
     {
         sort($arr1);
@@ -587,20 +599,20 @@ abstract class Util extends AbstractClass
         if (is_array($item)) {
             return $item;
         } elseif (is_object($item)) {
-            if ($item instanceof \JsonSerializable) {
-                $json_str = json_encode($item);
-                return json_decode($json_str, true);
-            } elseif (is_callable([$item, 'toArray'])) {
+            if (is_callable([$item, 'toArray'])) {
                 return call_user_func_array([$item, 'toArray'], []);
-            } elseif (is_callable([$item, 'toJson'])) {
-                $json_str = call_user_func_array([$item, 'toJson'], []);
-                return json_decode($json_str, true);
-            } else if ($item instanceof \Iterator) {
+            } elseif ($item instanceof \Iterator) {
                 $ret = [];
                 foreach ($item as $key => $value) {
                     $ret[$key] = $value;
                 }
                 return $ret;
+            } elseif ($item instanceof \JsonSerializable) {
+                $json_str = json_encode($item);
+                return json_decode($json_str, true);
+            } elseif (is_callable([$item, 'toJson'])) {
+                $json_str = call_user_func_array([$item, 'toJson'], []);
+                return json_decode($json_str, true);
             } else {
                 return (array)$item;
             }
@@ -718,21 +730,33 @@ abstract class Util extends AbstractClass
      * @param bool $trimlower 是否 去除空格并转为小写
      * @param int $default
      * @param array $exclude
+     * @param bool $as_int
      * @return array 字典 hash
      */
-    public static function build_map(array $key_list, $trimlower = false, $default = 1, $exclude = [])
+    public static function build_map($key_list, $trimlower = false, $default = 1, $exclude = [], $as_int = false)
     {
         $map = [];
         foreach ($key_list as $key) {
-            if ($trimlower) {
-                $key = static::trimlower($key);
+            if ($as_int) {
+                $key = intval($key);
+                if (!empty($exclude) && in_array($key, $exclude)) {
+                    continue;
+                }
+                if ($key != 0) {
+                    $map[$key] = $default;
+                }
+            } else {
+                if ($trimlower) {
+                    $key = static::trimlower($key);
+                }
+                if (!empty($exclude) && in_array($key, $exclude)) {
+                    continue;
+                }
+                if ($key !== '') {
+                    $map[$key] = $default;
+                }
             }
-            if (!empty($exclude) && in_array($key, $exclude)) {
-                continue;
-            }
-            if ($key !== '') {
-                $map[$key] = $default;
-            }
+
         }
         return $map;
     }
@@ -809,6 +833,47 @@ abstract class Util extends AbstractClass
     ##########################
     ######## 取值处理 ########
     ##########################
+
+    public static function find_config($key, $default = '', array $config = [])
+    {
+        $tmp_list = explode('.', $key, 2);
+        $pre_key = !empty($tmp_list[0]) ? trim($tmp_list[0]) : '';
+        $last_key = !empty($tmp_list[1]) ? trim($tmp_list[1]) : '';
+        if (!empty($pre_key)) {
+            if (empty($last_key)) {
+                return isset($config[$pre_key]) ? $config[$pre_key] : $default;
+            }
+            $config = isset($config[$pre_key]) ? $config[$pre_key] : [];
+            if (!is_array($config)) {
+                return $config;
+            }
+        }
+        return static::find_config($last_key, $default, $config);
+    }
+
+    public static function def_config($key, $val, $last_val){
+        $keyArr = explode('.', $key);
+        $cfg = [];
+        $tstr = '';
+
+        foreach ($keyArr as $k) {
+            $tstr .= $k . '.';
+            $k = trim($k);
+            if (empty($k)) {
+                continue;
+            }
+            if ($tstr !== $key) {
+                $cfg[$k] = [];
+                continue;
+            }
+            if ((is_array($last_val) || is_null($last_val)) && is_array($val)) {
+                $cfg[$k] = static::deep_merge($last_val, $val);
+            } else {
+                $cfg[$k] = $val;
+            }
+        }
+        return $cfg;
+    }
 
     /**
      * 从指定数组中 取出 指定 key 并去重
@@ -1070,6 +1135,27 @@ abstract class Util extends AbstractClass
         $max = strlen($tmp_str) - 1;
         for ($i = 0; $i < $length; $i++) {
             $str .= $tmp_str[rand(0, $max)];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
+        }
+        return $str;
+    }
+
+    public static function short_md5($input, $length = 8)
+    {
+        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        $max = strlen($tmp_str) - 1;
+        $cmp_int = $max * $max * $length * $length;
+        $str = '';
+        $base_md5 = substr(md5($input), 0, 16);
+        $hash_int = abs(self::byteToInt32WithLittleEndian($base_md5));
+        while (strlen($str) < $length) {
+            $idx = abs($hash_int % $max);
+
+            $str .= $tmp_str[$idx];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
+            $hash_int = intval($hash_int / $max);
+            if ($hash_int < $cmp_int * strlen($str)) {
+                $fix_md5 = substr(md5("{$input}_{$str}"), 0, 16);
+                $hash_int += abs(self::byteToInt32WithLittleEndian($fix_md5));
+            }
         }
         return $str;
     }
@@ -1629,6 +1715,21 @@ EOT;
         return !empty($rst) ? urldecode($rst) : '';
     }
 
+    public static function build_query(array $args = [], $pre = '')
+    {
+        if (empty($args)) {
+            return '';
+        }
+        $args_list = [];
+        foreach ($args as $key => $val) {
+            $key = trim($key);
+            if (!empty($key)) {
+                $args_list[] = "{$key}=" . urlencode($val);
+            }
+        }
+        return !empty($args_list) ? $pre . join($args_list, '&') : '';
+    }
+
     /**
      * 拼接 url get 地址
      * @param string $base_url 基本url地址
@@ -1702,7 +1803,7 @@ EOT;
      * @param bool $is_log
      * @return array
      */
-    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = false, $timeout = 20, $is_log = true)
+    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = false, $timeout = 20, $is_log = false)
     {
         $t1 = microtime(true);
 

@@ -149,7 +149,8 @@ function {$cls}Helper(){
         return year+"-"+month+"-"+date+" "+hour+":"+minute+":"+seconds;
     };
     
-    var _ajax = function (host, path, args, success, failure, logHandler, logLevelHandler, fixArgs) {
+    this._ajax = function (host, path, args, success, failure, logHandler, logLevelHandler, fixArgs) {
+        var self = this;
         args = args || {};
         fixArgs = fixArgs || {};
         logHandler = logHandler || function (logLevel, use_time, args, data) {
@@ -205,8 +206,8 @@ EOT;
             t in _l && (_l[t])(_d(),'['+t+'] '+_p+'('+u+'ms)','args:',a,'data:',d);
         };
         return !success && Promise ? new Promise(function(resolve, reject){
-            _ajax(_h, _p, args, resolve, reject, logHandler, logLevelHandler, fixArgs);
-        }) : _ajax(_h, _p, args, success, failure, logHandler, logLevelHandler, fixArgs);
+            self._ajax(_h, _p, args, resolve, reject, logHandler, logLevelHandler, fixArgs);
+        }) : self._ajax(_h, _p, args, success, failure, logHandler, logLevelHandler, fixArgs);
     };
     {$args_str}
 

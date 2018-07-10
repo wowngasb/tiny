@@ -91,7 +91,7 @@
                 <select id="api_class" name="g" class="input-normal">
                     <option>请选择</option>
                 </select>&nbsp;&nbsp;
-                <select id="api_method" name="h" class="input-normal">
+                <select id="api_method" name="h" class="input-normal" style="min-width: 250px;">
                     <option>请选择</option>
                 </select>
             </div>

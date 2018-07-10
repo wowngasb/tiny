@@ -99,7 +99,7 @@ trait CacheTrait
      * @param string $method 所在方法 方便检索
      * @param string $key 缓存 keys
      * @param callable $func 获取结果的调用 没有任何参数  需要有返回结果
-     * @param callable $filter 判断结果是否可以缓存的调用 参数为 $func 的返回结果 返回值为bool
+     * @param callable $filter 判断结果是否可以缓存的调用 参数为 $func 的返回结果 返回值为bool  int
      * @param int | null $timeCache 允许的数据缓存时间 0表示返回函数结果并清空缓存  负数表示不执行调用只清空缓存  默认为300
      * @param string $prefix 缓存键 的 前缀
      * @param array | Closure $tags 标记数组

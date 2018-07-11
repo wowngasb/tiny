@@ -16,6 +16,114 @@ abstract class Util extends AbstractClass
 {
 
     ##########################
+    ######## CMD 相关 ########
+    ##########################
+
+    public static function cmd_do($cmd, $args, $print)
+    {
+        switch ($cmd) {
+            case 'crontab':
+            case 'cron':
+                $msg = static::cmd_crontab($args, $print);
+                break;
+            case 'run':
+                $msg = static::cmd_run($args, $print);
+                break;
+            case 'commands':
+                $msg = static::cmd_commands($args, $print);
+                break;
+            case 'schedules':
+                $msg = static::cmd_schedules($args, $print);
+                break;
+            case 'clear':
+                $msg = static::cmd_clear($args, $print);
+                break;
+            case '-v':
+            case '--version':
+            case 'ver':
+            case 'version':
+                $msg = static:: cmd_version($args, $print);
+                break;
+            case 'test':
+                $msg = static::cmd_test($args, $print);
+                break;
+            case 'h':
+            case '-h':
+            case 'help':
+                $msg = static::cmd_help($args, $print);
+                break;
+            default:
+                $msg = static::cmd_help($args, $print);
+                break;
+        }
+        return $msg;
+    }
+
+    public static function cmd_commands($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_schedules($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_test($args, $print)
+    {
+        $print && $print('just TEST, args:' . json_encode($args));
+    }
+
+    public static function cmd_crontab($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_run($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_clear($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_version($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_help($args, $print)
+    {
+        false && func_get_args();
+        return <<<EOT
+usage: php cmd.php <command> [<args>]
+
+These are common commands used in various situations:
+
+run crontab (see also: git help crontab)
+   crontab  [ts]    Run Crontab in \app\Console\Kernel::runSchedule(ts, onlyCurrent = true)
+   
+run commands (see also: git help commands)
+   run  cmd    Run Commands in \app\Console\Kernel::runScheduleSite(cmd, ts)
+
+clear app runtime cache (see also: git help clear)
+   clear        Clear All RunTime Cache
+
+'php cmd.php help -a' and 'php cmd.php help -g' list available subcommands and some
+concept guides. See 'php cmd.php help <command>' or 'php cmd.php help <concept>'
+to read about a specific subcommand or concept.
+EOT;
+    }
+
+    ##########################
     ######## 辅助测试 ########
     ##########################
 
@@ -388,7 +496,7 @@ abstract class Util extends AbstractClass
             case 'string':
                 $var_str = static::utf8_strlen($data) > $max_str ? self::utf8_substr($data, 0, $max_str) . '...' : $data;
                 $tmp = json_encode($var_str);
-                return "\"{$tmp}\"";
+                return "{$tmp}";
             case 'object':
                 $class = get_class($data);
                 return "{$class}";
@@ -851,11 +959,21 @@ abstract class Util extends AbstractClass
         return static::find_config($last_key, $default, $config);
     }
 
-    public static function def_config($key, $val, $last_val){
-        $keyArr = explode('.', $key);
+    public static function def_config($key, $val, $last_val)
+    {
         $cfg = [];
-        $tstr = '';
+        $keyArr = explode('.', $key);
 
+        if (count($keyArr) == 1) {
+            if (is_array($last_val) && is_array($val)) {
+                $cfg[$key] = static::deep_merge($last_val, $val);
+            } else {
+                $cfg[$key] = $val;
+            }
+            return $cfg;
+        }
+
+        $tstr = '';
         foreach ($keyArr as $k) {
             $tstr .= $k . '.';
             $k = trim($k);
@@ -866,7 +984,7 @@ abstract class Util extends AbstractClass
                 $cfg[$k] = [];
                 continue;
             }
-            if ((is_array($last_val) || is_null($last_val)) && is_array($val)) {
+            if (is_array($last_val) && is_array($val)) {
                 $cfg[$k] = static::deep_merge($last_val, $val);
             } else {
                 $cfg[$k] = $val;

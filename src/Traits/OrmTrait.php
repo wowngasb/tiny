@@ -108,10 +108,11 @@ trait OrmTrait
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array $select
      * @param array $orderBy
+     * @param array $groupBy
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      * @throws OrmStartUpError
      */
-    public static function tableBuilder(array $where = [], array $select = [], array $orderBy = [])
+    public static function tableBuilder(array $where = [], array $select = [], array $orderBy = [], array $groupBy = [])
     {
         $table = static::getBuilder();
 
@@ -196,6 +197,10 @@ trait OrmTrait
 
         if (!empty($orderBy) && (!empty($orderBy[0]) || !empty($orderBy['field']))) {
             $table = self::_buildOrderBy($table, $orderBy);
+        }
+
+        if (!empty($groupBy)) {
+            $table = $table->groupBy($groupBy);
         }
 
         return $table;
@@ -1050,12 +1055,17 @@ trait OrmTrait
      * Delete a record from the database.
      *
      * @param \Illuminate\Database\Query\Builder $table
+     * @param int $limit
      * @return int
      * @internal param mixed $id
      */
-    public static function _delete($table)
+    public static function _delete($table, $limit = 0)
     {
         $start_time = microtime(true);
+        $limit = $limit > 0 ? intval($limit) : 0;
+        if (!empty($limit)) {
+            $table->limit($limit);
+        }
         $result = $table->delete();
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
         return $result;

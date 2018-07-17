@@ -33,16 +33,19 @@ trait CacheTrait
     ########################## 对外方法 #######################
     ############################################################
 
-    public static function _hashKey($args_input, $tag = "no_args")
+    public static function _hashKey($args_input = [], $tag = "no_args")
     {
         $args_list = [];
-        foreach ($args_input as $key => $val) {
-            $key = trim($key);
-            $val = self::_fix_cache_key($val);
-            if (!empty($key)) {
-                $args_list[] = "{$key}=" . urlencode($val);
+        if (!empty($args_input)) {
+            foreach ($args_input as $key => $val) {
+                $key = trim($key);
+                $val = self::_fix_cache_key($val);
+                if (!empty($key)) {
+                    $args_list[] = "{$key}=" . urlencode($val);
+                }
             }
         }
+
         $key_str = !empty($args_list) ? join($args_list, '&') : $tag;
         if (strlen($key_str) > self::$_cache_max_key_len) {
             $key_str = substr($key_str, 0, 32) . "#" . md5($key_str);
@@ -137,7 +140,7 @@ trait CacheTrait
      * 使用redis缓存函数调用的结果 优先使用缓存中的数据
      * @param string $method 所在方法 方便检索
      * @param array $keys 缓存 keys
-     * @param int | null $timeCache  $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
+     * @param int | null $timeCache $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
      * @param string $prefix 缓存键 的 前缀
      * @param bool $is_log 是否显示日志
      * @return array
@@ -229,7 +232,7 @@ trait CacheTrait
         return $ret_map;
     }
 
-    private static function _clearDataByFastCache($method = '', $key = '', $prefix = null, array $tags = [], $is_log = false)
+    private static function _clearDataByFastCache($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
     {
         $mCache = self::_getCacheInstance();
         if (empty($mCache)) {
@@ -378,7 +381,7 @@ trait CacheTrait
         $mRedis = self::_getRedisInstance();
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance ' . __METHOD__);
-            return self::_mgetDataByFastCache($mRedis, $keys, $timeCache, $prefix, $is_log);
+            return self::_mgetDataByFastCache($method, $keys, $timeCache, $prefix, $is_log);
         }
 
         $now = time();
@@ -442,7 +445,7 @@ trait CacheTrait
         return $ret_map;
     }
 
-    private static function _clearDataByRedis($method = '', $key = '', $prefix = null, array $tags = [], $is_log = false)
+    private static function _clearDataByRedis($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
     {
         $mRedis = self::_getRedisInstance();
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {

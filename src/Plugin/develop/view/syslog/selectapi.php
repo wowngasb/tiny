@@ -70,9 +70,9 @@
     <h2 class="tip-title">常用脚本：</h2>
     <div class="control-group">
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
+           href="<?= \Tiny\Application::url($request, ['', 'deploy', 'buildApiModJs'], ['dev_debug' => 1,]) ?>">编译API</a>
         <a class="button button-success array_btn" target="new"
-           href="<?= \Tiny\Application::url($request, ['', 'Deploy', 'phpInfo']) ?>">phpInfo</a>
+           href="<?= \Tiny\Application::url($request, ['', 'deploy', 'phpinfo']) ?>">phpInfo</a>
         <a class="button button-success array_btn" target="new" href="<?=  $request->host()  ?>">首页</a>
     </div>
 </div>

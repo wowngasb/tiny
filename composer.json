@@ -25,6 +25,7 @@
     "webonyx/graphql-php": "^0.11",
     "nikic/fast-route": "^1.2",
     "phpFastCache/phpFastCache": "^5.0",
+    "jeremeamia/superclosure": "^2.0",
     "illuminate/database": "5.2.*",
     "illuminate/pagination": "5.2.*",
     "philo/laravel-blade": "^3.1"

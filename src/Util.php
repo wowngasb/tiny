@@ -870,6 +870,19 @@ EOT;
     }
 
     /**
+     * 根据一个 数组的 值 构建一个 字典 常用于去重或判断是否存在
+     * @param array $key_list 需要值为 string
+     * @param bool $trimlower 是否 去除空格并转为小写
+     * @param array $exclude
+     * @param bool $as_int
+     * @return array set list
+     */
+    public static function build_map_set($key_list, $trimlower = false, $exclude = [], $as_int = false)
+    {
+        return array_keys(static::build_map($key_list, $trimlower, 1, $exclude = [], $as_int));
+    }
+
+    /**
      * 取出一个数组 中 值不为空的 所有 key
      * @param array $data
      * @return array

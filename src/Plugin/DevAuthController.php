@@ -20,6 +20,7 @@ class DevAuthController extends SimpleController
 
     private static $_SVR_DEVELOP_KEY = 'develop_key';
     private static $_SVR_DEVELOP_EXPIRY = 86400; //24小时
+    private static $_SVR_DEVELOP_EXPIRY_DEV = 86400 * 100; // 2400 小时
 
     protected function sendFile($file_path)
     {
@@ -89,9 +90,10 @@ EOT;
     final public static function _setDevelopKey(RequestInterface $request, $develop_key)
     {
         $name = self::$_SVR_DEVELOP_KEY;
+        $expiry = Application::dev() ? self::$_SVR_DEVELOP_EXPIRY_DEV : self::$_SVR_DEVELOP_EXPIRY;
         $crypt_key = Application::config('ENV_CRYPT_KEY');
-        $value = Util::encode($develop_key, $crypt_key, self::$_SVR_DEVELOP_EXPIRY);
-        $request->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
+        $value = Util::encode($develop_key, $crypt_key, $expiry);
+        $request->setcookie($name, $value, time() + $expiry, '/');
         $request->set_cookie($name, $value);
     }
 
@@ -99,7 +101,8 @@ EOT;
     {
         $name = self::$_SVR_DEVELOP_KEY;
         $value = '';
-        $request->setcookie($name, $value, time() + self::$_SVR_DEVELOP_EXPIRY, '/');
+        $expiry = Application::dev() ? self::$_SVR_DEVELOP_EXPIRY_DEV : self::$_SVR_DEVELOP_EXPIRY;
+        $request->setcookie($name, $value, time() + $expiry, '/');
     }
 
 

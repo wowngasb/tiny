@@ -11,8 +11,6 @@ namespace Tiny\Traits;
 use app\App;
 use Closure;
 use phpFastCache\CacheManager;
-use SuperClosure\Analyzer\AstAnalyzer;
-use SuperClosure\Serializer;
 use Tiny\Application;
 use Tiny\Plugin\EmptyMock;
 
@@ -34,62 +32,6 @@ trait CacheTrait
     ############################################################
     ########################## 对外方法 #######################
     ############################################################
-
-    private static $_static_ioc_map = [];
-    private static $_static_ioc_serializer = null;
-
-    private static function _decodeIocStr($val_str)
-    {
-        // Explicitly choose an analyzer.
-        $serializer = !empty(self::$_static_ioc_serializer) ? self::$_static_ioc_serializer : new Serializer(new AstAnalyzer());
-        return $serializer->unserialize($val_str);
-    }
-
-    private static function _encodeIocStr($val_arr)
-    {
-        // Explicitly choose an analyzer.
-        $serializer = !empty(self::$_static_ioc_serializer) ? self::$_static_ioc_serializer : new Serializer(new AstAnalyzer());
-        return $serializer->serialize($val_arr);
-    }
-
-    public static function _iocByFastCache($key, callable $func, $timeCache = null, $prefix = null, $is_log = false)
-    {
-        $mCache = self::_getCacheInstance();
-        if (empty($mCache)) {
-            error_log(__METHOD__ . ' can not get mCache by _getCacheInstance!');
-            return null;
-        }
-
-        $now = time();
-        $timeCache = is_null($timeCache) ? self::$_cache_default_expires : $timeCache;
-        $timeCache = intval($timeCache);
-        $prefix = self::_buildPreFix($prefix);
-        $method = 'ioc';
-        $rKey = !empty($prefix) ? "{$prefix}:{$method}:{$key}" : "{$method}:{$key}";
-
-        if (!empty(self::$_static_ioc_map[$rKey])) {
-            $val = self::$_static_ioc_map[$rKey];
-        } else {
-            $val_str = $mCache->getItem($rKey)->get();
-            $val = !empty($val_str) ? self::_decodeIocStr($val_str) : [];
-        }
-        //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
-        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], [], true, $is_log);
-            return $val['data'];
-        }
-
-        $data = $func();
-
-        $val = ['data' => $data, '_update_' => time()];
-
-        $itemObj = $mCache->getItem($rKey)->set(self::_encodeIocStr($val))->expiresAfter($timeCache);
-        self::$_static_ioc_map[$rKey] = $val;
-
-        $mCache->save($itemObj);
-        self::_cacheDebug('cache', $now, $method, $key, $timeCache, $val['_update_'], [], true, $is_log);
-        return $data;
-    }
 
     public static function _hashKey($args_input = [], $tag = "no_args")
     {

@@ -879,7 +879,7 @@ EOT;
      */
     public static function build_map_set($key_list, $trimlower = false, $exclude = [], $as_int = false)
     {
-        return array_keys(static::build_map($key_list, $trimlower, 1, $exclude = [], $as_int));
+        return array_keys(static::build_map($key_list, $trimlower, 1, $exclude, $as_int));
     }
 
     /**
@@ -1126,6 +1126,21 @@ EOT;
     ##########################
     ######## 时间处理 ########
     ##########################
+
+
+    public static function ymdhis($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return date('Y-m-d H:i:s', $stime);
+    }
+
+    public static function ymd($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return date('Y-m-d', $stime);
+    }
 
     public static function dateUTC($dateTimeUTC = null, $dateFormat = 'Y-m-d\TH:i:s\Z', $timeZone = 'UTC')
     {

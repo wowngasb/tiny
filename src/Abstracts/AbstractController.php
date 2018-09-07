@@ -12,6 +12,7 @@ use Tiny\Application;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
 use Tiny\Interfaces\ViewInterface;
+use Tiny\Util;
 
 /**
  * Class Controller
@@ -27,8 +28,10 @@ abstract class AbstractController extends AbstractContext
         parent::__construct($request, $response);
     }
 
-    protected function view($tpl_file, array $data = [], $clearErrors = true, $clearInput = true)
+    protected function view($tpl_file, $data = [], $clearErrors = true, $clearInput = true)
     {
+        $data = !empty($data) ? Util::try2array($data) : $data;
+
         $this->display($tpl_file, $data);
         if ($clearErrors) {
             $this->errors_clear();

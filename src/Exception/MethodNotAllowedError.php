@@ -9,7 +9,7 @@
 namespace Tiny\Exception;
 
 
-class MethodNotAllowedError extends  Error
+class MethodNotAllowedError extends Error
 {
     protected static $errno = 405;
 }

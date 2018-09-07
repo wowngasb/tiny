@@ -116,6 +116,38 @@ trait OrmTrait
     {
         $table = static::getBuilder();
 
+        return self::_tableBuilder($table, $where, $select, $orderBy, $groupBy);
+    }
+
+    /**
+     * 直接获取 ORM table 不推荐直接使用该接口  推荐使用模块预设方法
+     * @param array $where 检索条件数组 具体格式参见文档
+     * @param array $select
+     * @param array $orderBy
+     * @param array $groupBy
+     * @return \Illuminate\Database\Query\Builder
+     * @throws OrmStartUpError
+     */
+    public static function tableBuilderEx(array $where = [], array $select = [], array $orderBy = [], array $groupBy = [])
+    {
+        $table_name = static::tableName();
+        $table = static::_getDb()->table($table_name);
+
+        return self::_tableBuilder($table, $where, $select, $orderBy, $groupBy);
+    }
+
+
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder $table
+     * @param array $where
+     * @param array $select
+     * @param array $orderBy
+     * @param array $groupBy
+     * @return $this|\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
+     * @throws OrmStartUpError
+     */
+    private static function _tableBuilder($table, array $where = [], array $select = [], array $orderBy = [], array $groupBy = [])
+    {
         $query_list = [];
         foreach ($where as $_filed => $item) {
             // $filed 支持 `filed#123` 注释方式来为同一个filed 添加多个and条件
@@ -259,39 +291,39 @@ trait OrmTrait
         return trim($prefix);
     }
 
-    public static function incOneById($id, $filed, $value = 1, array $extra = [])
+    public static function incOneById($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         if (empty($id) || empty($filed)) {
             return;
         }
-        static::incItem($id, $filed, $value, $extra);
+        static::incItem($id, $filed, $value, $extra, $log_op);
         static::getOneById($id, -1);
     }
 
-    public static function decOneById($id, $filed, $value = 1, array $extra = [])
+    public static function decOneById($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         if (empty($id) || empty($filed)) {
             return;
         }
-        static::decItem($id, $filed, $value, $extra);
+        static::decItem($id, $filed, $value, $extra, $log_op);
         static::getOneById($id, -1);
     }
 
-    public static function incAndGetOne($id, $filed, $value = 1, array $extra = [])
+    public static function incAndGetOne($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         if (empty($id) || empty($filed)) {
             return null;
         }
-        static::incItem($id, $filed, $value, $extra);
+        static::incItem($id, $filed, $value, $extra, $log_op);
         return static::getOneById($id, 0);
     }
 
-    public static function decAndGetOne($id, $filed, $value = 1, array $extra = [])
+    public static function decAndGetOne($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         if (empty($id) || empty($filed)) {
             return null;
         }
-        static::decItem($id, $filed, $value, $extra);
+        static::decItem($id, $filed, $value, $extra, $log_op);
         return static::getOneById($id, 0);
     }
 
@@ -340,14 +372,15 @@ trait OrmTrait
     /**
      * 根据 id 删除
      * @param int $id
+     * @param bool $log_op
      * @return bool
      */
-    public static function delOneById($id)
+    public static function delOneById($id, $log_op = true)
     {
         if ($id <= 0) {
             return false;
         }
-        $ret = static::delItem($id);
+        $ret = static::delItem($id, $log_op);
         static::getOneById($id, -1);
         return $ret > 0;
     }
@@ -460,40 +493,48 @@ trait OrmTrait
      * 根据主键更新数据 自动更新缓存
      * @param $id
      * @param array $data
+     * @param bool $log_op
      * @return int
      */
-    public static function setOneById($id, array $data)
+    public static function setOneById($id, array $data, $log_op = true)
     {
         if ($id <= 0) {
             return null;
         }
         $update = 0;
         if (!empty($data)) {
-            $update = static::setItem($id, $data);
+            $update = static::setItem($id, $data, $log_op);
         }
         static::getOneById($id, -1);
         return $update;
     }
 
-    public static function setAndGetOne($id, array $data)
+    /**
+     * @param int $id
+     * @param array $data
+     * @param bool $log_op
+     * @return mixed|null
+     */
+    public static function setAndGetOne($id, array $data, $log_op = true)
     {
         if ($id <= 0) {
             return null;
         }
         if (!empty($data)) {
-            static::setItem($id, $data);
+            static::setItem($id, $data, $log_op);
         }
         return static::getOneById($id, 0);
     }
 
     /**
      * 创建数据 自动更新缓存
-     * @param $data
+     * @param array $data
+     * @param bool $log_op
      * @return int
      */
-    public static function createOne(array $data)
+    public static function createOne(array $data, $log_op = true)
     {
-        $id = static::newItem($data);
+        $id = static::newItem($data, $log_op);
         !empty($id) && static::getOneById($id, -1);
         return $id;
     }
@@ -502,11 +543,12 @@ trait OrmTrait
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param bool $log_op
      * @return int
      */
-    public static function upsertOne(array $where, $value)
+    public static function upsertOne(array $where, $value, $log_op = true)
     {
-        $id = static::upsertItem($where, $value);
+        $id = static::upsertItem($where, $value, $log_op);
         !empty($id) && static::getOneById($id, -1);
         return $id;
     }
@@ -515,11 +557,12 @@ trait OrmTrait
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据  自动更新缓存
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param bool $log_op
      * @return mixed|null 返回数据
      */
-    public static function upsertAndGetOne(array $where, $value)
+    public static function upsertAndGetOne(array $where, $value, $log_op = true)
     {
-        $id = static::upsertItem($where, $value);
+        $id = static::upsertItem($where, $value, $log_op);
         return !empty($id) ? static::getOneById($id, 0) : null;
     }
 
@@ -552,12 +595,13 @@ trait OrmTrait
     /**
      * 添加新数据 自动更新缓存
      * @param array $data
+     * @param bool $log_op
      * @return mixed|null
      */
-    public static function createAndGetOne(array $data)
+    public static function createAndGetOne(array $data, $log_op = true)
     {
         if (!empty($data)) {
-            $id = static::newItem($data);
+            $id = static::newItem($data, $log_op);
             return !empty($id) ? static::getOneById($id, 0) : null;
         } else {
             return null;
@@ -669,7 +713,13 @@ trait OrmTrait
 
         $sql_str = Util::prepare_query($sql, $param);
         $_tag = str_replace(__TRAIT__, "{$db_name}.{$table_name}", $tag);
-        static::getOrmConfig()->doneSql($sql_str, $param, $time, $_tag);
+
+        try {
+            static::getOrmConfig()->doneSql($sql_str, $param, $time, $_tag);
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
     }
 
     private static function _buildOrderBy($table, array $sort_option)
@@ -746,8 +796,6 @@ trait OrmTrait
         }
         if ($limit > 0) {
             $table->take($limit);
-        } else {
-            $table->take($max_select);
         }
 
         $result = $table->get($columns);
@@ -1206,9 +1254,11 @@ trait OrmTrait
      * 更新或插入数据  优先根据条件查询数据 无法查询到数据时插入数据
      * @param array $where 检索条件数组 具体格式参见文档
      * @param array | callable $value 需要插入的数据  格式为 [`filed` => `value`, ]
+     * @param bool $log_op
      * @return int 返回数据 主键 自增id
+     * @throws \Exception
      */
-    public static function upsertItem(array $where, $value)
+    public static function upsertItem(array $where, $value, $log_op = true)
     {
         $primary_key = static::primaryKey();
         $tmp = static::firstItem($where);
@@ -1219,10 +1269,21 @@ trait OrmTrait
         $data = self::_fixFillAbleData($value);
 
         if (empty($tmp)) {
-            return static::newItem($data);
+            try {
+                $id = static::newItem($data, $log_op);
+            } catch (\Exception $ex) {
+                $tmp = static::firstItem($where);
+                $id = $tmp[$primary_key];
+                if (!empty($id)) {
+                    return $id;
+                } else {
+                    throw $ex;
+                }
+            }
+            return $id;
         } else {
             $id = $tmp[$primary_key];
-            static::setItem($id, $data);
+            static::setItem($id, $data, $log_op);
             return $id;
         }
     }
@@ -1259,10 +1320,10 @@ trait OrmTrait
         if (is_array($value)) {
             $where = $value;
         } else {
-            $filed = $filed ?: $primary_key;
+            $filed = !empty($filed) ? $filed : $primary_key;
             $where = [strtolower($filed) => $value];
         }
-        $tmp = static::firstItem($where, [], [$primary_key]);
+        $tmp = static::firstItem($where, [$primary_key, 'asc'], [$primary_key]);
         if (!empty($tmp) && !empty($tmp[$primary_key])) {
             return $tmp[$primary_key];
         } else {
@@ -1276,21 +1337,23 @@ trait OrmTrait
      * @param string $filed 字段名 默认为 null 表示使用主键
      * @param array $columns 需要获取的列 格式为[`column_1`, ]  默认为所有
      * @param string | array $with
+     * @param array $sort_option
      * @return mixed
      */
-    public static function getItem($value, $filed = null, array $columns = ['*'], $with = '')
+    public static function getItem($value, $filed = null, array $columns = ['*'], $with = '', array $sort_option = [])
     {
         $primary_key = static::primaryKey();
         $filed = $filed ?: $primary_key;
-        return static::firstItem([strtolower($filed) => $value], [], $columns, $with);
+        return static::firstItem([strtolower($filed) => $value], $sort_option, $columns, $with);
     }
 
     /**
      * 插入数据 返回插入的自增id
      * @param array $data 数据[`filed` => `value`, ]
+     * @param bool $log_op
      * @return int
      */
-    public static function newItem(array $data)
+    public static function newItem(array $data, $log_op = true)
     {
         $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
@@ -1305,7 +1368,13 @@ trait OrmTrait
         $table = static::tableBuilder();
         $id = $table->insertGetId($data, $primary_key);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_INSERT, $id, array_keys($data));
+
+        try {
+            $log_op && static::_hookItemChange(OrmConfig::ACTION_INSERT, $id, array_keys($data));
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
         return $id;
     }
 
@@ -1313,9 +1382,10 @@ trait OrmTrait
      * 根据主键修改数据
      * @param int $id 主键值
      * @param array $data 更新的数据 格式为 [`filed` => `value`, ]
+     * @param bool $log_op
      * @return int 操作影响的行数
      */
-    public static function setItem($id, array $data)
+    public static function setItem($id, array $data, $log_op = true)
     {
         $data = self::_fixFillAbleData($data);
         $start_time = microtime(true);
@@ -1327,23 +1397,37 @@ trait OrmTrait
 
         $update = static::_update($table, $data);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_keys($data));
+
+        try {
+            $log_op && static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_keys($data));
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
         return $update;
     }
 
     /**
      * 根据主键删除数据
      * @param int $id 主键值
+     * @param bool $log_op
      * @return int 操作影响的行数
      */
-    public static function delItem($id)
+    public static function delItem($id, $log_op = true)
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         $table = static::tableBuilder()->where($primary_key, $id);
         $delete = $table->delete();
+
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_DELETE, $id);
+
+        try {
+            $log_op && static::_hookItemChange(OrmConfig::ACTION_DELETE, $id);
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
         return $delete;
     }
 
@@ -1353,16 +1437,24 @@ trait OrmTrait
      * @param string $filed 需要增加的字段
      * @param int $value 需要改变的值 默认为 1
      * @param array $extra
+     * @param bool $log_op
      * @return int 操作影响的行数
      */
-    public static function incItem($id, $filed, $value = 1, array $extra = [])
+    public static function incItem($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         $table = static::tableBuilder()->where($primary_key, $id);
         $increment = $table->increment($filed, $value, $extra);
+
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
+
+        try {
+            $log_op && static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
         return $increment;
     }
 
@@ -1372,16 +1464,24 @@ trait OrmTrait
      * @param string $filed 需要减少的字段
      * @param int $value 需要改变的值 默认为 1
      * @param array $extra
+     * @param bool $log_op
      * @return int 操作影响的行数
      */
-    public static function decItem($id, $filed, $value = 1, array $extra = [])
+    public static function decItem($id, $filed, $value = 1, array $extra = [], $log_op = true)
     {
         $start_time = microtime(true);
         $primary_key = static::primaryKey();
         $table = static::tableBuilder()->where($primary_key, $id);
         $decrement = $table->decrement($filed, $value, $extra);
+
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);
-        static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
+
+        try {
+            $log_op && static::_hookItemChange(OrmConfig::ACTION_UPDATE, $id, array_merge(array_keys($extra), [$filed]));
+        } catch (\Exception $ex) {
+            $log_msg = __METHOD__ . " error:" . $ex->getMessage();
+            self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
+        }
         return $decrement;
     }
 

@@ -55,7 +55,6 @@ trait CacheTrait
 
     /**
      * @return null|\phpFastCache\Cache\ExtendedCacheItemPoolInterface
-     * @throws \phpFastCache\Exceptions\phpFastCacheDriverCheckException
      */
     public static function _getCacheInstance()
     {
@@ -70,7 +69,6 @@ trait CacheTrait
 
     /**
      * @return \Redis
-     * @throws \phpFastCache\Exceptions\phpFastCacheDriverCheckException
      */
     public static function _getRedisInstance()
     {
@@ -108,7 +106,6 @@ trait CacheTrait
      * @param array | Closure $tags 标记数组
      * @param bool $is_log 是否显示日志
      * @return mixed
-     * @throws \phpFastCache\Exceptions\phpFastCacheDriverCheckException
      */
     public static function _cacheDataManager($method, $key, callable $func, callable $filter, $timeCache = null, $prefix = null, $tags = [], $is_log = false)
     {
@@ -710,22 +707,30 @@ trait CacheTrait
         if (!class_exists('Redis')) {
             return null;
         }
-        $redis = new \Redis();
+
         $host = Application::config('ENV_REDIS.host', '127.0.0.1');
         $port = intval(Application::config('ENV_REDIS.port', 6379));
         $password = Application::config('ENV_REDIS.password', '');
         $database = intval(Application::config('ENV_REDIS.database', 0));
         $timeout = intval(Application::config('ENV_REDIS.timeout', 5));
 
-        if (!$redis->connect($host, $port, $timeout)) {
-            return null;
+        $config_key = str_replace('.', '#', "{$host}_{$port}_{$password}_{$database}_{$timeout}");
+
+        $redis = Application::config($config_key, null);
+        if (empty($redis)) {
+            $redis = new \Redis();
+            if (!$redis->connect($host, $port, $timeout)) {
+                $redis = null;
+            }
+            if (!empty($redis) && !empty($password)) {
+                $redis = $redis->auth($password) ? $redis : null;
+            }
+            if (!empty($redis) && $database > 0) {
+                $redis = $redis->select($database) ? $redis : null;
+            }
+            !empty($redis) && Application::set_config($config_key, $redis);
         }
-        if (!empty($password)) {
-            return $redis->auth($password) ? $redis : null;
-        }
-        if ($database > 0) {
-            return $redis->select($database) ? $redis : null;
-        }
+
         return $redis;
     }
 

@@ -9,7 +9,6 @@
 namespace Tiny\Traits;
 
 
-use function foo\func;
 use Tiny\Exception\AppStartUpError;
 
 trait DeferredGetBuffer

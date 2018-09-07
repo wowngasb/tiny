@@ -179,7 +179,7 @@ function {$cls}Helper(){
                 });
             },
             success: function (res) {
-                self.debug && typeof logHandler === 'function' && logHandler(logLevelHandler(res), Math.round((new Date().getTime() - start_time)), args, res);
+                typeof logHandler === 'function' && logHandler(logLevelHandler(res), Math.round((new Date().getTime() - start_time)), args, res);
                 var code = typeof res.code !== 'undefined' ? parseInt(res.code) : -1
                 if (code === 0 || (code === -1 && !res.error)) {
                     typeof success === 'function' && success(res);
@@ -203,7 +203,7 @@ EOT;
     this.{$name} = function(args, success, failure, logHandler, logLevelHandler, fixArgs) {
         var _p = '/api/{$cls}/{$name}';args = args || {};
         logHandler = logHandler || function (t, u, a, d) {
-            t in _l && (_l[t])(_d(),'['+t+'] '+_p+'('+u+'ms)','args:',a,'data:',d);
+            self.debug && t in _l && (_l[t])(_d(),'['+t+'] '+_p+'('+u+'ms)','args:',a,'data:',d);
         };
         return !success && Promise ? new Promise(function(resolve, reject){
             self._ajax(_h, _p, args, resolve, reject, logHandler, logLevelHandler, fixArgs);

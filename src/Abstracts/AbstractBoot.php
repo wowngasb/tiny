@@ -29,9 +29,6 @@ abstract class AbstractBoot
      */
     public static function bootstrap(Application $app)
     {
-        if (Application::dev()) {
-            static::debugStrap();
-        }
         $app->setBootstrapCompleted(true);
         return $app;
     }
@@ -71,19 +68,20 @@ abstract class AbstractBoot
         }
     }
 
-    protected static function debugStrap($routerStartup = false, $routerShutdown = false, $dispatchLoopStartup = false, $dispatchLoopShutdown = false, $preDispatch = false, $postDispatch = false, $preDisplay = false, $preWidget = false, $apiResult = false, $apiException = false, $runSql = false)
+    protected static function actionRouterStartup(ApplicationEvent $event)
+    {
+        $obj = $event->getObject();
+        $request = $event->getRequest();
+        $data = ['_request' => $request->getRequestUri(), 'request' => $request->all_request()];
+        $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
+        static::consoleDebug($data, $tag, 1);
+    }
+
+    protected static function debugStrap($routerShutdown = false, $dispatchLoopStartup = false, $dispatchLoopShutdown = false, $preDispatch = false, $postDispatch = false, $preDisplay = false, $preWidget = false, $apiResult = false, $apiException = false, $runSql = false)
     {
         if (!Application::dev()) {  // 非调试模式下  直接返回
             return;
         }
-
-        $routerStartup && Application::on('routerStartup', function (ApplicationEvent $event) {
-            $obj = $event->getObject();
-            $request = $event->getRequest();
-            $data = ['_request' => $request->getRequestUri(), 'request' => $request->all_request()];
-            $tag = $request->debugTag(get_class($obj) . ' #routerStartup');
-            static::consoleDebug($data, $tag, 1);
-        });
 
         $routerShutdown && Application::on('routerShutdown', function (ApplicationEvent $event) {
             $obj = $event->getObject();
@@ -168,7 +166,7 @@ abstract class AbstractBoot
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #apiResult');
             static::consoleDebug([
                 'method' => $event->getAction(),
-                'params' => $event->getParams(),
+                'args' => $event->getArgs(),
                 'result' => $event->getResult(),
                 'callback' => $event->getCallback(),
             ], $tag);
@@ -179,7 +177,7 @@ abstract class AbstractBoot
             $tag = $obj->getRequest()->debugTag(get_class($obj) . ' #apiException');
             static::consoleDebug([
                 'method' => $event->getAction(),
-                'params' => $event->getParams(),
+                'args' => $event->getArgs(),
                 'exception' => $event->getException(),
                 'callback' => $event->getCallback(),
             ], $tag);

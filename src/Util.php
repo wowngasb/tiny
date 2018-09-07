@@ -59,23 +59,6 @@ abstract class Util extends AbstractClass
         return $msg;
     }
 
-    public static function cmd_commands($args, $print)
-    {
-        false && func_get_args();
-        return __METHOD__ . " not NotImplemented";
-    }
-
-    public static function cmd_schedules($args, $print)
-    {
-        false && func_get_args();
-        return __METHOD__ . " not NotImplemented";
-    }
-
-    public static function cmd_test($args, $print)
-    {
-        $print && $print('just TEST, args:' . json_encode($args));
-    }
-
     public static function cmd_crontab($args, $print)
     {
         false && func_get_args();
@@ -83,6 +66,18 @@ abstract class Util extends AbstractClass
     }
 
     public static function cmd_run($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_commands($args, $print)
+    {
+        false && func_get_args();
+        return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_schedules($args, $print)
     {
         false && func_get_args();
         return __METHOD__ . " not NotImplemented";
@@ -98,6 +93,11 @@ abstract class Util extends AbstractClass
     {
         false && func_get_args();
         return __METHOD__ . " not NotImplemented";
+    }
+
+    public static function cmd_test($args, $print)
+    {
+        $print && $print('just TEST, args:' . json_encode($args));
     }
 
     public static function cmd_help($args, $print)
@@ -257,6 +257,53 @@ EOT;
         return empty($add_path) ? "{$base_path}{$last_seq}" : "{$base_path}{$seq}{$add_path}{$last_seq}";
     }
 
+    public static function str_endwith($haystack, $needle)
+    {
+        $len = strlen($needle);
+        if ($len == 0) {
+            return true;
+        }
+        $tmp = substr($haystack, -$len);
+        return static::str_cmp($tmp, $needle);
+    }
+
+    public static function str_cmp($str1, $str2)
+    {
+        list($str1, $str2) = [strval($str1), strval($str2)];
+        if (!function_exists('hash_equals')) {
+            if (strlen($str1) != strlen($str2)) {
+                return false;
+            } else {
+                $res = $str1 ^ $str2;
+                $ret = 0;
+                for ($i = strlen($res) - 1; $i >= 0; $i--) {
+                    $ret |= ord($res[$i]);
+                }
+                return !$ret;
+            }
+        } else {
+            return hash_equals($str1, $str2);
+        }
+    }
+
+    /**
+     * 使用 seq 把 list 数组中的非空字符串连接起来  _join('_', [1,2,3]) = '1_2_3'
+     * @param string $seq
+     * @param array $list
+     * @return string
+     */
+    public static function joinNotEmpty($seq, array $list)
+    {
+        $tmp_list = [];
+        foreach ($list as $item) {
+            $item = trim(strval($item));
+            if ($item !== '') {
+                $tmp_list[] = strval($item);
+            }
+        }
+        return join($seq, $tmp_list);
+    }
+
     public static function base_name($path)
     {
         $file_name = static::file_name($path);
@@ -288,6 +335,10 @@ EOT;
         return $path;
     }
 
+    ##########################
+    ######## SQL处理 ########
+    ##########################
+
     public static function mkdir_r($dir, $rights = 666)
     {
         if (!is_dir($dir)) {
@@ -295,6 +346,10 @@ EOT;
             mkdir($dir, $rights);
         }
     }
+
+    ##########################
+    ######## 异常处理 ########
+    ##########################
 
     public static function getfiles($path, array $last = [])
     {
@@ -384,10 +439,6 @@ EOT;
         }
     }
 
-    ##########################
-    ######## SQL处理 ########
-    ##########################
-
     public static function prepare_query($query, $params)
     {
         $keys = [];
@@ -411,7 +462,7 @@ EOT;
     }
 
     ##########################
-    ######## 异常处理 ########
+    ######## 打印变量 ########
     ##########################
 
     /**
@@ -456,29 +507,50 @@ EOT;
         return $ret;
     }
 
-    public static function msg_fix($msg, array $fix_replace)
+    /**
+     * 获取一个数组的  多个指定键值   第一个数组中不存在的键 设置为第二个数组的 默认值  常用于一次获取多个值
+     * @param array $val 数据源 数组
+     * @param array $keys 建 默认值 数组 格式为 [key => default, ...]
+     * @return array  key 的关联数组
+     */
+    public static function vl(array $val, array $keys)
     {
-        $search = array_keys($fix_replace);
-        $replace = array_values($fix_replace);
-        return str_replace($search, $replace, $msg);
-    }
-
-    public static function trace_fix(array $trace_list, array $fix_replace)
-    {
-        $search = array_keys($fix_replace);
-        $replace = array_values($fix_replace);
-        foreach ($trace_list as &$trace) {
-            $args_str = !empty($trace['args_str']) ? $trace['args_str'] : '';
-            if (!empty($args_str) && !empty($search) && !empty($replace)) {
-                $args_str = str_replace($search, $replace, $args_str);
-            }
-            $trace['args_str'] = $args_str;
+        if (empty($val) && empty($keys)) {
+            return [];
         }
-        return $trace_list;
+
+        $ret = [];
+        foreach ($keys as $key => $default) {
+            $ret[$key] = static::v($val, $key, $default);
+        }
+        return $ret;
     }
 
     ##########################
-    ######## 打印变量 ########
+    ######## DSL处理 ########
+    ##########################
+
+    /**
+     * 获取一个数组的指定键值 未设置则使用 默认值  常用于获取单个值
+     * @param array $val
+     * @param string $key
+     * @param mixed $default 默认值 默认为 null
+     * @return mixed
+     */
+    public static function v($val, $key, $default = null)
+    {
+        if (empty($val)) {
+            return $default;
+        }
+        if (is_array($val)) {
+            return isset($val[$key]) ? $val[$key] : $default;
+        } else {
+            return isset($val->{$key}) ? $val->{$key} : $default;
+        }
+    }
+
+    ##########################
+    ######## 数组处理 ########
     ##########################
 
     public static function dump_val($data, $is_short = false, $max_item = 5, $max_str = 50)
@@ -531,6 +603,58 @@ EOT;
         }
     }
 
+    /**
+     * 计算utf8字符串长度
+     * @param string $content 原字符串
+     * @return int utf8字符串 长度
+     */
+    public static function utf8_strlen($content)
+    {
+        if (empty($content)) {
+            return 0;
+        }
+        preg_match_all("/./us", $content, $match);
+        return count($match[0]);
+    }
+
+    public static function utf8_substr($str, $start, $length = null, $suffix = "")
+    {
+        if (is_null($length)) {
+            $length = static::utf8_strlen($str) - $start;
+        }
+        if (function_exists("mb_substr")) {
+            $slice = mb_substr($str, $start, $length, "utf-8");
+        } elseif (function_exists('iconv_substr')) {
+            $slice = iconv_substr($str, $start, $length, "utf-8");
+        } else {
+            $re = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xff][\x80-\xbf]{3}/";
+            preg_match_all($re, $str, $match);
+            $slice = join("", array_slice($match[0], $start, $length));
+        }
+        return $slice . (static::utf8_strlen($slice) < static::utf8_strlen($str) ? $suffix : '');
+    }
+
+    public static function msg_fix($msg, array $fix_replace)
+    {
+        $search = array_keys($fix_replace);
+        $replace = array_values($fix_replace);
+        return str_replace($search, $replace, $msg);
+    }
+
+    public static function trace_fix(array $trace_list, array $fix_replace)
+    {
+        $search = array_keys($fix_replace);
+        $replace = array_values($fix_replace);
+        foreach ($trace_list as &$trace) {
+            $args_str = !empty($trace['args_str']) ? $trace['args_str'] : '';
+            if (!empty($args_str) && !empty($search) && !empty($replace)) {
+                $args_str = str_replace($search, $replace, $args_str);
+            }
+            $trace['args_str'] = $args_str;
+        }
+        return $trace_list;
+    }
+
     public static function jsonEncode($var)
     {
         if (function_exists('json_encode')) {
@@ -573,10 +697,6 @@ EOT;
         }
     }
 
-    ##########################
-    ######## DSL处理 ########
-    ##########################
-
     public static function dsl($str, $split = '#', $kv = '=')
     {
         list($str, $split, $kv) = [trim($str), trim($split), trim($kv)];
@@ -604,10 +724,6 @@ EOT;
             'args' => $args,
         ];
     }
-
-    ##########################
-    ######## 数组处理 ########
-    ##########################
 
     public static function fmap_first($val, array $funcMap, $default = null)
     {
@@ -693,7 +809,6 @@ EOT;
         return $num;
     }
 
-
     /**
      * @param mixed $item
      * @return array|mixed
@@ -760,6 +875,11 @@ EOT;
         ];
     }
 
+    public static function trimlower($string)
+    {
+        return strtolower(trim($string));
+    }
+
     /**
      * 根据页数计算起始偏移 允许设置最大偏移
      * @param int $page
@@ -788,6 +908,27 @@ EOT;
         ];
     }
 
+
+    ##########################
+    ######## 取值处理 ########
+    ##########################
+
+
+    /**
+     * 检查 Range 类型 适合合法
+     * @param array $range_arr
+     * @param bool $as_int
+     * @return array
+     */
+    public static function get_range(array $range_arr, $as_int = false)
+    {
+        if ($as_int) {
+            return [intval($range_arr['lower']), intval($range_arr['upper'])];
+        } else {
+            return [$range_arr['lower'], $range_arr['upper']];
+        }
+    }
+
     /**
      * 检查 Range 类型 适合合法
      * @param array $range_arr
@@ -801,7 +942,7 @@ EOT;
         }
 
         if ($as_int) {
-            return $range_arr['lower'] <= $range_arr['upper'];
+            return intval($range_arr['lower']) <= intval($range_arr['upper']);
         } else {
             return $range_arr['lower'] <= $range_arr['upper'];
         }
@@ -830,6 +971,19 @@ EOT;
             }
         }
         return $ret_map;
+    }
+
+    /**
+     * 根据一个 数组的 值 构建一个 字典 常用于去重或判断是否存在
+     * @param array $key_list 需要值为 string
+     * @param bool $trimlower 是否 去除空格并转为小写
+     * @param array $exclude
+     * @param bool $as_int
+     * @return array set list
+     */
+    public static function build_map_set($key_list, $trimlower = false, $exclude = [], $as_int = false)
+    {
+        return array_keys(static::build_map($key_list, $trimlower, 1, $exclude, $as_int));
     }
 
     /**
@@ -870,19 +1024,6 @@ EOT;
     }
 
     /**
-     * 根据一个 数组的 值 构建一个 字典 常用于去重或判断是否存在
-     * @param array $key_list 需要值为 string
-     * @param bool $trimlower 是否 去除空格并转为小写
-     * @param array $exclude
-     * @param bool $as_int
-     * @return array set list
-     */
-    public static function build_map_set($key_list, $trimlower = false, $exclude = [], $as_int = false)
-    {
-        return array_keys(static::build_map($key_list, $trimlower, 1, $exclude, $as_int));
-    }
-
-    /**
      * 取出一个数组 中 值不为空的 所有 key
      * @param array $data
      * @return array
@@ -896,44 +1037,6 @@ EOT;
             }
         }
         return $ret;
-    }
-
-    /**
-     * 判断一个 数组 为 list 还是 hash
-     * @param array $var
-     * @return bool  list 返回 true
-     */
-    public static function assoc_array(array $var)
-    {
-        return empty($var) || array_keys($var) === range(0, sizeof($var) - 1);
-    }
-
-    /**
-     * 深度合并两个数组 优先使用第二个的值覆盖第一个
-     * @param array $arr1
-     * @param array $arr2
-     * @return array
-     */
-    public static function deep_merge(array $arr1, array $arr2)
-    {
-        if (static::assoc_array($arr1) || static::assoc_array($arr2)) {
-            return array_merge($arr1, $arr2);
-        }
-        foreach ($arr1 as $key => $item) {
-            if (isset($arr2[$key])) {
-                if (is_array($item) && is_array($arr2[$key])) {
-                    $arr1[$key] = static::deep_merge($item, $arr2[$key]);
-                } else {
-                    $arr1[$key] = $arr2[$key];
-                }
-            }
-        }
-        foreach ($arr2 as $key => $item) {
-            if (!isset($arr1[$key])) {
-                $arr1[$key] = $item;
-            }
-        }
-        return $arr1;
     }
 
     /**
@@ -951,9 +1054,15 @@ EOT;
         return $rst;
     }
 
-    ##########################
-    ######## 取值处理 ########
-    ##########################
+    public static function gz_json_encode($data, $level = 5)
+    {
+        return gzencode(json_encode($data), $level);
+    }
+
+    public static function gz_json_decode($str)
+    {
+        return json_decode(gzdecode($str), true);
+    }
 
     public static function find_config($key, $default = '', array $config = [])
     {
@@ -1004,6 +1113,48 @@ EOT;
             }
         }
         return $cfg;
+    }
+
+    ##########################
+    ######## 时间处理 ########
+    ##########################
+
+    /**
+     * 深度合并两个数组 优先使用第二个的值覆盖第一个
+     * @param array $arr1
+     * @param array $arr2
+     * @return array
+     */
+    public static function deep_merge(array $arr1, array $arr2)
+    {
+        if (static::assoc_array($arr1) || static::assoc_array($arr2)) {
+            return array_merge($arr1, $arr2);
+        }
+        foreach ($arr1 as $key => $item) {
+            if (isset($arr2[$key])) {
+                if (is_array($item) && is_array($arr2[$key])) {
+                    $arr1[$key] = static::deep_merge($item, $arr2[$key]);
+                } else {
+                    $arr1[$key] = $arr2[$key];
+                }
+            }
+        }
+        foreach ($arr2 as $key => $item) {
+            if (!isset($arr1[$key])) {
+                $arr1[$key] = $item;
+            }
+        }
+        return $arr1;
+    }
+
+    /**
+     * 判断一个 数组 为 list 还是 hash
+     * @param array $var
+     * @return bool  list 返回 true
+     */
+    public static function assoc_array(array $var)
+    {
+        return empty($var) || array_keys($var) === range(0, sizeof($var) - 1);
     }
 
     /**
@@ -1088,45 +1239,95 @@ EOT;
         return $ret;
     }
 
-    /**
-     * 获取一个数组的指定键值 未设置则使用 默认值  常用于获取单个值
-     * @param array $val
-     * @param string $key
-     * @param mixed $default 默认值 默认为 null
-     * @return mixed
-     */
-    public static function v($val, $key, $default = null)
+    public static function mod_timestamp($seq, $stime = 0)
     {
-        if (empty($val)) {
-            return $default;
-        }
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
 
-        return isset($val[$key]) ? $val[$key] : $default;
+        return intval($stime / $seq) * $seq;
+    }
+
+    public static function year_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-01-01 00:00:00', $stime));
+    }
+
+    public static function year_end_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date("Y-12-31 23:59:59", $stime));
+    }
+
+    public static function month_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-01 00:00:00', $stime));
+    }
+
+    public static function month_end_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        $max_day = static::max_days(intval(date('Y', $stime)), intval(date('m', $stime)));
+        return strtotime(date("Y-m-{$max_day} 23:59:59", $stime));
     }
 
     /**
-     * 获取一个数组的  多个指定键值   第一个数组中不存在的键 设置为第二个数组的 默认值  常用于一次获取多个值
-     * @param array $val 数据源 数组
-     * @param array $keys 建 默认值 数组 格式为 [key => default, ...]
-     * @return array  key 的关联数组
+     * 获取某年某月最大天数
+     * @param int $year 年
+     * @param int $month 月
+     * @return int 最大天数
      */
-    public static function vl(array $val, array $keys)
+    public static function max_days($year, $month)
     {
-        if (empty($val) && empty($keys)) {
-            return [];
-        }
-
-        $ret = [];
-        foreach ($keys as $key => $default) {
-            $ret[$key] = static::v($val, $key, $default);
-        }
-        return $ret;
+        return $month == 2 ? ($year % 4 != 0 ? 28 : ($year % 100 != 0 ? 29 : ($year % 400 != 0 ? 28 : 29))) : (($month - 1) % 7 % 2 != 0 ? 30 : 31);
     }
 
-    ##########################
-    ######## 时间处理 ########
-    ##########################
+    public static function day_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d 00:00:00', $stime));
+    }
 
+    public static function day_end_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d 23:59:59', $stime));
+    }
+
+    public static function hour_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d H:00:00', $stime));
+    }
+
+    public static function hour_end_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d H:59:59', $stime));
+    }
+
+    public static function minute_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d H:i:00', $stime));
+    }
+
+    public static function minute_end_timestamp($stime = 0)
+    {
+        $stime = is_string($stime) ? strtotime($stime) : $stime;
+        $stime = !empty($stime) && $stime > 0 ? intval($stime) : time();
+        return strtotime(date('Y-m-d H:i:59', $stime));
+    }
 
     public static function ymdhis($stime = 0)
     {
@@ -1142,6 +1343,10 @@ EOT;
         return date('Y-m-d', $stime);
     }
 
+    ##########################
+    ######## 字符串生成 ########
+    ##########################
+
     public static function dateUTC($dateTimeUTC = null, $dateFormat = 'Y-m-d\TH:i:s\Z', $timeZone = 'UTC')
     {
         $dateTimeUTC = !empty($dateTimeUTC) ? $dateTimeUTC : date("Y-m-d H:i:s");
@@ -1151,18 +1356,6 @@ EOT;
         $date->setTimeZone(new DateTimeZone($timeZone));
 
         return $date->format($dateFormat);
-    }
-
-
-    /**
-     * 获取某年某月最大天数
-     * @param int $year 年
-     * @param int $month 月
-     * @return int 最大天数
-     */
-    public static function max_days($year, $month)
-    {
-        return $month == 2 ? ($year % 4 != 0 ? 28 : ($year % 100 != 0 ? 29 : ($year % 400 != 0 ? 28 : 29))) : (($month - 1) % 7 % 2 != 0 ? 30 : 31);
     }
 
     /**
@@ -1207,6 +1400,10 @@ EOT;
         $second = !empty($arr['second']) ? $arr['second'] : 0;
         return sprintf('%d-%02d-%02d %02d:%02d:%02d', $arr['year'], $arr['month'], $arr['day'], $hour, $minute, $second);
     }
+
+    ##########################
+    ######## 字符串处理 ########
+    ##########################
 
     /**
      * 计算两个时间戳的差值
@@ -1263,28 +1460,6 @@ EOT;
         return $rst;
     }
 
-    ##########################
-    ######## 字符串生成 ########
-    ##########################
-
-    /**
-     * @param int $length
-     * @return string
-     */
-    public static function rand_str($length)
-    {
-        if ($length <= 0) {
-            return '';
-        }
-        $str = '';
-        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-        $max = strlen($tmp_str) - 1;
-        for ($i = 0; $i < $length; $i++) {
-            $str .= $tmp_str[rand(0, $max)];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
-        }
-        return $str;
-    }
-
     public static function short_md5($input, $length = 8)
     {
         $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
@@ -1306,6 +1481,15 @@ EOT;
         return $str;
     }
 
+    public static function byteToInt32WithLittleEndian($byte)
+    {
+        $byte0 = isset($byte[0]) ? ord($byte[0]) : 0;
+        $byte1 = isset($byte[1]) ? ord($byte[1]) : 0;
+        $byte2 = isset($byte[2]) ? ord($byte[2]) : 0;
+        $byte3 = isset($byte[3]) ? ord($byte[3]) : 0;
+        return $byte3 * 256 * 256 * 256 + $byte2 * 256 * 256 + $byte1 * 256 + $byte0;
+    }
+
     public static function short_hash($input, $length = 8)
     {
         $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
@@ -1324,10 +1508,6 @@ EOT;
         }
         return $str;
     }
-
-    ##########################
-    ######## 字符串处理 ########
-    ##########################
 
     /**
      * 把一个字符串 每隔几个字母 插入分隔符
@@ -1444,51 +1624,6 @@ EOT;
         return substr($email, 0, $start_num) . str_repeat('*', $idx - $start_num) . substr($email, $idx);
     }
 
-    public static function str_cmp($str1, $str2)
-    {
-        list($str1, $str2) = [strval($str1), strval($str2)];
-        if (!function_exists('hash_equals')) {
-            if (strlen($str1) != strlen($str2)) {
-                return false;
-            } else {
-                $res = $str1 ^ $str2;
-                $ret = 0;
-                for ($i = strlen($res) - 1; $i >= 0; $i--) {
-                    $ret |= ord($res[$i]);
-                }
-                return !$ret;
-            }
-        } else {
-            return hash_equals($str1, $str2);
-        }
-    }
-
-    public static function stri_cmp($str1, $str2)
-    {
-        return static::str_cmp(strtolower($str1), strtolower($str2));
-    }
-
-    public static function str_startwith($str, $needle)
-    {
-        $len = strlen($needle);
-        if ($len == 0) {
-            return true;
-        }
-        $tmp = substr($str, 0, $len);
-        return static::str_cmp($tmp, $needle);
-
-    }
-
-    public static function str_endwith($haystack, $needle)
-    {
-        $len = strlen($needle);
-        if ($len == 0) {
-            return true;
-        }
-        $tmp = substr($haystack, -$len);
-        return static::str_cmp($tmp, $needle);
-    }
-
     public static function stri_startwith($str, $needle)
     {
         $len = strlen($needle);
@@ -1500,6 +1635,15 @@ EOT;
 
     }
 
+    ##########################
+    ######## 过滤相关 ########
+    ##########################
+
+    public static function stri_cmp($str1, $str2)
+    {
+        return static::str_cmp(strtolower($str1), strtolower($str2));
+    }
+
     public static function stri_endwith($haystack, $needle)
     {
         $len = strlen($needle);
@@ -1509,15 +1653,6 @@ EOT;
         $tmp = substr($haystack, -$len);
         return static::stri_cmp($tmp, $needle);
     }
-
-    public static function trimlower($string)
-    {
-        return strtolower(trim($string));
-    }
-
-    ##########################
-    ######## 过滤相关 ########
-    ##########################
 
     /**
      * xss 清洗数组 尝试对数组中特定字段进行处理
@@ -1533,20 +1668,6 @@ EOT;
             }
         }
         return $data;
-    }
-
-    public static function safe_str($str)
-    {
-        $safe_chars = str_split('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_');
-        $safe_map = self::build_map($safe_chars);
-        $chars = self::utf8_str_split($str);
-        $ret_list = [];
-        foreach ($chars as $char) {
-            if (!empty($safe_map[$char])) {
-                $ret_list[] = $char;
-            }
-        }
-        return join('', $ret_list);
     }
 
     /**
@@ -1571,39 +1692,22 @@ EOT;
         return $val;
     }
 
-    public static function xss_clean_textarea($val)
-    {
-        $val = strval($val);
-        $tmp_list = explode("\n", $val);
-        $out_list = [];
-        foreach ($tmp_list as $item) {
-            $tmp = trim(static::xss_clean($item));
-            if ($tmp !== '') {
-                $out_list[] = $tmp;
-            }
-        }
-        return join("\n", $out_list);
-    }
-
     ##########################
     ######## 中文处理 ########
     ##########################
 
-    public static function utf8_substr($str, $start, $length = null, $suffix = "")
+    public static function safe_str($str)
     {
-        if (is_null($length)) {
-            $length = static::utf8_strlen($str) - $start;
+        $safe_chars = str_split('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_');
+        $safe_map = self::build_map($safe_chars);
+        $chars = self::utf8_str_split($str);
+        $ret_list = [];
+        foreach ($chars as $char) {
+            if (!empty($safe_map[$char])) {
+                $ret_list[] = $char;
+            }
         }
-        if (function_exists("mb_substr")) {
-            $slice = mb_substr($str, $start, $length, "utf-8");
-        } elseif (function_exists('iconv_substr')) {
-            $slice = iconv_substr($str, $start, $length, "utf-8");
-        } else {
-            $re = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xff][\x80-\xbf]{3}/";
-            preg_match_all($re, $str, $match);
-            $slice = join("", array_slice($match[0], $start, $length));
-        }
-        return $slice . (static::utf8_strlen($slice) < static::utf8_strlen($str) ? $suffix : '');
+        return join('', $ret_list);
     }
 
     public static function utf8_str_split($str, $l = 0)
@@ -1619,18 +1723,18 @@ EOT;
         return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
     }
 
-    /**
-     * 计算utf8字符串长度
-     * @param string $content 原字符串
-     * @return int utf8字符串 长度
-     */
-    public static function utf8_strlen($content)
+    public static function xss_clean_textarea($val)
     {
-        if (empty($content)) {
-            return 0;
+        $val = strval($val);
+        $tmp_list = explode("\n", $val);
+        $out_list = [];
+        foreach ($tmp_list as $item) {
+            $tmp = trim(static::xss_clean($item));
+            if ($tmp !== '') {
+                $out_list[] = $tmp;
+            }
         }
-        preg_match_all("/./us", $content, $match);
-        return count($match[0]);
+        return join("\n", $out_list);
     }
 
     /**
@@ -1690,21 +1794,6 @@ EOT;
     ######## 编码相关 ########
     ##########################
 
-    public static function safe_base64_encode($str)
-    {
-        $str = rtrim(strtr(base64_encode($str), '+/', '-_'), '=');
-        return $str;
-    }
-
-    public static function safe_base64_decode($str)
-    {
-        $str = strtr(trim($str), '-_', '+/');
-        $last_len = strlen($str) % 4;
-        $str = $last_len == 2 ? $str . '==' : ($last_len == 3 ? $str . '=' : $str);
-        $str = base64_decode($str);
-        return $str;
-    }
-
     /**
      * 加密函数
      * @param string $string 需要加密的字符串
@@ -1718,42 +1807,6 @@ EOT;
     public static function encode($string, $key, $expiry = 0, $salt = 'salt', $rnd_length = 2, $chk_length = 4)
     {
         return static::authcode(strval($string), 'ENCODE', $key, $expiry, $salt, $rnd_length, $chk_length);
-    }
-
-    /**
-     * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
-     * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
-     * @param string $key
-     * @param string $salt
-     * @param int $rnd_length 动态密匙长度 byte $rnd_length>=0，相同的明文会生成不同密文就是依靠动态密匙
-     * @param int $chk_length 校验和长度 byte $rnd_length>=4 && $rnd_length><=16
-     * @return string 解密结果
-     */
-    public static function decode($string, $key, $salt = 'salt', $rnd_length = 2, $chk_length = 4)
-    {
-        return static::authcode(strval($string), 'DECODE', $key, 0, $salt, $rnd_length, $chk_length);
-    }
-
-    public static function int32ToByteWithLittleEndian($int32)
-    {
-        $int32 = abs(intval($int32));
-        $byte0 = $int32 % 256;
-        $int32 = ($int32 - $byte0) / 256;
-        $byte1 = $int32 % 256;
-        $int32 = ($int32 - $byte1) / 256;
-        $byte2 = $int32 % 256;
-        $int32 = ($int32 - $byte2) / 256;
-        $byte3 = $int32 % 256;
-        return chr($byte0) . chr($byte1) . chr($byte2) . chr($byte3);
-    }
-
-    public static function byteToInt32WithLittleEndian($byte)
-    {
-        $byte0 = isset($byte[0]) ? ord($byte[0]) : 0;
-        $byte1 = isset($byte[1]) ? ord($byte[1]) : 0;
-        $byte2 = isset($byte[2]) ? ord($byte[2]) : 0;
-        $byte3 = isset($byte[3]) ? ord($byte[3]) : 0;
-        return $byte3 * 256 * 256 * 256 + $byte2 * 256 * 256 + $byte1 * 256 + $byte0;
     }
 
     /**
@@ -1802,6 +1855,15 @@ EOT;
         }
     }
 
+    public static function safe_base64_decode($str)
+    {
+        $str = strtr(trim($str), '-_', '+/');
+        $last_len = strlen($str) % 4;
+        $str = $last_len == 2 ? $str . '==' : ($last_len == 3 ? $str . '=' : $str);
+        $str = base64_decode($str);
+        return $str;
+    }
+
     public static function encodeByXor($string, $crypt)
     {
         $string_length = strlen($string);
@@ -1835,6 +1897,57 @@ EOT;
 
         $result = join('', $result_list);
         return $result;
+    }
+
+    /**
+     * @param int $length
+     * @return string
+     */
+    public static function rand_str($length)
+    {
+        if ($length <= 0) {
+            return '';
+        }
+        $str = '';
+        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        $max = strlen($tmp_str) - 1;
+        for ($i = 0; $i < $length; $i++) {
+            $str .= $tmp_str[rand(0, $max)];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
+        }
+        return $str;
+    }
+
+    public static function int32ToByteWithLittleEndian($int32)
+    {
+        $int32 = abs(intval($int32));
+        $byte0 = $int32 % 256;
+        $int32 = ($int32 - $byte0) / 256;
+        $byte1 = $int32 % 256;
+        $int32 = ($int32 - $byte1) / 256;
+        $byte2 = $int32 % 256;
+        $int32 = ($int32 - $byte2) / 256;
+        $byte3 = $int32 % 256;
+        return chr($byte0) . chr($byte1) . chr($byte2) . chr($byte3);
+    }
+
+    public static function safe_base64_encode($str)
+    {
+        $str = rtrim(strtr(base64_encode($str), '+/', '-_'), '=');
+        return $str;
+    }
+
+    /**
+     * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
+     * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
+     * @param string $key
+     * @param string $salt
+     * @param int $rnd_length 动态密匙长度 byte $rnd_length>=0，相同的明文会生成不同密文就是依靠动态密匙
+     * @param int $chk_length 校验和长度 byte $rnd_length>=4 && $rnd_length><=16
+     * @return string 解密结果
+     */
+    public static function decode($string, $key, $salt = 'salt', $rnd_length = 2, $chk_length = 4)
+    {
+        return static::authcode(strval($string), 'DECODE', $key, 0, $salt, $rnd_length, $chk_length);
     }
 
     ##########################
@@ -1917,25 +2030,15 @@ EOT;
         return $url;
     }
 
-    /**
-     * 尝试 读取 url 中的端口
-     * @param string $url
-     * @param int $default_post
-     * @return int
-     */
-    public static function get_port($url, $default_post = 80)
+    public static function str_startwith($str, $needle)
     {
-        $s_idx = stripos($url, '://');
-        if ($s_idx !== false) {
-            $url = substr($url, $s_idx + 3);
+        $len = strlen($needle);
+        if ($len == 0) {
+            return true;
         }
+        $tmp = substr($str, 0, $len);
+        return static::str_cmp($tmp, $needle);
 
-        $domain = explode('/', $url)[0];
-        $p_idx = strrpos($domain, ':');
-        if ($p_idx === false) {
-            return $default_post;
-        }
-        return intval(substr($domain, $p_idx + 1));
     }
 
     /**
@@ -2014,17 +2117,35 @@ EOT;
     #########################################
 
     /**
-     * 根据魔术常量获取获取 类名
+     * 尝试 读取 url 中的端口
+     * @param string $url
+     * @param int $default_post
+     * @return int
+     */
+    public static function get_port($url, $default_post = 80)
+    {
+        $s_idx = stripos($url, '://');
+        if ($s_idx !== false) {
+            $url = substr($url, $s_idx + 3);
+        }
+
+        $domain = explode('/', $url)[0];
+        $p_idx = strrpos($domain, ':');
+        if ($p_idx === false) {
+            return $default_post;
+        }
+        return intval(substr($domain, $p_idx + 1));
+    }
+
+    /**
+     * 根据魔术常量获取获取 函数名 并转换为 小写字母加下划线格式 的 字段名
      * @param string $str
      * @return string
      */
-    public static function class2name($str)
+    public static function method2field($str)
     {
-        $idx = strripos($str, '::');
-        $str = $idx > 0 ? substr($str, 0, $idx) : $str;
-        $idx = strripos($str, '\\');
-        $str = $idx > 0 ? substr($str, $idx + 1) : $str;
-        return $str;
+        $str = static::method2name($str);
+        return static::humpToLine($str);
     }
 
     /**
@@ -2040,14 +2161,13 @@ EOT;
     }
 
     /**
-     * 根据魔术常量获取获取 函数名 并转换为 小写字母加下划线格式 的 字段名
+     * 驼峰转下划线
      * @param string $str
      * @return string
      */
-    public static function method2field($str)
+    public static function humpToLine($str, $req = '_')
     {
-        $str = static::method2name($str);
-        return static::humpToLine($str);
+        return strtolower(preg_replace('/((?<=[a-z])(?=[A-Z]))/', $req, $str));
     }
 
     /**
@@ -2062,6 +2182,24 @@ EOT;
     }
 
     /**
+     * 根据魔术常量获取获取 类名
+     * @param string $str
+     * @return string
+     */
+    public static function class2name($str)
+    {
+        $idx = strripos($str, '::');
+        $str = $idx > 0 ? substr($str, 0, $idx) : $str;
+        $idx = strripos($str, '\\');
+        $str = $idx > 0 ? substr($str, $idx + 1) : $str;
+        return $str;
+    }
+
+    ##########################
+    ######## 拼接相关 ########
+    ##########################
+
+    /**
      * 下划线转驼峰
      * @param string $str
      * @return string
@@ -2072,38 +2210,6 @@ EOT;
             return strtoupper($matches[2]);
         }, $str);
         return $str;
-    }
-
-    /**
-     * 驼峰转下划线
-     * @param string $str
-     * @return string
-     */
-    public static function humpToLine($str)
-    {
-        return strtolower(preg_replace('/((?<=[a-z])(?=[A-Z]))/', '_', $str));
-    }
-
-    ##########################
-    ######## 拼接相关 ########
-    ##########################
-
-    /**
-     * 使用 seq 把 list 数组中的非空字符串连接起来  _join('_', [1,2,3]) = '1_2_3'
-     * @param string $seq
-     * @param array $list
-     * @return string
-     */
-    public static function joinNotEmpty($seq, array $list)
-    {
-        $tmp_list = [];
-        foreach ($list as $item) {
-            $item = trim(strval($item));
-            if ($item !== '') {
-                $tmp_list[] = strval($item);
-            }
-        }
-        return join($seq, $tmp_list);
     }
 
     public static function splitNotEmpty($seq, $str)

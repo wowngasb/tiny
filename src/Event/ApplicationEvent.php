@@ -8,11 +8,11 @@
 
 namespace Tiny\Event;
 
-use Tiny\Util;
 use Tiny\Abstracts\AbstractEvent;
 use Tiny\Application;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;
+use Tiny\Util;
 
 class ApplicationEvent extends AbstractEvent
 {

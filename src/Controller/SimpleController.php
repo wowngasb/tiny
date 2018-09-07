@@ -10,7 +10,6 @@ namespace Tiny\Controller;
 
 
 use Tiny\Abstracts\AbstractController;
-use Tiny\Application;
 use Tiny\Event\ControllerEvent;
 use Tiny\Interfaces\RequestInterface;
 use Tiny\Interfaces\ResponseInterface;

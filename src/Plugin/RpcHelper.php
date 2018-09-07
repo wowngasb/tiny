@@ -35,7 +35,7 @@ class RpcHelper
      * @param int $timeout
      * @return array
      */
-    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = 0, $timeout = 10)
+    public static function curlRpc($query_url, $header = [], $type = 'GET', $post_fields = [], $base_auth = 0, $timeout = 10, $is_log = true)
     {
         $t1 = microtime(true);
         $ch = curl_init();
@@ -84,7 +84,7 @@ class RpcHelper
             $log_msg .= ', curl_errno:' . curl_errno($ch);
             self::error($log_msg, __METHOD__, __CLASS__, __LINE__);
         } else {
-            self::debug($log_msg, __METHOD__, __CLASS__, __LINE__);
+            $is_log && self::debug($log_msg, __METHOD__, __CLASS__, __LINE__);
         }
         curl_close($ch);
         //return result

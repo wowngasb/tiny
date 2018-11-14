@@ -121,6 +121,7 @@ class LogHelper
 
         if (!is_dir($logPath)) {
             mkdir($logPath, 0777, true);
+            chmod($logPath, 0777);
         }
         $file = $logPath . '/' . date('Y-m-d') . '.log';
         $content = date('Y-m-d H:i:s') . " [{$type}] {$content}\n";

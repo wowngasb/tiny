@@ -120,15 +120,14 @@ abstract class AbstractDispatch extends AbstractClass
     public static function traceException(RequestInterface $request, ResponseInterface $response, \Exception $ex)
     {
         false && func_get_args();
-        $log_msg = __METHOD__ . " ex:" . $ex->getMessage() . " <" . get_class($ex) . ">";
-        error_log($log_msg);
+        error_log($request->getRequestUri() . ' traceException ' . __METHOD__ . " ex:" . $ex->getMessage() . " <" . get_class($ex) . ">");
 
         if ($ex instanceof NotFoundError) {
             static::traceNotFound($request, $response, $ex);
         }
         $code = $ex->getCode();
         $http_code = $code >= 500 && $code < 600 ? $code : 500;
-        $msg = Application::dev() ? "<p>Exception:</p>" . get_class($ex) . "<p>Message:</p>" . $ex->getMessage() . "<p>Request:</p><pre>" . json_encode($request) . "</pre><p>Trace:</p><pre>" . $ex->getTraceAsString() . "</pre>" : 'Exception';
+        $msg = Application::dev() ? "<p>Exception:</p>" . get_class($ex) . "<p>Message:</p>" . $ex->getMessage() . "<p>Request:</p><pre>" . json_encode($request) . "</pre><p>Trace:</p><pre>" . $ex->getTraceAsString() . "</pre>" : 'Exception:' . $ex->getMessage() . '<' . get_class($ex) . '>';
         $response->resetResponse()->setResponseCode($http_code)->appendBody($msg)->end();
     }
 

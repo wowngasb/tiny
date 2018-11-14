@@ -33,6 +33,7 @@ abstract class AbstractBoot
         return $app;
     }
 
+    /** @var Connector $ex */
     protected static $_consoleInstance = null;
 
     /**

@@ -15,7 +15,7 @@ use Tiny\Util;
 class CacheEvent extends AbstractEvent
 {
 
-    public function __construct($type, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false)
+    public function __construct($type, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $bytes = 0)
     {
         $params = [
             'now' => $now,
@@ -25,6 +25,7 @@ class CacheEvent extends AbstractEvent
             'update' => $update,
             'tags' => $tags,
             'useStatic' => $useStatic,
+            'bytes' => $bytes,
         ];
         parent::__construct($type, null, $params);
     }
@@ -52,6 +53,14 @@ class CacheEvent extends AbstractEvent
     public function getNow()
     {
         return Util::v($this->_params, 'now', 0);
+    }
+
+    /**
+     * @return int
+     */
+    public function getBytes()
+    {
+        return Util::v($this->_params, 'bytes', 0);
     }
 
     /**

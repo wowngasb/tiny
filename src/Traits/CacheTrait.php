@@ -189,6 +189,7 @@ trait CacheTrait
         }
 
         $cache_map = [];
+        $len_map = [];
         if ($isEnableStaticCache) {  // 如果启用了静态缓存  优先使用类中的缓存
             foreach ($keys as $static_key => $_origin_key) {
                 $s_rKey = $rKeysMap[$static_key];
@@ -206,6 +207,7 @@ trait CacheTrait
                 $val_str = !empty($tmp_item) ? $tmp_item->get() : '';
                 $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
                 $cache_map[$_data_key] = $val;
+                $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
                 if ($isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
@@ -217,11 +219,12 @@ trait CacheTrait
         $ret_map = [];
         foreach ($keys as $d_key => $origin_key) {
             $val = !empty($cache_map[$d_key]) ? $cache_map[$d_key] : [];
+            $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
             if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
-                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log);
+                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
             }
             $ret_map[$d_key] = $data;
@@ -294,11 +297,13 @@ trait CacheTrait
             return $data;
         }
         $useStatic = false;
+        $bytes = 0;
         if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
             $val = self::$_static_cache_map[$rKey];
             $useStatic = true;
         } else {
             $val_str = $mCache->getItem($rKey)->get();
+            $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
         }
 
@@ -316,7 +321,7 @@ trait CacheTrait
 
         //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log);
+            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }
 
@@ -347,7 +352,9 @@ trait CacheTrait
         }
 
         if ($use_cache) {   //需要缓存 且缓存世间大于0 保存数据并加上 tags
-            $itemObj = $mCache->getItem($rKey)->set(self::_buildEncodeVal($val, $prefix))->expiresAfter($timeCache);
+            $val_str = self::_buildEncodeVal($val, $prefix);
+            $bytes = !empty($val_str) ? strlen($val_str) : 0;
+            $itemObj = $mCache->getItem($rKey)->set($val_str)->expiresAfter($timeCache);
             if ($isEnableStaticCache) {
                 self::$_static_cache_map[$rKey] = $val;
             }
@@ -363,7 +370,7 @@ trait CacheTrait
                 }
             }
             $mCache->save($itemObj);
-            self::_cacheDebug('cache', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('cache', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log, $bytes);
         } else {
             self::_cacheDebug('skip', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
         }
@@ -403,6 +410,7 @@ trait CacheTrait
         }
 
         $cache_map = [];
+        $len_map = [];
         if ($isEnableStaticCache) {  // 如果启用了静态缓存  优先使用类中的缓存
             foreach ($keys as $static_key => $_origin_key) {
                 $s_rKey = $rKeysMap[$static_key];
@@ -419,6 +427,7 @@ trait CacheTrait
                 $val_str = !empty($list[$idx]) ? $list[$idx] : '';
                 $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内
                 $cache_map[$_data_key] = $val;
+                $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
                 if ($isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
@@ -430,11 +439,12 @@ trait CacheTrait
         $ret_map = [];
         foreach ($keys as $d_key => $origin_key) {
             $val = !empty($cache_map[$d_key]) ? $cache_map[$d_key] : [];
+            $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
             if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
-                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log);
+                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
             }
             $ret_map[$d_key] = $data;
@@ -513,11 +523,13 @@ trait CacheTrait
             return $data;
         }
         $useStatic = false;
+        $bytes = 0;
         if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
             $val = self::$_static_cache_map[$rKey];
             $useStatic = true;
         } else {
             $val_str = $mRedis->get($rKey);
+            $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         }
 
@@ -534,7 +546,7 @@ trait CacheTrait
         }
 
         if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log);
+            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }
 
@@ -565,7 +577,9 @@ trait CacheTrait
         }
 
         if ($use_cache) {   //需要缓存 且缓存时间大于0 保存数据并加上 tags
-            $mRedis->setex($rKey, $timeCache, self::_buildEncodeVal($val, $prefix));
+            $val_str = self::_buildEncodeVal($val, $prefix);
+            $bytes = !empty($val_str) ? strlen($val_str) : 0;
+            $mRedis->setex($rKey, $timeCache, $val_str);
             if ($isEnableStaticCache) {
                 self::$_static_cache_map[$rKey] = $val;
             }
@@ -581,7 +595,7 @@ trait CacheTrait
                 }
             }
 
-            self::_cacheDebug("cache", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug("cache", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log, $bytes);
         } else {
             self::_cacheDebug("skip", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
         }
@@ -734,10 +748,10 @@ trait CacheTrait
         return $redis;
     }
 
-    private static function _cacheDebug($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $is_log)
+    private static function _cacheDebug($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $is_log, $bytes = 0)
     {
         if (App::dev()) {
-            CacheConfig::doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic);
+            CacheConfig::doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $bytes);
         }
 
         if ($is_log) {

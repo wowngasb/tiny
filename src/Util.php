@@ -923,9 +923,9 @@ EOT;
     public static function get_range(array $range_arr, $as_int = false)
     {
         if ($as_int) {
-            return [intval($range_arr['lower']), intval($range_arr['upper'])];
+            return [intval(Util::v($range_arr, 'lower', 0)), intval(Util::v($range_arr, 'upper', 0))];
         } else {
-            return [$range_arr['lower'], $range_arr['upper']];
+            return [Util::v($range_arr, 'lower', ''), Util::v($range_arr, 'upper', '')];
         }
     }
 
@@ -1054,16 +1054,6 @@ EOT;
         return $rst;
     }
 
-    public static function gz_json_encode($data, $level = 5)
-    {
-        return gzencode(json_encode($data), $level);
-    }
-
-    public static function gz_json_decode($str)
-    {
-        return json_decode(gzdecode($str), true);
-    }
-
     public static function find_config($key, $default = '', array $config = [])
     {
         $tmp_list = explode('.', $key, 2);
@@ -1176,6 +1166,25 @@ EOT;
             }
         }
         return array_keys($ret);
+    }
+
+    /**
+     * 从指定数组中 取出 指定 key 生成 map
+     * @param array $list
+     * @param string $key
+     * @param string $default
+     * @return array
+     */
+    public static function map_from(array $list, $key = 'id', $default = '')
+    {
+        if (empty($list)) {
+            return [];
+        }
+        $ret = [];
+        foreach ($list as $k => $item) {
+            $ret[$k] = static::v($item, $key, $default);
+        }
+        return $ret;
     }
 
     /**
@@ -1950,6 +1959,119 @@ EOT;
         return static::authcode(strval($string), 'DECODE', $key, 0, $salt, $rnd_length, $chk_length);
     }
 
+
+    /**
+     * 解密函数 使用 配置 CRYPT_KEY 作为 key  成功返回原字符串  失败或过期 返回 空字符串
+     * @param string $string 需解密的 字符串 safe_base64_encode 格式编码
+     * @param string $key
+     * @param string $salt
+     * @param int $rnd_length 动态密匙长度 byte $rnd_length>=0，相同的明文会生成不同密文就是依靠动态密匙
+     * @param int $chk_length 校验和长度 byte $rnd_length>=4 && $rnd_length><=16
+     * @return string 解密结果
+     */
+    public static function decode2($string, $key, $salt = 'salt', $rnd_length = 2, $chk_length = 4)
+    {
+        return static::authcode2(strval($string), 'DECODE', $key, 0, $salt, $rnd_length, $chk_length);
+    }
+
+    public static function authcode2($_string, $operation, $_key, $_expiry, $salt, $rnd_length, $chk_length)
+    {
+        $rnd_length = $rnd_length > 0 ? intval($rnd_length) : 0;
+        $_expiry = $_expiry > 0 ? intval($_expiry) : 0;
+        $chk_length = $chk_length > 4 ? ($chk_length < 16 ? intval($chk_length) : 16) : 4;
+        $key = md5($salt . $_key . 'origin key');// 密匙
+        $keya = md5($salt . substr($key, 0, 16) . 'key a for crypt');// 密匙a会参与加解密
+        $keyb = md5($salt . substr($key, 16, 16) . 'key b for check sum');// 密匙b会用来做数据完整性验证
+
+        if ($operation == 'DECODE') {
+            $keyc = $rnd_length > 0 ? substr($_string, 0, $rnd_length) : '';// 密匙c用于变化生成的密文
+            $crypt = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
+            // 解码，会从第 $keyc_length Byte开始，因为密文前 $keyc_length Byte保存 动态密匙
+            $string = static::safe_base64_decode(substr($_string, $rnd_length));
+            $result = static::encodeByXor2($string, $crypt);
+            // 验证数据有效性
+            $result_len_ = strlen($result);
+            $expiry_at_ = $result_len_ >= 4 ? static::byteToInt32WithLittleEndian(substr($result, 0, 4)) : 0;
+            $pre_len = 4 + $chk_length;
+            $checksum_ = $result_len_ >= $pre_len ? bin2hex(substr($result, 4, $chk_length)) : 0;
+            $string_ = $result_len_ >= $pre_len ? substr($result, $pre_len) : '';
+            $tmp_sum = substr(md5($salt . $string_ . $keyb), 0, 2 * $chk_length);
+            $test_pass = ($expiry_at_ == 0 || $expiry_at_ > time()) && $checksum_ == $tmp_sum;
+            return $test_pass ? $string_ : '';
+        } else {
+            $keyc = $rnd_length > 0 ? static::rand_str($rnd_length) : '';// 密匙c用于变化生成的密文
+            $checksum = substr(md5($salt . $_string . $keyb), 0, 2 * $chk_length);
+            $expiry_at = $_expiry > 0 ? $_expiry + time() : 0;
+            $crypt = $keya . md5($salt . $keya . $keyc . 'merge key a and key c');// 参与运算的密匙
+            // 加密，原数据补充附加信息，共 8byte  前 4 Byte 用来保存时间戳，后 4 Byte 用来保存 $checksum 解密时验证数据完整性
+            $string = static::int32ToByteWithLittleEndian($expiry_at) . hex2bin($checksum) . $_string;
+            $result = static::encodeByXor($string, $crypt);
+            return $keyc . static::safe_base64_encode($result);
+        }
+    }
+
+    public static function encodeByXor2($string, $cryptkey)
+    {
+        $string_length = self::utf8_strlen($string);
+        $key_length = strlen($cryptkey);
+        $result_list = [];
+        $box = [];
+        $rndkey = [];
+        for ($i = 0; $i <= 255; $i++) {
+            $box[$i] = $i;
+        }
+        // 产生密匙簿
+        for ($i = 0; $i <= 255; $i++) {
+            $rndkey[$i] = ord($cryptkey[$i % $key_length]);
+        }
+
+        $j = 0;
+        for ($i = 0; $i < 256; $i++) {
+            $j = ($i + $j + $box[$i] + $box[$j] + $rndkey[$i] + $rndkey[$j]) % 256;
+            $tmp = $box[$i];
+            $box[$i] = $box[$j];
+            $box[$j] = $tmp;
+        }
+
+        // 核心加解密部分
+        $a = 0;
+        $j = 0;
+        $utf8_idx = 0;
+        for ($i = 0; $i < $string_length; $i++) {
+            $a = ($a + 1) % 256;
+            $j = ($j + $box[$a]) % 256;
+            $tmp = $box[$a];
+            $box[$a] = $box[$j];
+            $box[$j] = $tmp;
+            // 从密匙簿得出密匙进行异或，再转成字符
+            $tmp_idx = ($box[$a] + $box[$j]) % 256;
+            $ccc = self::ordutf8($string, $utf8_idx);
+            $result_list[] = chr($ccc ^ $box[$tmp_idx]);
+        }
+        return join('', $result_list);
+    }
+
+    public static function ordutf8($string, &$offset)
+    {
+        $bytesnumber = 1;
+        $code = ord(substr($string, $offset, 1));
+        if ($code >= 128) {        //otherwise 0xxxxxxx
+            if ($code < 224) $bytesnumber = 2;                //110xxxxx
+            else if ($code < 240) $bytesnumber = 3;        //1110xxxx
+            else if ($code < 248) $bytesnumber = 4;    //11110xxx
+            $codetemp = $code - 192 - ($bytesnumber > 2 ? 32 : 0) - ($bytesnumber > 3 ? 16 : 0);
+            for ($i = 2; $i <= $bytesnumber; $i++) {
+                $offset++;
+                $code2 = ord(substr($string, $offset, 1)) - 128;        //10xxxxxx
+                $codetemp = $codetemp * 64 + $code2;
+            }
+            $code = $codetemp;
+        }
+        $offset += 1;
+        if ($offset >= strlen($string)) $offset = -1;
+        return $code;
+    }
+
     ##########################
     ######## URL相关 ########
     ##########################
@@ -2239,6 +2361,73 @@ EOT;
             }
         }
         return $arr1;
+    }
+
+    public static function browser_ver($agent)
+    {
+        $browser = [];
+        if (stripos($agent, "MicroMessenger/") > 0) {
+            preg_match("/MicroMessenger\/([\d\.]+)+/i", $agent, $ver);
+            $browser[0] = "MicroMessenger";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "QQBrowser/") > 0) {
+            preg_match("/QQBrowser\/([\d\.]+)+/i", $agent, $ver);
+            $browser[0] = "QQBrowser";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "UCBrowser/") > 0) {
+            preg_match("/UCBrowser\/([\d\.]+)+/i", $agent, $ver);
+            $browser[0] = "UCBrowser";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "Firefox/") > 0) {
+            preg_match("/Firefox\/([^;)]+)+/i", $agent, $ver);
+            $browser[0] = "Firefox";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "Maxthon") > 0) {
+            preg_match("/Maxthon\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Maxthon";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "MSIE") > 0) {
+            preg_match("/MSIE\s+([^;)]+)+/i", $agent, $ver);
+            $browser[0] = "IE";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "OPR") > 0) {
+            preg_match("/OPR\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Opera";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "Edge") > 0) {
+            //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
+            preg_match("/Edge\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Edge";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "Chrome") > 0) {
+            preg_match("/Chrome\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Chrome";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "Safari/") > 0) {
+            preg_match("/Safari\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Safari";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, 'rv:') > 0 && stripos($agent, 'Gecko') > 0) {
+            preg_match("/rv:([\d\.]+)/", $agent, $ver);
+            $browser[0] = "IE";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "AppleWebKit/") > 0) {
+            preg_match("/AppleWebKit\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "AppleWebKit";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        }elseif (stripos($agent, "Wget/") !== false) {
+            preg_match("/Wget\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "Wget";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } elseif (stripos($agent, "curl/") !== false) {
+            preg_match("/curl\/([\d\.]+)/", $agent, $ver);
+            $browser[0] = "curl";
+            $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
+        } else {
+            $browser[0] = "UNKNOWN";
+            $browser[1] = "";
+        }
+        return $browser;
     }
 
 }

@@ -916,75 +916,84 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     public function path()
     {
-        if (!isset($this->_cache_map['path'])) {
-            $path = substr($this->fixRequestPath(), 1);
-            $this->_cache_map['path'] = $path;
+        if (isset($this->_cache_map['path'])) {
+            return $this->_cache_map['path'];
         }
+
+        $path = substr($this->fixRequestPath(), 1);
+        $this->_cache_map['path'] = $path;
         return $this->_cache_map['path'];
     }
 
     public function ajax()
     {
-        if (!isset($this->_cache_map['ajax'])) {
-            $header = $this->request_header();
-            $key = 'X-Requested-With';
-            $val = Util::v($header, strtolower($key), '');
-            $ajax = Util::stri_cmp($val, 'XMLHttpRequest');
-            $this->_cache_map['ajax'] = $ajax;
+        if (isset($this->_cache_map['ajax'])) {
+            return $this->_cache_map['ajax'];
         }
+
+        $header = $this->request_header();
+        $key = 'X-Requested-With';
+        $val = Util::v($header, strtolower($key), '');
+        $ajax = Util::stri_cmp($val, 'XMLHttpRequest');
+        $this->_cache_map['ajax'] = $ajax;
         return $this->_cache_map['ajax'];
     }
 
     public function host()
     {
-        if (!isset($this->_cache_map['host'])) {
-            $host = $this->_server('HTTP_HOST', 'localhost');
-            $this->_cache_map['host'] = $host;
+        if (isset($this->_cache_map['host'])) {
+            return $this->_cache_map['host'];
         }
+
+        $host = $this->_server('HTTP_HOST', 'localhost');
+        $this->_cache_map['host'] = $host;
         return $this->_cache_map['host'];
     }
 
     public function schema()
     {
-        if (!isset($this->_cache_map['schema'])) {
-            $schema = $this->_server('HTTPS') == "on" ? 'https' : 'http';
-            $this->_cache_map['schema'] = $schema;
+        if (isset($this->_cache_map['schema'])) {
+            return $this->_cache_map['schema'];
         }
+
+        $schema = $this->_server('HTTPS') == "on" ? 'https' : 'http';
+        $this->_cache_map['schema'] = $schema;
         return $this->_cache_map['schema'];
     }
 
     public function client_ip($default = null)
     {
-        if (!isset($this->_cache_map['client_ip'])) {
-            $arr_ip_header = [
-                'HTTP_CDN_SRC_IP',
-                'HTTP_PROXY_CLIENT_IP',
-                'HTTP_WL_PROXY_CLIENT_IP',
-                'HTTP_CLIENT_IP',
-                'HTTP_X_FORWARDED_FOR',
-                'HTTP_X_REAL_IP',
-                'REMOTE_ADDR',
-            ];
-            $header = $this->request_header();
-            $client_ip = Util::v($header, 'x_forwarded_for', 'unknown');
-
-            foreach ($arr_ip_header as $key) {
-                $tmp = $this->_server($key, 'unknown');
-                if (!empty($tmp) && strtolower($tmp) != 'unknown') {
-                    $client_ip = $tmp;
-                    break;
-                }
-            }
-
-            $cips = [];
-            preg_match("/[\d\.]{7,15}/", $client_ip, $cips);
-            $client_ip = !empty($cips[0]) ? $cips[0] : 'unknown';
-
-            if ($client_ip == 'unknown' && !is_null($default)) {
-                $client_ip = $default;
-            }
-            $this->_cache_map['client_ip'] = $client_ip;
+        if (isset($this->_cache_map['client_ip'])) {
+            return $this->_cache_map['client_ip'];
         }
+        $arr_ip_header = [
+            'HTTP_CDN_SRC_IP',
+            'HTTP_PROXY_CLIENT_IP',
+            'HTTP_WL_PROXY_CLIENT_IP',
+            'HTTP_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'REMOTE_ADDR',
+        ];
+        $header = $this->request_header();
+        $client_ip = Util::v($header, 'x_forwarded_for', 'unknown');
+
+        foreach ($arr_ip_header as $key) {
+            $tmp = $this->_server($key, 'unknown');
+            if (!empty($tmp) && strtolower($tmp) != 'unknown') {
+                $client_ip = $tmp;
+                break;
+            }
+        }
+
+        $cips = [];
+        preg_match("/[\d\.]{7,15}/", $client_ip, $cips);
+        $client_ip = !empty($cips[0]) ? $cips[0] : 'unknown';
+
+        if ($client_ip == 'unknown' && !is_null($default)) {
+            $client_ip = $default;
+        }
+        $this->_cache_map['client_ip'] = $client_ip;
         return $this->_cache_map['client_ip'];
     }
 
@@ -994,11 +1003,13 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function raw_post_data()
     {
-        if (!isset($this->_cache_map['raw_post_data'])) {
-            $raw_post_data = file_get_contents('php://input');
-            $raw_post_data = !empty($raw_post_data) ? $raw_post_data : '';
-            $this->_cache_map['raw_post_data'] = $raw_post_data;
+        if (isset($this->_cache_map['raw_post_data'])) {
+            return $this->_cache_map['raw_post_data'];
         }
+
+        $raw_post_data = file_get_contents('php://input');
+        $raw_post_data = !empty($raw_post_data) ? $raw_post_data : '';
+        $this->_cache_map['raw_post_data'] = $raw_post_data;
         return $this->_cache_map['raw_post_data'];
     }
 
@@ -1008,43 +1019,44 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function request_header()
     {
-        if (!isset($this->_cache_map['request_header'])) {
-            $server = $this->all_server();
-            if (!function_exists('apache_request_headers')) {
-                $header = [];
-                $rx_http = '/\AHTTP_/';
-                foreach ($server as $key => $val) {
-                    if (preg_match($rx_http, $key)) {
-                        $arh_key = preg_replace($rx_http, '', $key);
-                        $rx_matches = explode('_', $arh_key);
-                        if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
-                            foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
-                            $arh_key = implode('-', $rx_matches);
-                        }
-                        $arh[$arh_key] = $val;
-                    }
-                }
-            } else {
-                $header = apache_request_headers();
-            }
-
-            if (isset($server['PHP_AUTH_DIGEST'])) {
-                $header['AUTHORIZATION'] = $server['PHP_AUTH_DIGEST'];
-            } elseif (isset($server['PHP_AUTH_USER']) && isset($server['PHP_AUTH_PW'])) {
-                $header['AUTHORIZATION'] = base64_encode($server['PHP_AUTH_USER'] . ':' . $server['PHP_AUTH_PW']);
-            }
-            if (isset($server['CONTENT_LENGTH'])) {
-                $header['CONTENT-LENGTH'] = $server['CONTENT_LENGTH'];
-            }
-            if (isset($server['CONTENT_TYPE'])) {
-                $header['CONTENT-TYPE'] = $server['CONTENT_TYPE'];
-            }
-            foreach ($header as $key => $item) {
-                $header[strtolower($key)] = $item;
-            }
-
-            $this->_cache_map['request_header'] = $header;
+        if (isset($this->_cache_map['request_header'])) {
+            return $this->_cache_map['request_header'];
         }
+        $server = $this->all_server();
+        if (!function_exists('apache_request_headers')) {
+            $header = [];
+            $rx_http = '/\AHTTP_/';
+            foreach ($server as $key => $val) {
+                if (preg_match($rx_http, $key)) {
+                    $arh_key = preg_replace($rx_http, '', $key);
+                    $rx_matches = explode('_', $arh_key);
+                    if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
+                        foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
+                        $arh_key = implode('-', $rx_matches);
+                    }
+                    $arh[$arh_key] = $val;
+                }
+            }
+        } else {
+            $header = apache_request_headers();
+        }
+
+        if (isset($server['PHP_AUTH_DIGEST'])) {
+            $header['AUTHORIZATION'] = $server['PHP_AUTH_DIGEST'];
+        } elseif (isset($server['PHP_AUTH_USER']) && isset($server['PHP_AUTH_PW'])) {
+            $header['AUTHORIZATION'] = base64_encode($server['PHP_AUTH_USER'] . ':' . $server['PHP_AUTH_PW']);
+        }
+        if (isset($server['CONTENT_LENGTH'])) {
+            $header['CONTENT-LENGTH'] = $server['CONTENT_LENGTH'];
+        }
+        if (isset($server['CONTENT_TYPE'])) {
+            $header['CONTENT-TYPE'] = $server['CONTENT_TYPE'];
+        }
+        foreach ($header as $key => $item) {
+            $header[strtolower($key)] = $item;
+        }
+
+        $this->_cache_map['request_header'] = $header;
         return $this->_cache_map['request_header'];
     }
 
@@ -1054,67 +1066,36 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function agent_browser()
     {
-        if (!isset($this->_cache_map['agent_browser'])) {
-            $browser = [];
-            $agent = $this->_server('HTTP_USER_AGENT', '');
-            if (stripos($agent, "Firefox/") > 0) {
-                preg_match("/Firefox\/([^;)]+)+/i", $agent, $b);
-                $browser[0] = "Firefox";
-                $browser[1] = $b[1];  //获取火狐浏览器的版本号
-            } elseif (stripos($agent, "Maxthon") > 0) {
-                preg_match("/Maxthon\/([\d\.]+)/", $agent, $maxthon);
-                $browser[0] = "Maxthon";
-                $browser[1] = $maxthon[1];
-            } elseif (stripos($agent, "MSIE") > 0) {
-                preg_match("/MSIE\s+([^;)]+)+/i", $agent, $ie);
-                $browser[0] = "IE";
-                $browser[1] = $ie[1];  //获取IE的版本号
-            } elseif (stripos($agent, "OPR") > 0) {
-                preg_match("/OPR\/([\d\.]+)/", $agent, $opera);
-                $browser[0] = "Opera";
-                $browser[1] = $opera[1];
-            } elseif (stripos($agent, "Edge") > 0) {
-                //win10 Edge浏览器 添加了chrome内核标记 在判断Chrome之前匹配
-                preg_match("/Edge\/([\d\.]+)/", $agent, $Edge);
-                $browser[0] = "Edge";
-                $browser[1] = $Edge[1];
-            } elseif (stripos($agent, "Chrome") > 0) {
-                preg_match("/Chrome\/([\d\.]+)/", $agent, $google);
-                $browser[0] = "Chrome";
-                $browser[1] = $google[1];  //获取google chrome的版本号
-            } elseif (stripos($agent, 'rv:') > 0 && stripos($agent, 'Gecko') > 0) {
-                preg_match("/rv:([\d\.]+)/", $agent, $IE);
-                $browser[0] = "IE";
-                $browser[1] = $IE[1];
-            } else {
-                $browser[0] = "UNKNOWN";
-                $browser[1] = "";
-            }
-
-            $this->_cache_map['agent_browser'] = $browser;
+        if (isset($this->_cache_map['agent_browser'])) {
+            return $this->_cache_map['agent_browser'];
         }
+
+        $agent = $this->_server('HTTP_USER_AGENT', '');
+        $browser = Util::browser_ver($agent);
+        $this->_cache_map['agent_browser'] = $browser;
         return $this->_cache_map['agent_browser'];
     }
 
     public function is_mobile()
     {
-        if (!isset($this->_cache_map['is_mobile'])) {
-            $mobile_agents = ['xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte"];
-
-            $user_agent = $this->_server('HTTP_USER_AGENT', '');
-            if (empty($user_agent)) {
-                return false;
-            }
-            $is_mobile = false;
-            foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
-                if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
-                    $is_mobile = true;
-                    break;
-                }
-            }
-
-            $this->_cache_map['is_mobile'] = $is_mobile;
+        if (isset($this->_cache_map['is_mobile'])) {
+            return $this->_cache_map['is_mobile'];
         }
+        $mobile_agents = ['xiaomi', "240x320", "acer", "acoon", "acs-", "abacho", "ahong", "airness", "alcatel", "amoi", "android", "anywhereyougo.com", "applewebkit/525", "applewebkit/532", "asus", "audio", "au-mic", "avantogo", "becker", "benq", "bilbo", "bird", "blackberry", "blazer", "bleu", "cdm-", "compal", "coolpad", "danger", "dbtel", "dopod", "elaine", "eric", "etouch", "fly ", "fly_", "fly-", "go.web", "goodaccess", "gradiente", "grundig", "haier", "hedy", "hitachi", "htc", "huawei", "hutchison", "inno", "ipad", "ipaq", "ipod", "jbrowser", "kddi", "kgt", "kwc", "lenovo", "lg ", "lg2", "lg3", "lg4", "lg5", "lg7", "lg8", "lg9", "lg-", "lge-", "lge9", "longcos", "maemo", "mercator", "meridian", "micromax", "midp", "mini", "mitsu", "mmm", "mmp", "mobi", "mot-", "moto", "nec-", "netfront", "newgen", "nexian", "nf-browser", "nintendo", "nitro", "nokia", "nook", "novarra", "obigo", "palm", "panasonic", "pantech", "philips", "phone", "pg-", "playstation", "pocket", "pt-", "qc-", "qtek", "rover", "sagem", "sama", "samu", "sanyo", "samsung", "sch-", "scooter", "sec-", "sendo", "sgh-", "sharp", "siemens", "sie-", "softbank", "sony", "spice", "sprint", "spv", "symbian", "tablet", "talkabout", "tcl-", "teleca", "telit", "tianyu", "tim-", "toshiba", "tsm", "up.browser", "utec", "utstar", "verykool", "virgin", "vk-", "voda", "voxtel", "vx", "wap", "wellco", "wig browser", "wii", "windows ce", "wireless", "xda", "xde", "zte"];
+
+        $user_agent = $this->_server('HTTP_USER_AGENT', '');
+        if (empty($user_agent)) {
+            return false;
+        }
+        $is_mobile = false;
+        foreach ($mobile_agents as $device) {//这里把值遍历一遍，用于查找是否有上述字符串出现过
+            if (stristr($user_agent, $device)) { //stristr 查找访客端信息是否在上述数组中，不存在即为PC端。
+                $is_mobile = true;
+                break;
+            }
+        }
+
+        $this->_cache_map['is_mobile'] = $is_mobile;
         return $this->_cache_map['is_mobile'];
     }
 

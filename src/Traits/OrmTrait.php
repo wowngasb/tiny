@@ -52,6 +52,12 @@ trait OrmTrait
 
     protected static $skip_map = [];
 
+    protected static function _logItemChange($action, $id, array $keys = [])
+    {
+        false && func_get_args();
+        return '';
+    }
+
     protected static function _hookItemChange($action, $id, array $keys = [])
     {
         static $base_skip = [
@@ -282,7 +288,7 @@ trait OrmTrait
     ############ 可重写方法 #############
     ####################################
 
-    protected static function getCachePreFix()
+    public static function getCachePreFix()
     {
         $prefix = static::$_redis_prefix_db;
         if (empty($prefix)) {
@@ -1211,8 +1217,8 @@ trait OrmTrait
         if (!in_array($primary_key, $columns) && !in_array('*', $columns)) {
             $columns[] = $primary_key;
         }
-        $columns_set = array_keys(Util::build_map($columns, true));
-        $table = static::tableBuilder($where);
+        $columns_set = Util::build_map_set($columns, true);
+        $table = static::tableBuilder($where, $columns_set, [$primary_key, 'asc']);
         $table->take($max_select);
         $data = $table->get($columns_set);
         static::sqlDebug() && static::recordRunSql(microtime(true) - $start_time, $table->toSql(), $table->getBindings(), __METHOD__);

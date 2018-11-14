@@ -130,9 +130,9 @@ class CacheConfig extends AbstractClass
         return $prefix;
     }
 
-    public static function doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false)
+    public static function doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $bytes = 0)
     {
-        self::fire(new CacheEvent($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic));
+        self::fire(new CacheEvent($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $bytes));
     }
 
     ###############################################################

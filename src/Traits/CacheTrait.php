@@ -206,7 +206,7 @@ trait CacheTrait
                 $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
-                if ($isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
+                if ($isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
                     self::$_static_cache_map[$_data_key] = $val;
                 }
             }
@@ -218,7 +218,7 @@ trait CacheTrait
             $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
-            if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+            if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
                 self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
@@ -303,7 +303,7 @@ trait CacheTrait
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
         }
 
-        if (!$useStatic && $isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
+        if (!$useStatic && $isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
             self::$_static_cache_map[$rKey] = $val;
             $tags = self::_buildTagsByData($tags, $val['data']);
             if (!empty($tags)) {
@@ -316,7 +316,7 @@ trait CacheTrait
         }
 
         //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
-        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }
@@ -426,7 +426,7 @@ trait CacheTrait
                 $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
-                if ($isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
+                if ($isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
                     self::$_static_cache_map[$_data_key] = $val;
                 }
             }
@@ -438,7 +438,7 @@ trait CacheTrait
             $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
-            if (key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+            if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
                 self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
@@ -529,7 +529,7 @@ trait CacheTrait
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         }
 
-        if (!$useStatic && $isEnableStaticCache && key_exists('data', $val) && !empty($val['_update_'])) {
+        if (!$useStatic && $isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
             self::$_static_cache_map[$rKey] = $val;
             $tags = self::_buildTagsByData($tags, $val['data']);
             if (!empty($tags)) {
@@ -541,7 +541,7 @@ trait CacheTrait
             }
         }
 
-        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }

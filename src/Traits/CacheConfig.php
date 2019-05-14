@@ -11,6 +11,7 @@ namespace Tiny\Traits;
 
 use Closure;
 use Tiny\Abstracts\AbstractClass;
+use Tiny\Application;
 use Tiny\Event\CacheEvent;
 
 class CacheConfig extends AbstractClass
@@ -24,6 +25,7 @@ class CacheConfig extends AbstractClass
     private $_decodeResolver = null;
     private $_methodResolver = null;
     private $_preFixResolver = null;
+    private $_redisConfigResolver = null;
 
     use MapInstanceTraits;
 
@@ -45,14 +47,16 @@ class CacheConfig extends AbstractClass
         return $tmp;
     }
 
-    public function isEnableStaticCache()
+    public function isEnableStaticCache($prefix = null)
     {
-        return $this->_enable_static_cache;
+        $cfg = $this->redisConfig($prefix);
+        return isset($cfg['enable_static_cache']) ? $cfg['enable_static_cache'] : $this->_enable_static_cache;
     }
 
-    public function isCacheUseRedis()
+    public function isCacheUseRedis($prefix = null)
     {
-        return $this->_cache_use_redis;
+        $cfg = $this->redisConfig($prefix);
+        return isset($cfg['cache_use_redis']) ? $cfg['cache_use_redis'] : $this->_cache_use_redis;
     }
 
 
@@ -98,26 +102,34 @@ class CacheConfig extends AbstractClass
         $this->_preFixResolver = $resolver;
     }
 
-    public function encodeResolver($val)
+    public function setRedisConfigResolver(Closure $resolver)
+    {
+        $this->_redisConfigResolver = $resolver;
+    }
+
+    public function encodeResolver($prefix, $val)
     {
         if (!empty($this->_encodeResolver)) {
-            return call_user_func_array($this->_encodeResolver, [$val]);
+            $prefix = $this->preFixResolver($prefix);
+            return call_user_func_array($this->_encodeResolver, [$prefix, $val]);
         }
         return json_encode($val);
     }
 
-    public function decodeResolver($str)
+    public function decodeResolver($prefix, $str)
     {
         if (!empty($this->_decodeResolver)) {
-            return call_user_func_array($this->_decodeResolver, [$str]);
+            $prefix = $this->preFixResolver($prefix);
+            return call_user_func_array($this->_decodeResolver, [$prefix, $str]);
         }
         return json_decode($str, true);
     }
 
-    public function methodResolver($method)
+    public function methodResolver($prefix, $method)
     {
         if (!empty($this->_methodResolver)) {
-            return call_user_func_array($this->_methodResolver, [$method]);
+            $prefix = $this->preFixResolver($prefix);
+            return call_user_func_array($this->_methodResolver, [$prefix, $method]);
         }
         return $method;
     }
@@ -128,6 +140,16 @@ class CacheConfig extends AbstractClass
             return call_user_func_array($this->_preFixResolver, [$prefix]);
         }
         return $prefix;
+    }
+
+    public function redisConfig($prefix)
+    {
+        if (!empty($this->_redisConfigResolver)) {
+            $prefix = $this->preFixResolver($prefix);
+            $cfg = call_user_func_array($this->_redisConfigResolver, [$prefix]);
+            return !empty($cfg) ? $cfg : Application::config('ENV_REDIS');
+        }
+        return Application::config('ENV_REDIS');
     }
 
     public static function doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $bytes = 0)

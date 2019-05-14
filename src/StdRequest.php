@@ -914,6 +914,30 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
     ##################  HTTP INFO ##################
 
+    /**
+     * 判断是否 https
+     * @return bool
+     */
+    public function is_https()
+    {
+        $https = $this->_server('HTTPS', '');
+        if (!empty($https) && strtolower($https) !== 'off') {
+            return true;
+        }
+
+        $http_x_forwarded_proto = $this->_server('HTTP_X_FORWARDED_PROTO', '');
+        if (!empty($http_x_forwarded_proto) && strtolower($http_x_forwarded_proto) === 'https') {
+            return true;
+        }
+
+        $http_front_end_https = $this->_server('HTTP_FRONT_END_HTTPS', '');
+        if (!empty($http_front_end_https) && strtolower($http_front_end_https) !== 'off') {
+            return true;
+        }
+
+        return false;
+    }
+
     public function path()
     {
         if (isset($this->_cache_map['path'])) {
@@ -956,7 +980,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
             return $this->_cache_map['schema'];
         }
 
-        $schema = $this->_server('HTTPS') == "on" ? 'https' : 'http';
+        $schema = $this->is_https() ? 'https' : 'http';
         $this->_cache_map['schema'] = $schema;
         return $this->_cache_map['schema'];
     }
@@ -1023,22 +1047,17 @@ class StdRequest extends SymfonyRequest implements RequestInterface
             return $this->_cache_map['request_header'];
         }
         $server = $this->all_server();
-        if (!function_exists('apache_request_headers')) {
+        $header = [];
+        if (function_exists('apache_request_headers')) {
+            $header = apache_request_headers();
+        }
+        if (empty($header)) {
             $header = [];
-            $rx_http = '/\AHTTP_/';
-            foreach ($server as $key => $val) {
-                if (preg_match($rx_http, $key)) {
-                    $arh_key = preg_replace($rx_http, '', $key);
-                    $rx_matches = explode('_', $arh_key);
-                    if (count($rx_matches) > 0 and strlen($arh_key) > 2) {
-                        foreach ($rx_matches as $ak_key => $ak_val) $rx_matches[$ak_key] = ucfirst($ak_val);
-                        $arh_key = implode('-', $rx_matches);
-                    }
-                    $arh[$arh_key] = $val;
+            foreach ($server as $key => $value) {
+                if ('HTTP_' == substr($key, 0, 5)) {
+                    $header[str_replace('_', '-', substr($key, 5))] = $value;
                 }
             }
-        } else {
-            $header = apache_request_headers();
         }
 
         if (isset($server['PHP_AUTH_DIGEST'])) {
@@ -1058,6 +1077,20 @@ class StdRequest extends SymfonyRequest implements RequestInterface
 
         $this->_cache_map['request_header'] = $header;
         return $this->_cache_map['request_header'];
+    }
+
+    /**
+     * 获取request 头部信息 全部使用小写名字
+     * @return array
+     */
+    public function lower_header()
+    {
+        $headers = $this->request_header();
+        $ret = [];
+        foreach ($headers as $key => $val) {
+            $ret[strtolower($key)] = $val;
+        }
+        return $ret;
     }
 
     /**

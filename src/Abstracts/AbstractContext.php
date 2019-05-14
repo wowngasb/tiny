@@ -78,6 +78,10 @@ abstract class AbstractContext extends AbstractClass
         return $this->_response;
     }
 
+    public function is_https()
+    {
+        return $this->getRequest()->is_https();
+    }
 
     public function client_ip()
     {

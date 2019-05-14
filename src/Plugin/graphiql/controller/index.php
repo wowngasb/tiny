@@ -17,21 +17,22 @@ class index extends GraphiQLController
 
     public function index()
     {
-        if (!self::authDevelopKey()) {  //认证 通过
+        if (!self::authDevelopKey($this->getRequest())) {  //认证 不通过
             Application::forward($this->getRequest(), $this->getResponse(), ['', '', 'auth']);
         }
         $this->display();
     }
 
-    public function auth()
+    public function auth($back = '')
     {
         $develop_key = $this->_post('develop_key', '');
 
         self::_setDevelopKey($this->getRequest(), $develop_key);
-        if (self::authDevelopKey()) {  //认证 通过
-            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', '', 'index']));
+        if (self::authDevelopKey($this->getRequest())) {  //认证 通过
+            $url = Application::url($this->getRequest(), ['', '', 'index']);
+            return !empty($back) ? Application::redirect($this->getResponse(), $back) : Application::redirect($this->getResponse(), $url);
         } else {
-            $this->_showLoginBox($develop_key);
+            return $this->_showLoginBox($develop_key);
         }
     }
 

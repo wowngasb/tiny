@@ -12,6 +12,7 @@ use app\App;
 use Closure;
 use phpFastCache\CacheManager;
 use Tiny\Application;
+use Tiny\Util;
 use Tiny\Plugin\EmptyMock;
 
 trait CacheTrait
@@ -25,7 +26,6 @@ trait CacheTrait
 
     private static $_mCacheManager = null;
 
-    private static $_redis_instance = null;
     private static $_redis_instance_monk = null;
 
 
@@ -68,18 +68,14 @@ trait CacheTrait
     }
 
     /**
+     * @param string $prefix
      * @return \Redis
      */
-    public static function _getRedisInstance()
+    public static function _getRedisInstance($prefix = '')
     {
-        if (!empty(self::$_redis_instance)) {
-            return self::$_redis_instance;
-        }
-
         try {
-            $redis = self::_get_redis();
+            $redis = self::_get_redis($prefix);
             if (!empty($redis)) {
-                self::$_redis_instance = $redis;
                 return $redis;
             }
         } catch (\Exception $e) {
@@ -382,7 +378,7 @@ trait CacheTrait
             error_log("call _mgetDataByRedis with empty method or keys " . __METHOD__);
             return [];
         }
-        $mRedis = self::_getRedisInstance();
+        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance ' . __METHOD__);
             return self::_mgetDataByFastCache($method, $keys, $timeCache, $prefix, $is_log);
@@ -454,7 +450,7 @@ trait CacheTrait
 
     private static function _clearDataByRedis($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
     {
-        $mRedis = self::_getRedisInstance();
+        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
             self::_clearDataByFastCache($method . $key, $prefix, $tags, $is_log);
@@ -500,7 +496,7 @@ trait CacheTrait
             error_log("call _cacheDataByRedis with empty method or key " . __METHOD__);
             return [];
         }
-        $mRedis = self::_getRedisInstance();
+        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _cacheDataByRedis' . __METHOD__);
             return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $is_log, $prefix, $tags);
@@ -558,7 +554,7 @@ trait CacheTrait
 
     private static function _setDataByRedis($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log)
     {
-        $mRedis = self::_getRedisInstance();
+        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
             return;
@@ -607,44 +603,36 @@ trait CacheTrait
 
     private static function _isEnableStaticCache($prefix)
     {
-        return self::_getCacheConfig($prefix)->isEnableStaticCache();
+        return self::_getCacheConfig()->isEnableStaticCache($prefix);
     }
 
     private static function _isCacheUseRedis($prefix)
     {
-        return self::_getCacheConfig($prefix)->isCacheUseRedis();
+        return self::_getCacheConfig()->isCacheUseRedis($prefix);
     }
 
     /**
-     * @param string | null $key
      * @return CacheConfig
      */
-    private static function _getCacheConfig($key = null)
+    private static function _getCacheConfig()
     {
-        $tmp = null;
-        if (!empty($key) && is_string($key)) {
-            $tmp = CacheConfig::loadConfig($key);
-        }
-        if (empty($tmp)) {
-            $tmp = CacheConfig::loadConfig();
-        }
-        return $tmp;
+        return CacheConfig::loadConfig();
     }
 
 
     private static function _buildEncodeVal($val, $prefix = null)
     {
-        return self::_getCacheConfig($prefix)->encodeResolver($val);
+        return self::_getCacheConfig()->encodeResolver($prefix, $val);
     }
 
     private static function _buildDecodeStr($str, $prefix = null)
     {
-        return self::_getCacheConfig($prefix)->decodeResolver($str);
+        return self::_getCacheConfig()->decodeResolver($prefix, $str);
     }
 
     private static function _buildMethod($method, $prefix = null)
     {
-        $method = self::_getCacheConfig($prefix)->methodResolver($method);
+        $method = self::_getCacheConfig()->methodResolver($prefix, $method);
         $method = str_replace('::', '.', $method);
         return trim($method);
     }
@@ -716,17 +704,19 @@ trait CacheTrait
         }
     }
 
-    private static function _get_redis()
+    private static function _get_redis($prefix = '')
     {
         if (!class_exists('Redis')) {
             return null;
         }
 
-        $host = Application::config('ENV_REDIS.host', '127.0.0.1');
-        $port = intval(Application::config('ENV_REDIS.port', 6379));
-        $password = Application::config('ENV_REDIS.password', '');
-        $database = intval(Application::config('ENV_REDIS.database', 0));
-        $timeout = intval(Application::config('ENV_REDIS.timeout', 5));
+        $redisConfig = self::_getCacheConfig()->redisConfig($prefix);
+
+        $host = Util::v($redisConfig, 'host', '127.0.0.1');
+        $port = intval(Util::v($redisConfig, 'port', 6379));
+        $password = Util::v($redisConfig, 'password', '');
+        $database = intval(Util::v($redisConfig, 'database', 0));
+        $timeout = intval(Util::v($redisConfig, 'timeout', 5));
 
         $config_key = str_replace('.', '#', "{$host}_{$port}_{$password}_{$database}_{$timeout}");
 
@@ -742,7 +732,9 @@ trait CacheTrait
             if (!empty($redis) && $database > 0) {
                 $redis = $redis->select($database) ? $redis : null;
             }
-            !empty($redis) && Application::set_config($config_key, $redis);
+            if (!empty($redis)) {
+                Application::set_config($config_key, $redis);
+            }
         }
 
         return $redis;

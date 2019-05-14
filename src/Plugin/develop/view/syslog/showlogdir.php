@@ -76,7 +76,7 @@
                     height: 70
                 },
                 xclass: 'controller',
-                content: '<h2>日志管理系统，仅供内部人员使用。<a href="<?=\Tiny\Application::url($request, ['', '', 'selectapi'], [])?>" target="view_window">调试API</a></h2>'
+                content: '<h2>日志管理系统，仅供内部人员使用。 安全工具：<a href="<?=\Tiny\Application::url($request, ['', 'throttle', 'showState'], [])?>" target="view_window">IP过滤</a> ， 开发工具：<a href="<?=\Tiny\Application::url($request, ['', '', 'selectapi'], [])?>" target="view_window">调试API</a></h2>'
             }, {
                 xclass: 'controller',
                 layout: {

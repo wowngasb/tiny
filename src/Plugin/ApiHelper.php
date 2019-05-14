@@ -3,6 +3,7 @@
 namespace Tiny\Plugin;
 
 use Tiny\Traits\LogTrait;
+use Tiny\Util;
 
 class ApiHelper
 {
@@ -10,6 +11,7 @@ class ApiHelper
     use LogTrait;
 
     private static $ignore_method_dict = [
+        'is_https' => 1,
         'log' => 1,
         'debug' => 1,
         'debugargs' => 1,
@@ -55,6 +57,10 @@ class ApiHelper
 
     public static function fixActionParams($obj, $func, $params)
     {
+        if (!is_array($params)) {
+            return $params;
+        }
+
         $reflection = new \ReflectionMethod($obj, $func);
         $args = self::fix_args(self::getApiMethodArgs($reflection), $params);
         return $args;
@@ -128,7 +134,7 @@ function {$cls}Helper(){
     var self = this;
     this.debug = {$_dev_debug};
     
-    var _h = location.hostname;
+    var _h = window.location.hostname.toLowerCase() + (window.location.port && window.location.port != 80 && window.location.port != 443 ? (':' + window.location.port) : '');
     var _s = 'https:' === document.location.protocol ? 'https' : 'http';
     var _l = (typeof console !== "undefined" && typeof console.log === "function") ? {
         DEBUG: typeof console.debug === "function" ? console.debug.bind(console) : console.log.bind(console),
@@ -281,9 +287,12 @@ EOT;
             if (self::isIgnoreMethod($name)) {
                 continue;
             } else {
+                $doc = $val->getDocComment();
+                $main_doc = Util::getMainDoc($doc);
                 $method_list[] = [
                     'name' => $val->getName(),
-                    'doc' => $val->getDocComment(),
+                    'doc' => $doc,
+                    'main_doc' => $main_doc,
                     'param' => self::getApiMethodArgs($val),
                 ];
             }

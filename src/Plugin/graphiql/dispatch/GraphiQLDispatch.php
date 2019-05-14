@@ -29,7 +29,7 @@ class GraphiQLDispatch extends AbstractDispatch
     public static function initMethodName(array $routeInfo)
     {
         $file_name = !empty($routeInfo[2]) ? trim($routeInfo[2]) : 'index';
-        return Util::stri_endwith($file_name, '.js') || Util::stri_endwith($file_name, '.css') ? 'index' : $file_name;
+        return Util::stri_cmp($routeInfo[1], 'assets') ? 'index' : $file_name;
     }
 
 }

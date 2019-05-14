@@ -101,7 +101,7 @@ trait LogTrait
         static::debug($log_msg, $method, $class . '_', $line_no);
     }
 
-    protected static function _mixed2msg($var, $max_items = 10, $max_chars = 50, $indent = 0)
+    public static function _mixed2msg($var, $max_items = 10, $max_chars = 50, $indent = 0)
     {
         $tab = str_repeat("  ", $indent + 1);
         $tab_pre = str_repeat("  ", $indent);
@@ -116,7 +116,7 @@ trait LogTrait
                 $var = str_replace(["\r", "\n", "<", ">", "&"], ['\r', '\n', '\x3c', '\x3e', '\x26'], addslashes($var));
                 $total = count($var);
                 if (strlen($var) > $max_chars) {
-                    $var = mb_substr($var, 0, $max_chars) . "...total<{$total}>chars...";
+                    $var = mb_substr($var, 0, $max_chars) . "...<{$total} chars>..." . mb_substr($var, -7);
                 }
                 return "\"{$var}\"";
             case 'array':

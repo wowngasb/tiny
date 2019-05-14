@@ -24,7 +24,7 @@ class deploy extends DevelopController
     {
         $params = parent::beforeAction($params);
 
-        if (!$this->authDevelopKey()) {  //认证 不通过
+        if (!self::authDevelopKey($this->getRequest())) {  //认证 不通过
             Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'index', 'index']));
         }
 
@@ -36,7 +36,6 @@ class deploy extends DevelopController
         phpinfo();
     }
 
-    //初始化 超级管理员
     public function initSuperAdmin()
     {
         $admin_id = 0;  // TODO 判断当前是否存在管理员
@@ -75,9 +74,17 @@ EOT;
      */
     public function buildApiModJs()
     {
-        $appname = Application::appname();
-        $html_str = '';
         $dev_debug = $this->_get('dev_debug', 0) == 1;
+        $js_list = self::_buildApiModJs($dev_debug);
+        $html_str = join($js_list, '<br />');
+        $this->getResponse()->appendBody($html_str);
+    }
+
+    public static function _buildApiModJs($dev_debug = 0)
+    {
+        $appname = Application::appname();
+        $ret = [];
+
         $api_path = Application::path([$appname, 'api']);
         $api_list = ApiHelper::getApiFileList($api_path);
         foreach ($api_list as $key => $val) {
@@ -92,12 +99,11 @@ EOT;
             }
             file_put_contents($out_path . $out_file, $js_str, LOCK_EX);
             $js_len = strlen($js_str);
-            $html_str .= "build:{$out_file} ({$js_len})<br>";
+            $ret[] = "build:{$out_file} ({$js_len})";
         }
-        $this->getResponse()->appendBody($html_str);
+        return $ret;
     }
 
-    //指定API生成单一model.js
     public function actionGetModelJs()
     {
         $dev_debug = $this->_get('dev_debug', Application::dev());
@@ -112,7 +118,6 @@ EOT;
         $this->getResponse()->appendBody($html_str);
     }
 
-//清空m缓存
     public function cleanCache()
     {
         $mCache = self::_getCacheInstance();

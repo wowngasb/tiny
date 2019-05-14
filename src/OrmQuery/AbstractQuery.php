@@ -36,13 +36,17 @@ abstract class AbstractQuery
     final public function buildQuery($column)
     {
         $action = Util::class2name(get_class($this));
+        $action = $action == 'whereQ' ? 'where' : $action;
+
         $enable = !empty($this->_filter) ? call_user_func_array($this->_filter, []) : true;
 
         $query = $this->_queryArgs();
-        if (is_array($query)) {
-            array_unshift($query, $column);  //把字段名插入到 参数的第一个
-        } else {
-            $query = [$column,];
+        if(!empty($column)){
+            if (is_array($query)) {
+                array_unshift($query, $column);  //把字段名插入到 参数的第一个
+            } else {
+                $query = [$column,];
+            }
         }
         return [$enable, $action, $query];
     }

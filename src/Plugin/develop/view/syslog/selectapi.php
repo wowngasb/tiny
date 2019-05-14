@@ -88,10 +88,10 @@
         <div class="control-group">
             <label class="control-label">选择API：</label>
             <div class="controls bui-form-group-select" data-type="custom1">
-                <select id="api_class" name="g" class="input-normal">
+                <select id="api_class" name="g" class="input-normal" style="min-width: 210px;">
                     <option>请选择</option>
                 </select>&nbsp;&nbsp;
-                <select id="api_method" name="h" class="input-normal" style="min-width: 250px;">
+                <select id="api_method" name="h" class="input-normal" style="min-width: 350px;">
                     <option>请选择</option>
                 </select>
             </div>

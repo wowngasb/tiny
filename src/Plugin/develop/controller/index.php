@@ -14,7 +14,7 @@ class index extends DevelopController
     {
         $params = parent::beforeAction($params);
 
-        if ($this->authDevelopKey()) {  //认证 通过
+        if (self::authDevelopKey($this->getRequest())) {  //认证 通过
             $url = Application::url($this->getRequest(), ['', 'syslog', 'index']);
             Application::redirect($this->getResponse(), $url);
         }
@@ -31,8 +31,9 @@ class index extends DevelopController
         $develop_key = $this->_post('develop_key', '');
 
         self::_setDevelopKey($this->getRequest(), $develop_key);
-        if (self::authDevelopKey()) {  //认证 通过
-            Application::app()->redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'syslog', 'index']));
+        if (self::authDevelopKey($this->getRequest())) {  // 认证 通过
+            $back = !empty($back) ? $back : Application::url($this->getRequest(), ['', 'syslog', 'index']);
+            Application::app()->redirect($this->getResponse(), $back);
         } else {
             $this->_showLoginBox($develop_key);
         }

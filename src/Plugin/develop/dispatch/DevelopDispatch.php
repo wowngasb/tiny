@@ -27,4 +27,10 @@ class DevelopDispatch extends AbstractDispatch
         return "\\Tiny\\Plugin\\{$module}\\controller\\{$controller}";
     }
 
+    public static function initMethodName(array $routeInfo)
+    {
+        $file_name = !empty($routeInfo[2]) ? trim($routeInfo[2]) : 'index';
+        return Util::stri_cmp($routeInfo[1], 'assets') ? 'index' : $file_name;
+    }
+
 }

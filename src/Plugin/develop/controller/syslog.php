@@ -4,10 +4,10 @@ namespace Tiny\Plugin\develop\controller;
 
 
 use Tiny\Application;
-use Tiny\Util;
 use Tiny\Plugin\ApiHelper;
 use Tiny\Plugin\develop\DevelopController;
 use Tiny\Plugin\LogHelper;
+use Tiny\Util;
 
 class sysLog extends DevelopController
 {
@@ -16,8 +16,8 @@ class sysLog extends DevelopController
     {
         $params = parent::beforeAction($params);
 
-        if (!$this->authDevelopKey()) {  //认证 不通过
-            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'index', 'index']));
+        if (!self::authDevelopKey($this->getRequest())) {  //认证 不通过
+            Application::redirect($this->getResponse(), Application::url($this->getRequest(), ['', 'index', 'auth']));
         }
         return $params;
     }
@@ -133,9 +133,15 @@ class sysLog extends DevelopController
         $tmp = [];
         foreach ($api_list as $key => $val) {
             $cls = str_replace('.php', '', $val['name']);
+            $class_name = "{$appname}\\api\\{$cls}";
+            $reflection = new \ReflectionClass ($class_name);
+            // 通过反射获取类的注释
+            $doc = $reflection->getDocComment();
+            $doc_str = Util::getMainDoc($doc);
+
             $tmp[] = [
                 'id' => $cls,
-                'text' => $cls,
+                'text' => !empty($doc_str) ? "{$cls} - {$doc_str}" : $cls,
                 'leaf' => false,
             ];
         }
@@ -177,12 +183,15 @@ class sysLog extends DevelopController
         }
         foreach ($method_list as $key => $val) {
             $name = $val['name'];
+            $doc = $val['doc'];
             if ($name == '__construct' || strpos($name, 'hook', 0) === 0) {
                 continue;
             }
+            $doc_str = Util::getMainDoc($doc);
+
             $tmp[] = [
                 'id' => $name,
-                'text' => $name,
+                'text' => !empty($doc_str) ? "{$name} - {$doc_str}" : "$name",
                 'leaf' => true,
             ];
         }

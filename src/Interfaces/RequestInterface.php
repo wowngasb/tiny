@@ -468,6 +468,12 @@ interface RequestInterface
 
     ##################  HTTP INFO ##################
 
+    /**
+     * 判断是否 https
+     * @return bool
+     */
+    public function is_https();
+
     public function path();
 
     public function ajax();
@@ -491,10 +497,16 @@ interface RequestInterface
     public function raw_post_data();
 
     /**
-     * 获取request 头部信息 全部使用小写名字
+     * 获取request 头部信息 大小写混合 全部使用小写名字
      * @return array
      */
     public function request_header();
+
+    /**
+     * 获取request 头部信息 全部使用小写名字
+     * @return array
+     */
+    public function lower_header();
 
     /**
      * 根据 HTTP_USER_AGENT 获取客户端浏览器信息

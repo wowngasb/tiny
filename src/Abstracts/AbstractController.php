@@ -55,6 +55,9 @@ abstract class AbstractController extends AbstractContext
         if (is_null($to)) {
             return $this->getResponse()->resetResponse();
         }
+        if (is_null($secure)) {
+            $secure = $this->getRequest()->is_https();
+        }
         return $this->getResponse()->resetResponse()->to($to, $status, $headers, $secure);
     }
 

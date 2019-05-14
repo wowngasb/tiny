@@ -177,6 +177,40 @@ EOT;
     ######## 目录处理 ########
     ##########################
 
+    public static function getText($strContent)
+    {
+        return preg_replace("/<[^>]+>/is", "", $strContent);
+    }
+
+    public static function replaceExt($object, $ext)
+    {
+        $ext = !self::stri_startwith($ext, '.') ? ".{$ext}" : $ext;
+        $idx1 = intval(strrpos($object, '/'));
+        $idx2 = intval(strrpos($object, "\\"));
+        $s_idx = $idx1 > $idx2 ? $idx1 : $idx2;
+        $dot_idx = strrpos($object, '.', $s_idx);
+        return $dot_idx !== false ? substr($object, 0, $dot_idx) . $ext : $object . $ext;
+    }
+
+    const STATIC_EXT = ['.js', '.css', '.ttf', '.woff', '.jpg', '.jpeg', '.gif', '.png', '.bmp'];
+
+    public static function isStatic($object)
+    {
+        $object = explode('?', $object)[0];
+        $idx1 = intval(strrpos($object, '/'));
+        $idx2 = intval(strrpos($object, "\\"));
+        $s_idx = $idx1 > $idx2 ? $idx1 : $idx2;
+        $dot_idx = strrpos($object, '.', $s_idx);
+        if ($dot_idx !== false) {
+            $ext = substr($object, $dot_idx);
+            if (!empty($ext) && in_array($ext, self::STATIC_EXT)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * 遍历文件夹 得到目录结构
      * @param string $path
@@ -231,6 +265,8 @@ EOT;
     public static function load_git_ver($base_path)
     {
         $git_head = static::path_join($base_path, ['.git', 'HEAD'], false);
+        $git_head = is_file($git_head) ? $git_head : static::path_join($base_path, ['..', '.git', 'HEAD'], false);
+
         $git_ref = is_file($git_head) && is_readable($git_head) ? trim(file_get_contents($git_head)) : '';
         $git_arr = explode(':', $git_ref);
         $ref_type = trim($git_arr[0]);
@@ -351,6 +387,27 @@ EOT;
     ######## 异常处理 ########
     ##########################
 
+    public static function clear_dir($path)
+    {
+        if (!is_dir($path)) {    //判断是否是目录
+            return;
+        }
+
+        foreach (scandir($path) as $afile) {
+            if ($afile == '.' || $afile == '..') {
+                continue;
+            }
+            $_path = "{$path}/{$afile}";
+            if (is_dir($_path)) {
+                static::clear_dir($_path);
+                rmdir($_path);
+            } else {
+                unlink($_path);
+            }
+        }
+        rmdir($path);
+    }
+
     public static function getfiles($path, array $last = [])
     {
         foreach (scandir($path) as $afile) {
@@ -439,13 +496,22 @@ EOT;
         }
     }
 
-    public static function prepare_query($query, $params)
+    /**
+     * @param $query
+     * @param $params
+     * @param string $replaceFmt
+     * @return mixed
+     */
+    public static function prepare_query($query, $params, $replaceFmt = '')
     {
         $keys = [];
         $values = [];
 
         # build a regular expression for each parameter
         foreach ($params as $key => $value) {
+            if (!empty($replaceFmt) && is_string($value)) {
+                $value = str_replace('%', $replaceFmt, $value);
+            }
             if (is_string($key)) {
                 $keys[] = '/:' . $key . '/';
             } else {
@@ -454,6 +520,7 @@ EOT;
             if (is_numeric($value)) {
                 $values[] = intval($value);
             } else {
+                $value = str_replace('"', '\\"', $value);
                 $values[] = '"' . $value . '"';
             }
         }
@@ -615,6 +682,15 @@ EOT;
         }
         preg_match_all("/./us", $content, $match);
         return count($match[0]);
+    }
+
+    public static function utf8_fix($str, $max_len)
+    {
+        $len = static::utf8_strlen($str);
+        if ($len > $max_len) {
+            return static::utf8_substr($str, 0, $max_len);
+        }
+        return $str;
     }
 
     public static function utf8_substr($str, $start, $length = null, $suffix = "")
@@ -963,7 +1039,7 @@ EOT;
         $ret_map = [];
         foreach ($arr_list as $idx => $item) {
             $key = call_user_func_array($key_func, [$idx, $item]);
-            if (!empty($key)) {
+            if ($key == 0 || !empty($key)) {
                 $val = call_user_func_array($val_func, [$idx, $item]);
                 if (!is_null($val)) {
                     $ret_map[$key] = $val;
@@ -2285,6 +2361,7 @@ EOT;
     /**
      * 驼峰转下划线
      * @param string $str
+     * @param string $req
      * @return string
      */
     public static function humpToLine($str, $req = '_')
@@ -2415,7 +2492,7 @@ EOT;
             preg_match("/AppleWebKit\/([\d\.]+)/", $agent, $ver);
             $browser[0] = "AppleWebKit";
             $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
-        }elseif (stripos($agent, "Wget/") !== false) {
+        } elseif (stripos($agent, "Wget/") !== false) {
             preg_match("/Wget\/([\d\.]+)/", $agent, $ver);
             $browser[0] = "Wget";
             $browser[1] = !empty($ver[1]) ? $ver[1] : '0.0.0';
@@ -2428,6 +2505,28 @@ EOT;
             $browser[1] = "";
         }
         return $browser;
+    }
+
+    public static function getMainDoc($doc_str)
+    {
+        $doc_arr = explode("\n", $doc_str);
+        $ret = '';
+        foreach ($doc_arr as $doc) {
+            $doc = trim($doc);
+            if ($doc == '/**' || $doc == '*/' || $doc == '*') {
+                continue;
+            }
+            $idx = strpos($doc, '*');
+            if ($idx !== false) {
+                $tmp = trim(substr($doc, $idx + 1));
+                if (!empty($tmp)) {
+                    $ret = $tmp;
+                    break;
+                }
+            }
+            $ret = $doc;
+        }
+        return $ret;
     }
 
 }

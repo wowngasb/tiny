@@ -15,8 +15,6 @@ use Tiny\Plugin\DevAuthController;
 class GraphiQLController extends DevAuthController
 {
 
-    protected $template_dir = '';
-
     public function beforeAction(array $params)
     {
         $params = parent::beforeAction($params);

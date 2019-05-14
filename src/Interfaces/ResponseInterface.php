@@ -218,7 +218,7 @@ interface ResponseInterface
 
     /**
      * @param string|null $name
-     * @return array
+     * @return array | string
      */
     public function getBody($name = null);
 

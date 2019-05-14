@@ -50,7 +50,7 @@ class MapRoute implements RouteInterface
     public function route(RequestInterface $request)
     {
         $uri_origin = $request->fixRequestPath();
-        if (!Util::stri_startwith($uri_origin, $this->_base_uri)) {
+        if (!Util::stri_startwith($uri_origin, $this->_base_uri . '/') && $uri_origin != $this->_base_uri) {
             return [null, null];
         }
 

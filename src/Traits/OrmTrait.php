@@ -98,7 +98,11 @@ trait OrmTrait
             $filed = substr($filed, 1);
         }
         $idx = strpos($filed, '#');
-        $filed = $idx > 0 ? substr($filed, 0, $idx) : $filed;
+        if ($idx === false) {
+            return trim($filed);
+        }
+
+        $filed = $idx >= 0 ? substr($filed, 0, $idx) : $filed;
         return trim($filed);
     }
 
@@ -177,9 +181,6 @@ trait OrmTrait
             }
 
             $filed = self::_fixFiledKey($_filed);
-            if (empty($filed)) {
-                throw new OrmStartUpError("ORM build where error filed {$filed}({$_filed})");
-            }
 
             if ($item instanceof AbstractQuery) {
                 /*
@@ -199,6 +200,10 @@ trait OrmTrait
                  *    key不为数值的元素 表示 某个字段为某值的 whereIn 检索
                  *    例如 ['id' => [1, 2, 3], ] 对应  ->whereIn('id', [1, 2, 3])
                  * */
+                if (empty($filed)) {
+                    throw new OrmStartUpError("ORM build where error filed {$filed}({$_filed})");
+                }
+
                 $query = [$filed, $item];
                 $query_list[] = [true, 'whereIn', $query];
                 continue;
@@ -210,6 +215,10 @@ trait OrmTrait
                  *    key不为数值，value不是数组   表示 某个字段为某值的 where = 检索
                  *    例如 ['votes' => 100, ]  对应 ->where('votes', '=', 100)
                  * */
+                if (empty($filed)) {
+                    throw new OrmStartUpError("ORM build where error filed {$filed}({$_filed})");
+                }
+
                 $query = [$filed, '=', $item];
                 $query_list[] = [true, 'where', $query];
                 continue;
@@ -1202,6 +1211,17 @@ trait OrmTrait
         return $data;
     }
 
+    public static function selectItemArr($start = 0, $limit = 0, array $sort_option = [], array $where = [], array $columns = ['*'], $with = '')
+    {
+        $list = self::selectItem($start, $limit, $sort_option, $where, $columns, $with);
+
+        $rst = [];
+        foreach ($list as $item) {
+            $rst[] = Util::try2array($item);
+        }
+        return $rst;
+    }
+
     /**
      * 获取以主键为key的dict   不允许超过最大数量限制
      * @param array $where 检索条件数组 具体格式参见文档
@@ -1227,6 +1247,17 @@ trait OrmTrait
         foreach ($data as $key => $val) {
             $id = $val[$primary_key];
             $rst[$id] = $val;
+        }
+        return $rst;
+    }
+
+    public static function dictItemArr(array $where = [], array $columns = ['*'], $maxSelect = null)
+    {
+        $dict = self::dictItem($where, $columns, $maxSelect);
+
+        $rst = [];
+        foreach ($dict as $key => $val) {
+            $rst[$key] = Util::try2array($val);
         }
         return $rst;
     }
@@ -1271,6 +1302,9 @@ trait OrmTrait
 
         if (is_callable($value)) {
             $value = call_user_func_array($value, [$tmp]);
+            if (empty($value)) {
+                return -1;
+            }
         }
         $data = self::_fixFillAbleData($value);
 

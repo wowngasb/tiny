@@ -1,6 +1,6 @@
 <?php
 
-namespace tiny\Anodoc\Tags;
+namespace Tiny\Anodoc\Tags;
 
 class ParamTag extends Tag
 {
@@ -17,6 +17,10 @@ class ParamTag extends Tag
             'description' => $matches[3]
         ];
         $this->tag_name = $tag_name;
+    }
+
+    public function getKey(){
+        return $this->value['name'];
     }
 
     public function getValue()

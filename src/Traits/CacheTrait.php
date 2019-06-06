@@ -12,8 +12,8 @@ use app\App;
 use Closure;
 use phpFastCache\CacheManager;
 use Tiny\Application;
-use Tiny\Util;
 use Tiny\Plugin\EmptyMock;
+use Tiny\Util;
 
 trait CacheTrait
 {
@@ -206,7 +206,7 @@ trait CacheTrait
                 $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
-                if ($isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
+                if ($isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
                     self::$_static_cache_map[$_data_key] = $val;
                 }
             }
@@ -218,7 +218,7 @@ trait CacheTrait
             $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
-            if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+            if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
                 self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
@@ -303,7 +303,7 @@ trait CacheTrait
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
         }
 
-        if (!$useStatic && $isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
+        if (!$useStatic && $isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
             self::$_static_cache_map[$rKey] = $val;
             $tags = self::_buildTagsByData($tags, $val['data']);
             if (!empty($tags)) {
@@ -316,7 +316,7 @@ trait CacheTrait
         }
 
         //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
-        if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }
@@ -426,8 +426,8 @@ trait CacheTrait
                 $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
                 $idx += 1;
 
-                if ($isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
-                    self::$_static_cache_map[$_data_key] = $val;
+                if ($isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
+                    self::$_static_cache_map[$_r_key] = $val;
                 }
             }
         }
@@ -438,7 +438,7 @@ trait CacheTrait
             $bytes = !empty($len_map[$d_key]) ? $len_map[$d_key] : 0;
             $data = null;
             //判断缓存有效期是否在要求之内
-            if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+            if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
                 self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
@@ -453,7 +453,7 @@ trait CacheTrait
         $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
-            self::_clearDataByFastCache($method . $key, $prefix, $tags, $is_log);
+            self::_clearDataByFastCache($method, $key, $prefix, $tags, $is_log);
             return;
         }
         $now = time();
@@ -496,10 +496,11 @@ trait CacheTrait
             error_log("call _cacheDataByRedis with empty method or key " . __METHOD__);
             return [];
         }
-        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
+        $prefix_ = self::_buildPreFix($prefix);
+        $mRedis = self::_getRedisInstance($prefix_);
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _cacheDataByRedis' . __METHOD__);
-            return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $is_log, $prefix, $tags);
+            return self::_cacheDataByFastCache($method, $key, $func, $filter, $timeCache, $prefix, $tags, $is_log);
         }
 
         $now = time();
@@ -529,19 +530,19 @@ trait CacheTrait
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         }
 
-        if (!$useStatic && $isEnableStaticCache && !empty($val) && isset($val['data']) && !empty($val['_update_'])) {
+        if (!$useStatic && $isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
             self::$_static_cache_map[$rKey] = $val;
             $tags = self::_buildTagsByData($tags, $val['data']);
             if (!empty($tags)) {
                 foreach ($tags as $tag) {
-                    $tagKey = "{$prefix}_tags:{$tag}";
+                    $tagKey = "{$prefix_}_tags:{$tag}";
                     self::$_static_tags_map[$tagKey] = !empty(self::$_static_tags_map[$tagKey]) ? self::$_static_tags_map[$tagKey] : [];
                     self::$_static_tags_map[$tagKey][$rKey] = 1;
                 }
             }
         }
 
-        if (!empty($val) && isset($val['data']) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
+        if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
             self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
             return $val['data'];
         }

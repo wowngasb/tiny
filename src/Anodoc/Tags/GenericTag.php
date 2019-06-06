@@ -1,6 +1,6 @@
 <?php
 
-namespace tiny\Anodoc\Tags;
+namespace Tiny\Anodoc\Tags;
 
 class GenericTag extends Tag
 {
@@ -12,6 +12,10 @@ class GenericTag extends Tag
     {
         $this->value = $value;
         $this->tag_name = $tag_name;
+    }
+
+    public function getKey(){
+        return null;
     }
 
     public function getValue()

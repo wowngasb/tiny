@@ -1,8 +1,8 @@
 <?php
 
-namespace tiny\Anodoc\Collection;
+namespace Tiny\Anodoc\Collection;
 
-use tiny\Anodoc\Exception;
+use Tiny\Anodoc\Exception;
 
 class NotATagException extends Exception
 {

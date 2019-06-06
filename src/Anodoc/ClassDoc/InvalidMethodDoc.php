@@ -1,8 +1,8 @@
 <?php
 
-namespace tiny\Anodoc\ClassDoc;
+namespace Tiny\Anodoc\ClassDoc;
 
-use tiny\Anodoc\Exception;
+use Tiny\Anodoc\Exception;
 
 class InvalidMethodDoc extends Exception
 {

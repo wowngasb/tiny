@@ -1,6 +1,6 @@
 <?php
 
-namespace tiny\Anodoc;
+namespace Tiny\Anodoc;
 
 use Tiny\Exception\Error;
 

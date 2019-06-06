@@ -1,8 +1,8 @@
 <?php
 
-namespace tiny\Anodoc\Collection;
+namespace Tiny\Anodoc\Collection;
 
-use tiny\Anodoc\Tags\Tag;
+use Tiny\Anodoc\Tags\Tag;
 
 class Collection implements \ArrayAccess, \Countable, \SeekableIterator
 {
@@ -99,7 +99,7 @@ class Collection implements \ArrayAccess, \Countable, \SeekableIterator
     /**
      * @return array
      */
-    public function getStore(): array
+    public function getStore()
     {
         return $this->store;
     }

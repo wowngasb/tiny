@@ -1,6 +1,6 @@
 <?php
 
-namespace tiny\Anodoc\Tags;
+namespace Tiny\Anodoc\Tags;
 
 class NullTag extends Tag
 {
@@ -15,6 +15,10 @@ class NullTag extends Tag
     public function getValue()
     {
         return '';
+    }
+
+    public function getKey(){
+        return null;
     }
 
     public function getTagName()

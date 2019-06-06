@@ -1,10 +1,10 @@
 <?php
 
-namespace tiny\Anodoc;
+namespace Tiny\Anodoc;
 
-use tiny\Anodoc\Collection\TagGroup;
-use tiny\Anodoc\Collection\TagGroupCollection;
-use tiny\Anodoc\Tags\GenericTag;
+use Tiny\Anodoc\Collection\TagGroup;
+use Tiny\Anodoc\Collection\TagGroupCollection;
+use Tiny\Anodoc\Tags\GenericTag;
 
 class Parser
 {

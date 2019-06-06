@@ -1,8 +1,8 @@
 <?php
 
-namespace tiny\Anodoc\Collection;
+namespace Tiny\Anodoc\Collection;
 
-use tiny\Anodoc\Tags\Tag;
+use Tiny\Anodoc\Tags\Tag;
 
 class TagGroup extends Collection
 {
@@ -37,7 +37,10 @@ class TagGroup extends Collection
     public function offsetSet($key, $value)
     {
         if ($value instanceof Tag) {
-            parent::offsetSet($key, $value);
+            if ($value instanceof Tag) {
+                $_key = $value->getKey();
+                parent::offsetSet(!empty($_key) ? $_key : $key, $value);
+            }
         } else {
             throw new NotATagException("Offset '$key' is not a tag");
         }

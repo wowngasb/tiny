@@ -1,11 +1,13 @@
 <?php
 
-namespace tiny\Anodoc\Tags;
+namespace Tiny\Anodoc\Tags;
 
 abstract class Tag
 {
 
     abstract public function __construct($tag_name, $value);
+
+    abstract public function getKey();
 
     abstract public function getValue();
 

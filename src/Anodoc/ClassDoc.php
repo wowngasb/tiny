@@ -1,9 +1,9 @@
 <?php
 
-namespace tiny\Anodoc;
+namespace Tiny\Anodoc;
 
-use tiny\Anodoc\ClassDoc\InvalidAttributeDoc;
-use tiny\Anodoc\ClassDoc\InvalidMethodDoc;
+use Tiny\Anodoc\ClassDoc\InvalidAttributeDoc;
+use Tiny\Anodoc\ClassDoc\InvalidMethodDoc;
 
 class ClassDoc
 {

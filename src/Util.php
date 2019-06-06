@@ -2518,7 +2518,7 @@ EOT;
         $ret = '';
         foreach ($doc_arr as $doc) {
             $doc = trim($doc);
-            if ($doc == '/**' || $doc == '*/' || $doc == '*') {
+            if ($doc == '/**' || $doc == '*/' || $doc == '*' || $doc === '') {
                 continue;
             }
             $idx = strpos($doc, '*');
@@ -2532,6 +2532,31 @@ EOT;
             $ret = $doc;
         }
         return $ret;
+    }
+
+    public static function getTextDoc($doc_str)
+    {
+        $doc_arr = explode("\n", $doc_str);
+        $ret = [];
+        foreach ($doc_arr as $doc) {
+            $doc = trim($doc);
+            if ($doc == '/**' || $doc == '*/' || $doc == '*' || $doc === '') {
+                continue;
+            }
+            $idx = strpos($doc, '*');
+            if ($idx !== false) {
+                $tmp = trim(substr($doc, $idx + 1));
+                if(self::str_startwith($tmp, '@')){
+                    break;
+                }
+                if (!empty($tmp)) {
+                    $ret[] = $tmp;
+                    continue;
+                }
+            }
+            $ret[] = $doc;
+        }
+        return join("\n", $ret);
     }
 
 }

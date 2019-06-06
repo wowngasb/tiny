@@ -1,6 +1,6 @@
 <?php
 
-namespace tiny\Anodoc\Collection;
+namespace Tiny\Anodoc\Collection;
 
 class TagGroupCollection extends Collection
 {

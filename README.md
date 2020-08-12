@@ -38,7 +38,7 @@ pip install pykl
 ```
 
 ```bash
-node install fis3 -g
+npm install fis3 -g
 ```
 
 ## Init With Skeleton

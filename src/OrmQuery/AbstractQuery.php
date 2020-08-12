@@ -37,11 +37,12 @@ abstract class AbstractQuery
     {
         $action = Util::class2name(get_class($this));
         $action = $action == 'whereQ' ? 'where' : $action;
+        $action = $action == 'orWhereQ' ? 'orWhere' : $action;
 
         $enable = !empty($this->_filter) ? call_user_func_array($this->_filter, []) : true;
 
         $query = $this->_queryArgs();
-        if(!empty($column)){
+        if (!empty($column)) {
             if (is_array($query)) {
                 array_unshift($query, $column);  //把字段名插入到 参数的第一个
             } else {

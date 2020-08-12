@@ -10,12 +10,22 @@ class ParamTag extends Tag
 
     public function __construct($tag_name, $value)
     {
-        preg_match('/(\w+)\s+\$(\w+)\s+(.+)/ms', $value, $matches);
-        $this->value = [
-            'type' => $matches[1],
-            'name' => $matches[2],
-            'description' => $matches[3]
-        ];
+        $ret = preg_match('/(\w+)\s+\$(\w+)\s+(.+)/ms', $value, $matches);
+        if($ret){
+            $this->value = [
+                'type' => trim($matches[1]),
+                'name' => trim($matches[2]),
+                'description' => trim($matches[3])
+            ];
+        } else {
+            preg_match('/(\w+)\s+\$(\w+)\s*/ms', $value, $matches);
+            $this->value = [
+                'type' => trim($matches[1]),
+                'name' => trim($matches[2]),
+                'description' => ''
+            ];
+        }
+
         $this->tag_name = $tag_name;
     }
 

@@ -93,6 +93,9 @@ class StdRequest extends SymfonyRequest implements RequestInterface
      */
     public function getRequestTimestamp()
     {
+        if (defined('DEBUG_START_MICRO_TIMESTAMP')) {
+            return DEBUG_START_MICRO_TIMESTAMP;
+        }
         return $this->_request_timestamp;
     }
 
@@ -723,7 +726,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Convert the given array of Symfony UploadedFiles to custom Laravel UploadedFiles.
      *
-     * @param  array $files
+     * @param array $files
      * @return array
      */
     protected static function convertUploadedFiles(array $files)
@@ -743,8 +746,8 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Retrieve a file from the request.
      *
-     * @param  string $key
-     * @param  mixed $default
+     * @param string $key
+     * @param mixed $default
      * @return UploadedFile|array|null
      */
     public function file($key = null, $default = null)
@@ -755,7 +758,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Determine if the uploaded data contains a file.
      *
-     * @param  string $key
+     * @param string $key
      * @return bool
      */
     public function hasFile($key)
@@ -776,7 +779,7 @@ class StdRequest extends SymfonyRequest implements RequestInterface
     /**
      * Check that the given file is a valid file instance.
      *
-     * @param  mixed $file
+     * @param mixed $file
      * @return bool
      */
     protected function isValidFile($file)

@@ -481,13 +481,13 @@ trait OrmTrait
 
         if (!empty($no_cache_list)) {
             $db_dict = static::dictItem([$primary_key => $no_cache_list]);
-            if ($timeCache > 0) {
+            if ($timeCache > 0 && $timeCache >= 2) {
                 foreach ($db_dict as $cid => $item) {
                     self::_cacheDataManager($table, $tag_list[$cid], function () use ($item) {
                         return $item;
                     }, function ($data) {
                         return !empty($data);
-                    }, $timeCache, static::getCachePreFix(), [], self::sqlDebug());
+                    }, -$timeCache, static::getCachePreFix(), [], self::sqlDebug());
                 }
             }
         }
@@ -762,7 +762,7 @@ trait OrmTrait
      * Get a single column's value from the first result of a query.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _value($table, $column)
@@ -777,8 +777,8 @@ trait OrmTrait
      * Execute the query and get the first result.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  array $columns
-     * @param  array $sort_option
+     * @param array $columns
+     * @param array $sort_option
      * @return mixed|static
      */
     public static function _first($table, $columns = ['*'], array $sort_option = [])
@@ -794,7 +794,7 @@ trait OrmTrait
      * Execute the query as a "select" statement.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  array $columns
+     * @param array $columns
      * @param int $start
      * @param int $limit
      * @return array|static[]
@@ -827,8 +827,8 @@ trait OrmTrait
      * Chunk the results of the query.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  int $count
-     * @param  callable $callback
+     * @param int $count
+     * @param callable $callback
      * @return bool
      */
     public static function _chunk($table, $count, callable $callback)
@@ -843,10 +843,10 @@ trait OrmTrait
      * Chunk the results of a query by comparing numeric IDs.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  int $count
-     * @param  callable $callback
-     * @param  string $column
-     * @param  string $alias
+     * @param int $count
+     * @param callable $callback
+     * @param string $column
+     * @param string $alias
      * @return bool
      */
     public static function _chunkById($table, $count, callable $callback, $column = 'id', $alias = null)
@@ -861,8 +861,8 @@ trait OrmTrait
      * Execute a callback over each item while chunking.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  callable $callback
-     * @param  int $count
+     * @param callable $callback
+     * @param int $count
      * @return bool
      */
     public static function _each($table, callable $callback, $count = 1000)
@@ -877,8 +877,8 @@ trait OrmTrait
      * Get an array with the values of a given column.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
-     * @param  string|null $key
+     * @param string $column
+     * @param string|null $key
      * @return array
      */
     public static function _pluck($table, $column, $key = null)
@@ -897,8 +897,8 @@ trait OrmTrait
      * Concatenate values of a given column as a string.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
-     * @param  string $glue
+     * @param string $column
+     * @param string $glue
      * @return string
      */
     public static function _implode($table, $column, $glue = '')
@@ -927,7 +927,7 @@ trait OrmTrait
      * Retrieve the "count" result of the query.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $columns
+     * @param string $columns
      * @return int
      */
     public static function _count($table, $columns = '*')
@@ -942,7 +942,7 @@ trait OrmTrait
      * Retrieve the minimum value of a given column.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _min($table, $column)
@@ -957,7 +957,7 @@ trait OrmTrait
      * Retrieve the maximum value of a given column.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _max($table, $column)
@@ -972,7 +972,7 @@ trait OrmTrait
      * Retrieve the sum of the values of a given column.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _sum($table, $column)
@@ -987,7 +987,7 @@ trait OrmTrait
      * Retrieve the average of the values of a given column.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _avg($table, $column)
@@ -1002,7 +1002,7 @@ trait OrmTrait
      * Alias for the "avg" method.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
+     * @param string $column
      * @return mixed
      */
     public static function _average($table, $column)
@@ -1017,8 +1017,8 @@ trait OrmTrait
      * Execute an aggregate function on the database.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $function
-     * @param  array $columns
+     * @param string $function
+     * @param array $columns
      * @return mixed
      */
     public static function _aggregate($table, $function, $columns = ['*'])
@@ -1033,8 +1033,8 @@ trait OrmTrait
      * Execute a numeric aggregate function on the database.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $function
-     * @param  array $columns
+     * @param string $function
+     * @param array $columns
      * @return float|int
      */
     public static function _numericAggregate($table, $function, $columns = ['*'])
@@ -1049,7 +1049,7 @@ trait OrmTrait
      * Update a record in the database.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  array $data
+     * @param array $data
      * @return int
      */
     public static function _update($table, array $data)
@@ -1065,8 +1065,8 @@ trait OrmTrait
      * Insert or update a record matching the attributes, and fill it with values.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  array $attributes
-     * @param  array $data
+     * @param array $attributes
+     * @param array $data
      * @return bool
      */
     public static function _updateOrInsert($table, array $attributes, array $data = [])
@@ -1082,9 +1082,9 @@ trait OrmTrait
      * Increment a column's value by a given amount.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
-     * @param  int $amount
-     * @param  array $extra
+     * @param string $column
+     * @param int $amount
+     * @param array $extra
      * @return int
      */
     public static function _increment($table, $column, $amount = 1, array $extra = [])
@@ -1100,9 +1100,9 @@ trait OrmTrait
      * Decrement a column's value by a given amount.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  string $column
-     * @param  int $amount
-     * @param  array $extra
+     * @param string $column
+     * @param int $amount
+     * @param array $extra
      * @return int
      */
     public static function _decrement($table, $column, $amount = 1, array $extra = [])
@@ -1138,10 +1138,10 @@ trait OrmTrait
      * Paginate the given query.
      *
      * @param \Illuminate\Database\Query\Builder $table
-     * @param  int $perPage
-     * @param  array $columns
-     * @param  string $pageName
-     * @param  int|null $page
+     * @param int $perPage
+     * @param array $columns
+     * @param string $pageName
+     * @param int|null $page
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      *
      * @throws \InvalidArgumentException
@@ -1354,7 +1354,7 @@ trait OrmTrait
      * @param string $filed 字段名 默认为 null 表示使用主键
      * @return int
      */
-    public static function checkItem($value, $filed = null)
+    public static function checkItem($value, $filed = null, array $sort_option = [])
     {
         $primary_key = static::primaryKey();
         if (is_array($value)) {
@@ -1363,7 +1363,8 @@ trait OrmTrait
             $filed = !empty($filed) ? $filed : $primary_key;
             $where = [strtolower($filed) => $value];
         }
-        $tmp = static::firstItem($where, [$primary_key, 'asc'], [$primary_key]);
+        $sort_option = !empty($sort_option) ? $sort_option : [$primary_key, 'asc'];
+        $tmp = static::firstItem($where, $sort_option, [$primary_key]);
         if (!empty($tmp) && !empty($tmp[$primary_key])) {
             return $tmp[$primary_key];
         } else {

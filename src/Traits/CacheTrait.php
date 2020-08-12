@@ -13,6 +13,7 @@ use Closure;
 use phpFastCache\CacheManager;
 use Tiny\Application;
 use Tiny\Plugin\EmptyMock;
+use Tiny\Plugin\MyYac;
 use Tiny\Util;
 
 trait CacheTrait
@@ -68,13 +69,36 @@ trait CacheTrait
     }
 
     /**
+     * @return MyYac
+     */
+    public static function _getYacInstance($prefix = '')
+    {
+        try {
+            $yac = self::_get_yac($prefix);
+            if (!empty($yac)) {
+                return $yac;
+            }
+        } catch (\Exception $e) {
+            //忽略异常 尝试返回一个空的 mock 对象
+            error_log("create redis with error:" . $e->getMessage());
+        }
+
+        if (empty(self::$_yac_instance_monk)) {
+            /** @var MyYac $yac */
+            $yac = new EmptyMock();
+            self::$_yac_instance_monk = $yac;
+        }
+        return self::$_yac_instance_monk;
+    }
+
+    /**
      * @param string $prefix
      * @return \Redis
      */
-    public static function _getRedisInstance($prefix = '')
+    public static function _getRedisInstance($prefix = '', $use_predis = false)
     {
         try {
-            $redis = self::_get_redis($prefix);
+            $redis = self::_get_redis($prefix, $use_predis);
             if (!empty($redis)) {
                 return $redis;
             }
@@ -157,6 +181,8 @@ trait CacheTrait
             error_log("call _mgetDataByFastCache with empty method or keys " . __METHOD__);
             return [];
         }
+
+        $prefix_ = self::_buildPreFix($prefix);
         $mCache = self::_getCacheInstance();
         if (empty($mCache)) {
             error_log(__METHOD__ . ' can not get mCache by _getCacheInstance ' . __METHOD__);
@@ -167,6 +193,7 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         $rKeysMap = [];
         foreach ($keys as $data_key => $origin_key) {
@@ -174,18 +201,26 @@ trait CacheTrait
         }
 
         if ($timeCache <= 0) {
-            $mCache->deleteItems(array_values($rKeysMap));
+            $del_rKeys = array_values($rKeysMap);
+            $mCache->deleteItems($del_rKeys);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->del($del_rKeys);
+                }
+            }
             if ($isEnableStaticCache) {
                 foreach ($rKeysMap as $del_rKey) {
                     unset(self::$_static_cache_map[$del_rKey]);
                 }
             }
-            self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now, [], $isEnableStaticCache, $is_log);
+            self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now, [], $isEnableStaticCache, $isEnableYacCache, $is_log);
             return [];
         }
 
         $cache_map = [];
-        $len_map = [];
         if ($isEnableStaticCache) {  // 如果启用了静态缓存  优先使用类中的缓存
             foreach ($keys as $static_key => $_origin_key) {
                 $s_rKey = $rKeysMap[$static_key];
@@ -195,18 +230,54 @@ trait CacheTrait
                 }
             }
         }
+
+        $tmpYacMap = [];
+        if ($isEnableYacCache && !empty($rKeysMap)) {
+            $mYac = self::_getYacInstance($prefix_);
+            if (empty($mYac) || $mYac instanceof EmptyMock) {
+                error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+            } else {
+                $list = $mYac->mget(array_values($rKeysMap));
+                $idx = 0;
+                $_del_keys = [];
+                foreach ($rKeysMap as $_data_key => $_r_key) {
+                    $val_str = !empty($list[$idx]) ? $list[$idx] : '';
+                    if (!empty($val_str)) {
+                        $tmpYacMap[$_data_key] = $val_str;
+                        $_del_keys[] = $_data_key;
+                    }
+                    $idx += 1;
+                }
+                foreach ($_del_keys as $del_key) {
+                    unset($rKeysMap[$del_key]);
+                }
+            }
+        }
+
+        $tmpRedisMap = [];
         if (!empty($rKeysMap)) {
             $list = $mCache->getItems(array_values($rKeysMap));
             $idx = 0;
             foreach ($rKeysMap as $_data_key => $_r_key) {
                 $tmp_item = !empty($list[$idx]) ? $list[$idx] : null;
                 $val_str = !empty($tmp_item) ? $tmp_item->get() : '';
-                $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
-                $cache_map[$_data_key] = $val;
-                $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
+                if (!empty($val_str)) {
+                    $tmpRedisMap[$_data_key] = $val_str;
+                }
                 $idx += 1;
+            }
+        }
 
-                if ($isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
+        $len_map = [];
+        // 尝试解码 tmpMap 中的数据
+        $tmpMap = $tmpYacMap + $tmpRedisMap;  // 保持原key
+        foreach ($tmpMap as $_data_key => $val_str) {
+            $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
+            $cache_map[$_data_key] = $val;
+            $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
+
+            if (!empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
+                if ($isEnableStaticCache) {
                     self::$_static_cache_map[$_data_key] = $val;
                 }
             }
@@ -220,7 +291,7 @@ trait CacheTrait
             //判断缓存有效期是否在要求之内
             if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
-                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
+                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], !empty($tmpRedisMap[$d_key]), !empty($tmpYacMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
             }
             $ret_map[$d_key] = $data;
@@ -237,14 +308,23 @@ trait CacheTrait
         }
         $now = time();
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         if (!empty($method) || !empty($key)) {
             $rKey = self::_buildCacheKey($method, $key, $prefix);
             $mCache->deleteItem($rKey);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->del($rKey);
+                }
+            }
             if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
                 unset(self::$_static_cache_map[$rKey]);
             }
-            self::_cacheDebug('delkey', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('delkey', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $isEnableYacCache, $is_log);
         }
         if (!empty($tags)) {
             foreach ($tags as $tag) {
@@ -258,7 +338,7 @@ trait CacheTrait
                     unset(self::$_static_tags_map[$tagKey]);
                 }
             }
-            self::_cacheDebug('deltag', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('deltag', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, 0, $is_log);
         }
     }
 
@@ -279,6 +359,8 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_default_expires : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
+
         $rKey = self::_buildCacheKey($method, $key, $prefix);
 
         if ($timeCache <= 0) {
@@ -293,12 +375,24 @@ trait CacheTrait
             return $data;
         }
         $useStatic = false;
+        $useYac = false;
+
         $bytes = 0;
         if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
             $val = self::$_static_cache_map[$rKey];
             $useStatic = true;
         } else {
-            $val_str = $mCache->getItem($rKey)->get();
+            $val_str = '';
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $val_str = $mYac->get($rKey);
+                    $useYac = true;
+                }
+            }
+            $val_str = !empty($val_str) ? $val_str : $mCache->getItem($rKey)->get();
             $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
         }
@@ -317,7 +411,7 @@ trait CacheTrait
 
         //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
+            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $useYac, $is_log, $bytes);
             return $val['data'];
         }
 
@@ -339,6 +433,8 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_default_expires : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
+
         $rKey = self::_buildCacheKey($method, $key, $prefix);
 
         $val = ['data' => $data, '_update_' => time()];
@@ -351,6 +447,14 @@ trait CacheTrait
             $val_str = self::_buildEncodeVal($val, $prefix);
             $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $itemObj = $mCache->getItem($rKey)->set($val_str)->expiresAfter($timeCache);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->setx($rKey, $timeCache, $val_str);
+                }
+            }
             if ($isEnableStaticCache) {
                 self::$_static_cache_map[$rKey] = $val;
             }
@@ -366,9 +470,9 @@ trait CacheTrait
                 }
             }
             $mCache->save($itemObj);
-            self::_cacheDebug('cache', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log, $bytes);
+            self::_cacheDebug('cache', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $isEnableYacCache, $is_log, $bytes);
         } else {
-            self::_cacheDebug('skip', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('skip', $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $isEnableYacCache, $is_log);
         }
     }
 
@@ -378,7 +482,8 @@ trait CacheTrait
             error_log("call _mgetDataByRedis with empty method or keys " . __METHOD__);
             return [];
         }
-        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
+        $prefix_ = self::_buildPreFix($prefix);
+        $mRedis = self::_getRedisInstance($prefix_);
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance ' . __METHOD__);
             return self::_mgetDataByFastCache($method, $keys, $timeCache, $prefix, $is_log);
@@ -388,6 +493,7 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         $rKeysMap = [];
         foreach ($keys as $data_key => $origin_key) {
@@ -395,18 +501,26 @@ trait CacheTrait
         }
 
         if ($timeCache <= 0) {
-            $mRedis->del(array_values($rKeysMap));
+            $del_rKeys = array_values($rKeysMap);
+            $mRedis->del($del_rKeys);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->del($del_rKeys);
+                }
+            }
             if ($isEnableStaticCache) {
                 foreach ($rKeysMap as $del_rKey) {
                     unset(self::$_static_cache_map[$del_rKey]);
                 }
             }
-            self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now, [], $isEnableStaticCache, $is_log);
+            self::_cacheDebug('mdel', $now, $method, join(',', $keys), $timeCache, $now, [], $isEnableStaticCache, $isEnableYacCache, $is_log);
             return [];
         }
 
         $cache_map = [];
-        $len_map = [];
         if ($isEnableStaticCache) {  // 如果启用了静态缓存  优先使用类中的缓存
             foreach ($keys as $static_key => $_origin_key) {
                 $s_rKey = $rKeysMap[$static_key];
@@ -416,18 +530,56 @@ trait CacheTrait
                 }
             }
         }
+
+        $tmpYacMap = [];
+        if ($isEnableYacCache && !empty($rKeysMap)) {
+            $mYac = self::_getYacInstance($prefix_);
+            if (empty($mYac) || $mYac instanceof EmptyMock) {
+                error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+            } else {
+                $rKeys = array_values($rKeysMap);
+                $list = $mYac->mget($rKeys);
+                $idx = 0;
+                $_del_keys = [];
+                foreach ($rKeysMap as $_data_key => $_r_key) {
+                    $val_str = !empty($list[$idx]) ? $list[$idx] : '';
+                    if (!empty($val_str)) {
+                        $tmpYacMap[$_data_key] = $val_str;
+                        $_del_keys[] = $_data_key;
+                    }
+                    $idx += 1;
+                }
+                foreach ($_del_keys as $del_key) {
+                    unset($rKeysMap[$del_key]);
+                }
+            }
+        }
+
+        $tmpRedisMap = [];
         if (!empty($rKeysMap)) {
-            $list = $mRedis->mget(array_values($rKeysMap));
+            $rKeys = array_values($rKeysMap);
+            $list = $mRedis->mget($rKeys);
             $idx = 0;
             foreach ($rKeysMap as $_data_key => $_r_key) {
                 $val_str = !empty($list[$idx]) ? $list[$idx] : '';
-                $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内
-                $cache_map[$_data_key] = $val;
-                $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
+                if (!empty($val_str)) {
+                    $tmpRedisMap[$_data_key] = $val_str;
+                }
                 $idx += 1;
+            }
+        }
 
-                if ($isEnableStaticCache && !empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
-                    self::$_static_cache_map[$_r_key] = $val;
+        $len_map = [];
+        // 尝试解码 tmpMap 中的数据
+        $tmpMap = $tmpYacMap + $tmpRedisMap;  // 保持原key
+        foreach ($tmpMap as $_data_key => $val_str) {
+            $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];
+            $cache_map[$_data_key] = $val;
+            $len_map[$_data_key] = !empty($val_str) ? strlen($val_str) : 0;
+
+            if (!empty($val) && key_exists('data', $val) && !empty($val['_update_'])) {
+                if ($isEnableStaticCache) {
+                    self::$_static_cache_map[$_data_key] = $val;
                 }
             }
         }
@@ -440,7 +592,7 @@ trait CacheTrait
             //判断缓存有效期是否在要求之内
             if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
                 // $rKeysMap[$d_key] 为空 表示使用的是 类 静态缓存
-                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], empty($rKeysMap[$d_key]), $is_log, $bytes);
+                self::_cacheDebug('mhit', $now, $method, $origin_key, $timeCache, $val['_update_'], [], !empty($tmpRedisMap[$d_key]), !empty($tmpYacMap[$d_key]), $is_log, $bytes);
                 $data = $val['data'];
             }
             $ret_map[$d_key] = $data;
@@ -448,9 +600,10 @@ trait CacheTrait
         return $ret_map;
     }
 
-    private static function _clearDataByRedis($method = '', $key = '', $prefix = null, $tags = [], $is_log = false)
+    private static function _clearDataByRedis($method = '', $key = '', $prefix = null, $tags = [], $is_log = false, $enable_yac = false)
     {
-        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
+        $prefix_ = self::_buildPreFix($prefix);
+        $mRedis = self::_getRedisInstance($prefix_);
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
             self::_clearDataByFastCache($method, $key, $prefix, $tags, $is_log);
@@ -458,14 +611,23 @@ trait CacheTrait
         }
         $now = time();
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         if (!empty($method) || !empty($key)) {
             $rKey = self::_buildCacheKey($method, $key, $prefix);
             $mRedis->del($rKey);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->del($rKey);
+                }
+            }
             if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
                 unset(self::$_static_cache_map[$rKey]);
             }
-            self::_cacheDebug('delkey', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('delkey', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $isEnableYacCache, $is_log);
         }
         if (!empty($tags)) {
             $prefix = self::_buildPreFix($prefix);
@@ -486,7 +648,7 @@ trait CacheTrait
                     unset(self::$_static_tags_map[$tagKey]);
                 }
             }
-            self::_cacheDebug('deltag', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug('deltag', $now, $method, $key, -1, $now, $tags, $isEnableStaticCache, 0, $is_log);
         }
     }
 
@@ -507,10 +669,11 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         $rKey = self::_buildCacheKey($method, $key, $prefix);
         if ($timeCache <= 0) {
-            // $timeCache 0 执行函数 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
+            // $timeCache 0 执行函数 清除缓存 返回结果   -1 清除缓存 返回空   小于等于 -2  执行函数 返回结果 并设置缓存 缓存时间为 -$timeCache
             $data = ($timeCache == 0 || $timeCache <= -2) ? $func() : [];
             if ($timeCache <= -2) {
                 self::_setDataByRedis($method, $key, $prefix, $data, $filter, -$timeCache, $tags, $is_log);
@@ -520,12 +683,24 @@ trait CacheTrait
             return $data;
         }
         $useStatic = false;
+        $useYac = false;
+
         $bytes = 0;
         if ($isEnableStaticCache && !empty(self::$_static_cache_map[$rKey])) {
             $val = self::$_static_cache_map[$rKey];
             $useStatic = true;
         } else {
-            $val_str = $mRedis->get($rKey);
+            $val_str = '';
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $val_str = $mYac->get($rKey);
+                    $useYac = true;
+                }
+            }
+            $val_str = !empty($val_str) ? $val_str : $mRedis->get($rKey);
             $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $val = !empty($val_str) ? self::_buildDecodeStr($val_str, $prefix) : [];  //判断缓存有效期是否在要求之内  数据符合要求直接返回  不再执行 func
         }
@@ -543,7 +718,7 @@ trait CacheTrait
         }
 
         if (!empty($val) && key_exists('data', $val) && !empty($val['_update_']) && $now - $val['_update_'] < $timeCache) {
-            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $is_log, $bytes);
+            self::_cacheDebug('hit', $now, $method, $key, $timeCache, $val['_update_'], $tags, $useStatic, $useYac, $is_log, $bytes);
             return $val['data'];
         }
 
@@ -553,9 +728,11 @@ trait CacheTrait
         return $data;
     }
 
+
     private static function _setDataByRedis($method, $key, $prefix, $data, $filter, $timeCache, $tags, $is_log)
     {
-        $mRedis = self::_getRedisInstance(self::_buildPreFix($prefix));
+        $prefix_ = self::_buildPreFix($prefix);
+        $mRedis = self::_getRedisInstance($prefix_);
         if (empty($mRedis) || $mRedis instanceof EmptyMock) {
             error_log(__METHOD__ . ' can not get mRedis by _getRedisInstance' . __METHOD__);
             return;
@@ -564,6 +741,7 @@ trait CacheTrait
         $timeCache = is_null($timeCache) ? self::$_cache_prefix_key : $timeCache;
         $timeCache = intval($timeCache);
         $isEnableStaticCache = self::_isEnableStaticCache($prefix);
+        $isEnableYacCache = self::_isEnableYacCache($prefix);
 
         $rKey = self::_buildCacheKey($method, $key, $prefix);
 
@@ -577,6 +755,14 @@ trait CacheTrait
             $val_str = self::_buildEncodeVal($val, $prefix);
             $bytes = !empty($val_str) ? strlen($val_str) : 0;
             $mRedis->setex($rKey, $timeCache, $val_str);
+            if ($isEnableYacCache) {
+                $mYac = self::_getYacInstance($prefix_);
+                if (empty($mYac) || $mYac instanceof EmptyMock) {
+                    error_log(__METHOD__ . ' can not get mYac by _getYacInstance' . __METHOD__);
+                } else {
+                    $mYac->setex($rKey, $timeCache, $val_str);
+                }
+            }
             if ($isEnableStaticCache) {
                 self::$_static_cache_map[$rKey] = $val;
             }
@@ -592,9 +778,9 @@ trait CacheTrait
                 }
             }
 
-            self::_cacheDebug("cache", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log, $bytes);
+            self::_cacheDebug("cache", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $isEnableYacCache, $is_log, $bytes);
         } else {
-            self::_cacheDebug("skip", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $is_log);
+            self::_cacheDebug("skip", $now, $method, $key, $timeCache, $val['_update_'], $tags, $isEnableStaticCache, $isEnableYacCache, $is_log);
         }
     }
 
@@ -605,6 +791,11 @@ trait CacheTrait
     private static function _isEnableStaticCache($prefix)
     {
         return self::_getCacheConfig()->isEnableStaticCache($prefix);
+    }
+
+    private static function _isEnableYacCache($prefix)
+    {
+        return self::_getCacheConfig()->isEnableYacCache($prefix);
     }
 
     private static function _isCacheUseRedis($prefix)
@@ -705,10 +896,16 @@ trait CacheTrait
         }
     }
 
-    private static function _get_redis($prefix = '')
+    private static function _get_redis($prefix = '', $use_predis = false)
     {
-        if (!class_exists('Redis')) {
-            return null;
+        if ($use_predis) {
+            if (!class_exists('Predis\Client')) {
+                return null;
+            }
+        } else {
+            if (!class_exists('Redis')) {
+                return null;
+            }
         }
 
         $redisConfig = self::_getCacheConfig()->redisConfig($prefix);
@@ -719,20 +916,35 @@ trait CacheTrait
         $database = intval(Util::v($redisConfig, 'database', 0));
         $timeout = intval(Util::v($redisConfig, 'timeout', 5));
 
-        $config_key = str_replace('.', '#', "{$host}_{$port}_{$password}_{$database}_{$timeout}");
+        $config_key = str_replace('.', '#', "_Redis_{$host}_{$port}_{$password}_{$database}_{$timeout}" . ($use_predis ? '@predis' : '@redis'));
 
         $redis = Application::config($config_key, null);
         if (empty($redis)) {
-            $redis = new \Redis();
-            if (!$redis->connect($host, $port, $timeout)) {
-                $redis = null;
+            if ($use_predis) {
+                $redis = new \Predis\Client([
+                    'scheme' => 'tcp',
+                    'host' => $host,
+                    'port' => 6379,
+                ]);
+                if (!empty($redis) && !empty($password)) {
+                    $redis = $redis->auth($password) ? $redis : null;
+                }
+                if (!empty($redis) && $database > 0) {
+                    $redis = $redis->select($database) ? $redis : null;
+                }
+            } else {
+                $redis = new \Redis();
+                if (!$redis->connect($host, $port, $timeout)) {
+                    $redis = null;
+                }
+                if (!empty($redis) && !empty($password)) {
+                    $redis = $redis->auth($password) ? $redis : null;
+                }
+                if (!empty($redis) && $database > 0) {
+                    $redis = $redis->select($database) ? $redis : null;
+                }
             }
-            if (!empty($redis) && !empty($password)) {
-                $redis = $redis->auth($password) ? $redis : null;
-            }
-            if (!empty($redis) && $database > 0) {
-                $redis = $redis->select($database) ? $redis : null;
-            }
+
             if (!empty($redis)) {
                 Application::set_config($config_key, $redis);
             }
@@ -741,10 +953,27 @@ trait CacheTrait
         return $redis;
     }
 
-    private static function _cacheDebug($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $is_log, $bytes = 0)
+    private static function _get_yac($prefix = '')
+    {
+        if (!class_exists('Yac')) {
+            return null;
+        }
+
+        $config_key = str_replace('.', '#', "_Yac_{$prefix}");
+
+        $yac = Application::config($config_key, null);
+        if (empty($yac)) {
+            $_yac = new \Yac($prefix);
+            $yac = new MyYac($_yac);
+        }
+
+        return $yac;
+    }
+
+    private static function _cacheDebug($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $useYac, $is_log, $bytes = 0)
     {
         if (App::dev()) {
-            CacheConfig::doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $bytes);
+            CacheConfig::doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $useYac, $bytes);
         }
 
         if ($is_log) {

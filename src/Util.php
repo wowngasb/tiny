@@ -517,7 +517,9 @@ EOT;
             } else {
                 $keys[] = '/[?]/';
             }
-            if (is_numeric($value)) {
+            if (is_float($value)) {
+                $values[] = "{$value}";
+            } elseif (is_numeric($value)) {
                 $values[] = intval($value);
             } else {
                 $value = str_replace('"', '\\"', $value);
@@ -686,6 +688,7 @@ EOT;
 
     public static function utf8_fix($str, $max_len)
     {
+        $str = trim($str);
         $len = static::utf8_strlen($str);
         if ($len > $max_len) {
             return static::utf8_substr($str, 0, $max_len);
@@ -916,6 +919,7 @@ EOT;
                 return (array)$item;
             }
         }
+
         return (array)$item;
     }
 
@@ -1026,11 +1030,11 @@ EOT;
 
     /**
      * @param array $arr_list
-     * @param callable $key_func 参数 $idx, $item
-     * @param callable $val_func 参数 $idx, $item
+     * @param callable|string $key_func 参数 $idx, $item 返回数组的 key  或者字符串
+     * @param callable $val_func 参数 $idx, $item  默认为 null  返回  $item
      * @return array
      */
-    public static function list2map(array $arr_list, callable $key_func, callable $val_func)
+    public static function list2map(array $arr_list, $key_func = 'id', callable $val_func = null)
     {
         if (empty($arr_list)) {
             return [];
@@ -1038,9 +1042,41 @@ EOT;
 
         $ret_map = [];
         foreach ($arr_list as $idx => $item) {
-            $key = call_user_func_array($key_func, [$idx, $item]);
+            $key = '';
+            if (!empty($key_func) && is_callable($key_func)) {
+                $key = call_user_func_array($key_func, [$idx, $item]);
+            } elseif (is_string($key_func)) {
+                $key = self::v($item, $key_func, '');
+            }
+
             if ($key == 0 || !empty($key)) {
-                $val = call_user_func_array($val_func, [$idx, $item]);
+                $val = !empty($val_func) && is_callable($val_func) ? call_user_func_array($val_func, [$idx, $item]) : $item;
+                if (!is_null($val)) {
+                    $ret_map[$key] = $val;
+                }
+            }
+        }
+        return $ret_map;
+    }
+
+    /**
+     * @param array $arr_list
+     * @param string $key_str key字符串
+     * @param string $val_str val字符串
+     * @return array
+     */
+    public static function list2map_by_key(array $arr_list, $key_str, $val_str)
+    {
+        if (empty($arr_list)) {
+            return [];
+        }
+
+        $ret_map = [];
+        foreach ($arr_list as $idx => $item) {
+            $item = self::try2array($item);
+            $key = self::v($item, $key_str, '');
+            if ($key == 0 || !empty($key)) {
+                $val = self::v($item, $val_str, null);
                 if (!is_null($val)) {
                     $ret_map[$key] = $val;
                 }
@@ -1236,9 +1272,8 @@ EOT;
         }
         $ret = [];
         foreach ($list as $item) {
-            $val = $item[$key];
-            if (!empty($val)) {
-                $ret[$val] = 1;
+            if (!empty($item[$key])) {
+                $ret[$item[$key]] = 1;
             }
         }
         return array_keys($ret);
@@ -1246,6 +1281,7 @@ EOT;
 
     /**
      * 从指定数组中 取出 指定 key 生成 map
+     *
      * @param array $list
      * @param string $key
      * @param string $default
@@ -1465,11 +1501,12 @@ EOT;
      */
     public static function add_month($time_str, $add_month)
     {
-        if ($add_month <= 0) {
-            return $time_str;
+        $arr = date_parse($time_str);
+        while ($add_month < 0) {
+            $arr['year'] -= 1;
+            $add_month += 12;
         }
 
-        $arr = date_parse($time_str);
         $tmp = $arr['month'] + $add_month;
         $arr['month'] = $tmp > 12 ? ($tmp % 12) : $tmp;
         $arr['year'] = $tmp > 12 ? $arr['year'] + intval($tmp / 12) : $arr['year'];
@@ -1559,7 +1596,7 @@ EOT;
         $base_md5 = substr(md5($input), 0, 16);
         $hash_int = abs(self::byteToInt32WithLittleEndian($base_md5));
         while (strlen($str) < $length) {
-            $idx = abs($hash_int % $max);
+            $idx = abs(intval($hash_int) % $max);
 
             $str .= $tmp_str[$idx];   //rand($min,$max)生成介于min和max两个数之间的一个随机整数
             $hash_int = intval($hash_int / $max);
@@ -1580,9 +1617,21 @@ EOT;
         return $byte3 * 256 * 256 * 256 + $byte2 * 256 * 256 + $byte1 * 256 + $byte0;
     }
 
-    public static function short_hash($input, $length = 8)
+    public static function short_hash($input, $length = 8, $type = 'default')
     {
-        $tmp_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        // 注意  因为 VM整数位数 及 crc32 实现问题  导致不同的环境计算出来的 hash 可能不一致  所以不能在不同环境使用 short_hash
+        $d_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        $d_map = [
+            'default' => $d_str,
+            'upper' => 'ABCDEFGHIGKLMNOPQRSTUVWXYZ',
+            'lower' => 'abcdefghijklmnopqrstuvwxyz',
+            'num' => '0123456789',
+            'safe' => 'ABCDEFGHJKLMNPQRT3456789abcdefghjkmnpqrt',
+            'upper+num' => 'ABCDEFGHIGKLMNOPQRSTUVWXYZ0123456789',
+            'lower+num' => 'abcdefghijklmnopqrstuvwxyz0123456789',
+        ];
+        $tmp_str = self::v($d_map, $type, $d_str);
+
         $max = strlen($tmp_str) - 1;
         $cmp_int = $max * $max * $length * $length;
         $str = '';
@@ -2260,7 +2309,9 @@ EOT;
         $t1 = microtime(true);
 
         $ch = curl_init();
-        $port = static::get_port($query_url, 80);
+        $is_https = Util::stri_startwith($query_url, 'https://');
+        $port = static::get_port($query_url, $is_https ? 443 : 80);
+
         curl_setopt($ch, CURLOPT_URL, $query_url);
         curl_setopt($ch, CURLOPT_PORT, $port);
         curl_setopt($ch, CURLOPT_HEADER, false);
@@ -2278,13 +2329,22 @@ EOT;
         if ($type == 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
             if (!empty($post_fields)) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+                if (is_array($post_fields)) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_fields));
+                } else {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+                }
             }
         }
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($type));
 
         if (!empty($header)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        }
+
+        if ($is_https) {
+            curl_setopt($ch, CURLOPT_SSLVERSION, 1); //设定SSL版本,1-3切换
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); //不检查证书
         }
 
         //execute post
@@ -2309,7 +2369,7 @@ EOT;
         //return result
         if ($http_ok) {
             $data = json_decode(trim($response), true);
-            return !is_null($data) ? $data : ['code' => 0, 'msg' => '接口返回非json', 'resp' => $response];
+            return !is_null($data) ? $data : ['code' => 400, 'msg' => '接口返回非json', 'resp' => $response];
         } else {
             return ['code' => 500, 'msg' => '调用远程接口失败', 'resp' => $response, 'HttpCode' => $response_code];
         }
@@ -2546,7 +2606,7 @@ EOT;
             $idx = strpos($doc, '*');
             if ($idx !== false) {
                 $tmp = trim(substr($doc, $idx + 1));
-                if(self::str_startwith($tmp, '@')){
+                if (self::str_startwith($tmp, '@')) {
                     break;
                 }
                 if (!empty($tmp)) {

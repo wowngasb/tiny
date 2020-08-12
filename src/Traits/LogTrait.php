@@ -114,7 +114,7 @@ trait LogTrait
             case 'resource':
             case 'string':
                 $var = str_replace(["\r", "\n", "<", ">", "&"], ['\r', '\n', '\x3c', '\x3e', '\x26'], addslashes($var));
-                $total = count($var);
+                $total = strlen($var);
                 if (strlen($var) > $max_chars) {
                     $var = mb_substr($var, 0, $max_chars) . "...<{$total} chars>..." . mb_substr($var, -7);
                 }
@@ -135,10 +135,11 @@ trait LogTrait
                     }
                     return "[\n" . implode(",  \n", $output) . "\n{$tab_pre}]";
                 }
-                $total = count($var);
+                $total = 0;
                 $output = [];
                 $item_idx = 0;
                 foreach ($var as $k => $v) {
+                    $total += 1;
                     if ($item_idx > $max_items) {
                         $output[] = "{$tab}\"...total<{$total}>keys...\": \"....items..\"";
                         break;

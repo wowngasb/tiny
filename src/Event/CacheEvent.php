@@ -15,7 +15,7 @@ use Tiny\Util;
 class CacheEvent extends AbstractEvent
 {
 
-    public function __construct($type, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $bytes = 0)
+    public function __construct($type, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $useYac = false, $bytes = 0)
     {
         $params = [
             'now' => $now,
@@ -25,6 +25,7 @@ class CacheEvent extends AbstractEvent
             'update' => $update,
             'tags' => $tags,
             'useStatic' => $useStatic,
+            'useYac' => $useYac,
             'bytes' => $bytes,
         ];
         parent::__construct($type, null, $params);
@@ -45,6 +46,14 @@ class CacheEvent extends AbstractEvent
     public function isUseStatic()
     {
         return Util::v($this->_params, 'useStatic', false);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isUseYac()
+    {
+        return Util::v($this->_params, 'useYac', false);
     }
 
     /**

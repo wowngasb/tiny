@@ -20,6 +20,7 @@ class CacheConfig extends AbstractClass
     private $_cache_use_redis = true;
     // 是否启用 静态缓存
     private $_enable_static_cache = false;
+    private $_enable_yac_cache = false;
 
     private $_encodeResolver = null;
     private $_decodeResolver = null;
@@ -50,13 +51,19 @@ class CacheConfig extends AbstractClass
     public function isEnableStaticCache($prefix = null)
     {
         $cfg = $this->redisConfig($prefix);
-        return isset($cfg['enable_static_cache']) ? $cfg['enable_static_cache'] : $this->_enable_static_cache;
+        return isset($cfg['enable_static_cache']) ? !empty($cfg['enable_static_cache']) : $this->_enable_static_cache;
+    }
+
+    public function isEnableYacCache($prefix = null)
+    {
+        $cfg = $this->redisConfig($prefix);
+        return isset($cfg['enable_yac_cache']) ? !empty($cfg['enable_yac_cache']) : $this->_enable_yac_cache;
     }
 
     public function isCacheUseRedis($prefix = null)
     {
         $cfg = $this->redisConfig($prefix);
-        return isset($cfg['cache_use_redis']) ? $cfg['cache_use_redis'] : $this->_cache_use_redis;
+        return isset($cfg['cache_use_redis']) ? !empty($cfg['cache_use_redis']) : $this->_cache_use_redis;
     }
 
 
@@ -64,10 +71,11 @@ class CacheConfig extends AbstractClass
      * @param bool $use_redis
      * @param bool $enable_static
      */
-    public function setBaseConfig($use_redis, $enable_static)
+    public function setBaseConfig($use_redis, $enable_static = false, $enable_yac = false)
     {
         $this->_cache_use_redis = !empty($use_redis);
         $this->_enable_static_cache = !empty($enable_static);
+        $this->_enable_yac_cache = !empty($enable_yac);
     }
 
     /**
@@ -152,9 +160,9 @@ class CacheConfig extends AbstractClass
         return Application::config('ENV_REDIS');
     }
 
-    public static function doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $bytes = 0)
+    public static function doneCacheAction($action, $now, $method, $key, $timeCache, $update, $tags = [], $useStatic = false, $useYac = false, $bytes = 0)
     {
-        self::fire(new CacheEvent($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $bytes));
+        self::fire(new CacheEvent($action, $now, $method, $key, $timeCache, $update, $tags, $useStatic, $useYac, $bytes));
     }
 
     ###############################################################

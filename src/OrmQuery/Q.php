@@ -20,6 +20,10 @@ class Q
         return new whereQ($qFunc, $filter);
     }
 
+    public static function orWhereQ(callable $qFunc, callable  $filter = null){
+        return new orWhereQ($qFunc, $filter);
+    }
+
     public static function orWhere($value, $operator = '=', callable $filter = null)
     {
         return new orWhere($value, $operator, $filter);

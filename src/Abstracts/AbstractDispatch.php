@@ -40,8 +40,8 @@ abstract class AbstractDispatch extends AbstractClass
     {
         $params = $context->beforeAction($params);
         $params = ApiHelper::fixActionParams($context, $action, $params);
-        if ($params instanceof ResponseInterface) {  // 如果 beforeAction 返回了一个 response  直接终止请求流程
-            $params->end();
+        if ($params instanceof ResponseInterface || is_null($params)) {  // 如果 beforeAction 返回了一个 response 或者 null  直接终止请求流程
+            $context->getResponse()->end();
         }
         $context->getRequest()->setParams($params);
         return $params;

@@ -155,10 +155,14 @@ class ApiDispatch extends AbstractDispatch
     protected static function _buildExceptionResult(Exception $ex, $get_previous = true)
     {
         $code = intval($ex->getCode());  // code 为0 或 无error字段 表示没有错误  code设置为0 会忽略error字段
+        $message = trim($ex->getMessage());
+        $message = !empty($message) ? $message : "Exception with code {$code}";
+        $message = Util::stri_startwith($message, 'sql') ? "SQL Exception with code {$code}" : $message;
+
         $error = Application::dev() ? [
             'Exception' => get_class($ex),
             'code' => $ex->getCode(),
-            'message' => $ex->getMessage(),
+            'message' => $message,
             'file' => $ex->getFile() . ' [' . $ex->getLine() . ']',
             'trace' => self::_fixTraceInfo($ex),
         ] : [
@@ -166,7 +170,7 @@ class ApiDispatch extends AbstractDispatch
             'message' => 'traceException',
         ];
         $result = ['code' => $code == 0 ? 500 : $code, 'error' => $error];
-        $msg = trim($ex->getMessage());
+        $msg = $message;
         $result['msg'] = !empty($msg) ? $msg : 'Exception with empty msg';
 
         while ($get_previous && !empty($ex) && $ex->getPrevious()) {

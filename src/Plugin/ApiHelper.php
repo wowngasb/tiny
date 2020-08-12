@@ -83,6 +83,9 @@ class ApiHelper
                 $tmp_args[$arg_name] = $tmp;
             } else {
                 $default = $arg['isOptional'] ? $arg['defaultValue'] : '';   //参数未给出时优先使用函数的默认参数，如果无默认参数这设置为空字符串
+                if ($arg['isArray']){
+                    $default = !empty($arg['isOptional']) ? $arg['defaultValue'] : [];   //参数未给出时优先使用函数的默认参数，如果无默认参数这设置为 空数组
+                }
                 $tmp_args[$arg_name] = $default;
             }
         }
@@ -134,8 +137,8 @@ function {$cls}Helper(){
     var self = this;
     this.debug = {$_dev_debug};
     
-    var _h = window.location.hostname.toLowerCase() + (window.location.port && window.location.port != 80 && window.location.port != 443 ? (':' + window.location.port) : '');
-    var _s = 'https:' === document.location.protocol ? 'https' : 'http';
+    var _h = window.location.host.toLowerCase();
+    var _s = 'https:' === window.location.protocol ? 'https' : 'http';
     var _l = (typeof console !== "undefined" && typeof console.log === "function") ? {
         DEBUG: typeof console.debug === "function" ? console.debug.bind(console) : console.log.bind(console),
         INFO: typeof console.info === "function" ? console.info.bind(console) : console.log.bind(console),
@@ -174,11 +177,11 @@ function {$cls}Helper(){
         }
         
         return $.ajax($.extend({}, {
-            type: host === location.hostname.toLowerCase() ? "POST" : "GET",
+            type: host == window.location.host.toLowerCase() ? "POST" : "GET",
             url: api_url,
             data: args,
             cache: false,
-            dataType: host === location.hostname.toLowerCase() ? "json" : "jsonp",
+            dataType: host === location.host.toLowerCase() ? "json" : "jsonp",
             error: function(xhr, status, error){
                 typeof failure === 'function' && failure({
                     xhr: xhr, status: status, error: error
@@ -202,7 +205,7 @@ EOT;
             $name = $val['name'];
             $doc_str = $dev_debug ? $val['doc'] : '';
             $args = json_encode(self::getExampleArgsByParameters($val['param']));
-            $args_str = $dev_debug ? "this.{$name}_args = {$args};" : '';
+            $args_str = "this.{$name}_args = {$args};";
             $func_item = <<<EOT
 
     {$doc_str}

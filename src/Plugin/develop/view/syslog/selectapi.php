@@ -169,46 +169,22 @@
         $('#api_ajax_btn').on('click', function () {
             var cls = $('#api_class').val(),
                 method = $('#api_method').val();
-            var api_url = '/api/' + cls + '/' + method;
             var json_data = $("#API_Form").serializeJson();
             var hook_id = $('#hook_id').val();
-            if (hook_id) {
-                json_data.hook_id = hook_id;
-            }
-            for (var key in json_data) {
-                if (json_data.hasOwnProperty(key)) {
-                    var item = json_data[key];
-                    if (item === 'null') {
-                        delete json_data[key];
-                    }
-                }
-            }
-            var start_time = new Date().getTime();
-            if (typeof CSRF_TOKEN !== "undefined" && CSRF_TOKEN) {
-                json_data.csrf = CSRF_TOKEN;
-            }
+
+            var api = cls + '.' + method;
+
             $('#status_log').html('');
-            $.ajax({
-                type: "POST",
-                url: api_url,
-                data: json_data,
-                dataType: "json",
-                success: function (data) {
-                    var use_time = Math.round((new Date().getTime() - start_time));
-                    if (data.code === 0 || !data.error) {
-                        api_log(cls, method, 'INFO', use_time, json_data, data);
-                    } else {
-                        api_log(cls, method, 'ERROR', use_time, json_data, data);
-                    }
-                    var json_code = "<pre><code>" + JSON.stringify(data, null, 4) + "</code></pre>";
-                    $('#status_log').html(json_code);
-                    setTimeout(hljs_code, 200);
-                }
+
+            _api(api, json_data, hook_id, function (data) {
+                var json_code = "<pre><code>" + JSON.stringify(data, null, 4) + "</code></pre>";
+                $('#status_log').html(json_code);
+                setTimeout(hljs_code, 200);
             });
         });
     });
 
-    function api_log(cls, func, tag, use_time, args, data) {
+    function api_log(api, tag, use_time, args, data) {
         delete args.csrf;
         var _log_func_dict = (typeof console !== "undefined" && typeof console.info === "function" && typeof console.warn === "function") ? {
             INFO: console.info.bind(console),
@@ -216,7 +192,7 @@
         } : {};
 
         var f = _log_func_dict[tag];
-        f && f(formatDateNow(), '[' + tag + '] ' + cls + '.' + func + '(' + use_time + 'ms)', 'args:', args, 'data:', data);
+        f && f(formatDateNow(), '[' + tag + '] ' + api + '(' + use_time + 'ms)', 'args:', args, 'data:', data);
     }
 
     function formatDateNow() {
@@ -251,6 +227,61 @@
         $('.x-icon-error').on('click', function () {
             var item = $(this).closest('.control-group');
             item.remove();
+        });
+    }
+
+    function _api(api, json_data, hook_id, callback) {
+        api = api || '';
+        json_data = json_data || {};
+        hook_id = hook_id || 0;
+        callback = callback || function (data) {
+            console.warn('test api:', api, ', args:', json_data, ', ret:', data);
+        };
+
+        if (hook_id) {
+            json_data.hook_id = hook_id;
+        }
+
+        var api_url = '/api/' + api.replace('.', '/');
+
+        var json_data_ = JSON.parse(JSON.stringify(json_data));
+        for (var key in json_data_) {
+            if (json_data_.hasOwnProperty(key)) {
+                var item = json_data_[key];
+                if($.isArray(item)){
+                    var tmp = item.map(function (i) {
+                        return $.isArray(i) ? i[0] : i;
+                    });
+                    delete json_data[key];
+
+                    var key_ = key.replace('[ ]', '');
+                    json_data[key_] = tmp;
+                }
+                if (item === 'null') {
+                    delete json_data[key];
+                }
+            }
+        }
+
+        var start_time = new Date().getTime();
+        if (typeof CSRF_TOKEN !== "undefined" && CSRF_TOKEN) {
+            json_data.csrf = CSRF_TOKEN;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: api_url,
+            data: json_data,
+            dataType: "json",
+            success: function (data) {
+                var use_time = Math.round((new Date().getTime() - start_time));
+                if (data.code === 0 || !data.error) {
+                    api_log(api, 'INFO', use_time, json_data, data);
+                } else {
+                    api_log(api, 'ERROR', use_time, json_data, data);
+                }
+                typeof callback == "function" && callback(data);
+            }
         });
     }
 
